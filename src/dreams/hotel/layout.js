@@ -16,7 +16,9 @@ export const WALL_T = 0.5;
 
 const isLobbyCell = (r, c) => r <= 1 && (c === 2 || c === 3);
 
-export function buildLayout(seed = 1313) {
+// Opzioni: il piano terra ha il portone d'ingresso e la suite 1313;
+// gli altri piani hanno solo l'atrio con gli ascensori.
+export function buildLayout(seed = 1313, { entrance = true, suite = true } = {}) {
   const rand = mulberry32(seed);
   const rooms = [];
   const cellRoom = new Int32Array(ROWS * COLS).fill(-1);
@@ -102,7 +104,7 @@ export function buildLayout(seed = 1313) {
   }
 
   const playerRoom = cellRoom[(ROWS - 1) * COLS + 0];
-  rooms[playerRoom].suite = true;
+  if (suite) rooms[playerRoom].suite = true;
 
   // ---------- Muri (per stanza, spessore verso l'interno) ----------
   const walls = []; // { minX, maxX, minZ, maxZ, room, lintel }
@@ -127,7 +129,7 @@ export function buildLayout(seed = 1313) {
           const e = edges.find((q) => (q.a === cid && q.b === s.n) || (q.b === cid && q.a === s.n));
           if (e?.door) gaps.push([e.center - DOOR_W / 2, e.center + DOOR_W / 2, e]);
         }
-        if (room.lobby && s.dir === 'S') {
+        if (entrance && room.lobby && s.dir === 'S') {
           // portone d'ingresso, centrato su x = 0
           gaps.push([-ENTRANCE_W / 2, ENTRANCE_W / 2, null]);
         }
@@ -180,7 +182,7 @@ export function buildLayout(seed = 1313) {
   };
   for (const w of walls) if (!w.lintel) markRect(w.minX, w.maxX, w.minZ, w.maxZ);
 
-  return { rooms, cellRoom, edges, walls, doorways, blocked, markRect, playerRoom, rand };
+  return { rooms, cellRoom, edges, walls, doorways, blocked, markRect, playerRoom: suite ? playerRoom : -1, rand };
 }
 
 export function roomAt(layout, x, z) {

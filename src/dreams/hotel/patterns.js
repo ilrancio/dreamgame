@@ -276,6 +276,69 @@ export const PATTERNS = {
       noiseDots(g, s, 4000, b, 1.5);
     }, 256, [5, 5]),
 
+  concrete: ([a, b]) =>
+    tex((g, s) => {
+      g.fillStyle = a;
+      g.fillRect(0, 0, s, s);
+      noiseDots(g, s, 2500, 'rgba(0,0,0,0.06)', 2);
+      noiseDots(g, s, 800, 'rgba(255,255,255,0.05)', 2);
+      // giunti delle casseforme e fori dei tiranti
+      g.strokeStyle = b;
+      g.lineWidth = 2;
+      g.strokeRect(1, 1, s - 2, s / 2 - 2);
+      g.strokeRect(1, s / 2 + 1, s - 2, s / 2 - 2);
+      g.fillStyle = b;
+      for (const [x, y] of [[s * 0.2, s * 0.25], [s * 0.8, s * 0.25], [s * 0.2, s * 0.75], [s * 0.8, s * 0.75]]) {
+        g.beginPath();
+        g.arc(x, y, 3, 0, Math.PI * 2);
+        g.fill();
+      }
+    }, 256, [4, 2]),
+
+  plaid: ([a, b]) =>
+    tex((g, s) => {
+      g.fillStyle = a;
+      g.fillRect(0, 0, s, s);
+      g.fillStyle = b;
+      g.globalAlpha = 0.45;
+      for (let x = 0; x < s; x += 64) g.fillRect(x, 0, 24, s);
+      for (let y = 0; y < s; y += 64) g.fillRect(0, y, s, 24);
+      g.globalAlpha = 0.25;
+      g.fillStyle = '#fff';
+      for (let x = 30; x < s; x += 64) g.fillRect(x, 0, 3, s);
+      g.globalAlpha = 1;
+    }, 256, [3, 3]),
+
+  arcade: () =>
+    tex((g, s) => {
+      // la classica moquette delle sale giochi: forme fluo sul blu notte
+      g.fillStyle = '#10081e';
+      g.fillRect(0, 0, s, s);
+      const cols = ['#ff2a9a', '#2af0ff', '#ffe42a', '#8a4aff', '#3aff7a'];
+      for (let i = 0; i < 40; i++) {
+        g.fillStyle = cols[i % cols.length];
+        g.strokeStyle = cols[(i + 2) % cols.length];
+        g.lineWidth = 3;
+        const x = Math.random() * s;
+        const y = Math.random() * s;
+        const k = i % 4;
+        g.beginPath();
+        if (k === 0) g.arc(x, y, 6, 0, Math.PI * 2);
+        else if (k === 1) {
+          g.moveTo(x - 8, y + 6);
+          g.lineTo(x, y - 8);
+          g.lineTo(x + 8, y + 6);
+          g.closePath();
+        } else if (k === 2) {
+          g.moveTo(x - 10, y);
+          g.bezierCurveTo(x - 4, y - 10, x + 4, y + 10, x + 10, y);
+          g.stroke();
+          continue;
+        } else g.rect(x - 4, y - 4, 8, 8);
+        g.fill();
+      }
+    }, 256, [1, 1]),
+
   plain: ([a]) =>
     tex((g, s) => {
       g.fillStyle = a;

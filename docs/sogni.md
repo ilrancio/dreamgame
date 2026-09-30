@@ -1,6 +1,6 @@
 # Diario dei sogni
 
-Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel: di sera, di notte e di giorno, in un ciclo continuo. **Molti dei sogni futuri saranno ambientati qui**, come nuove stanze, nuovi eventi e nuove abitudini. Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
+Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel, che **non è uno spazio euclideo**: da fuori sembra una grande baita di tre piani, dentro è mastodontico, con **centinaia di piani** in stili diversi. I sogni possono accadere nelle stanze, in intere zone o piani dell'hotel, oppure come **eventi casuali** in qualunque momento. Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
 
 Ogni sogno è riportato come è stato raccontato, seguito da come è stato trasformato in gioco.
 
@@ -64,3 +64,34 @@ Fili che attraversano tutto:
 ### Comandi a piedi
 
 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · mouse (clic per catturarlo) o <kbd>←</kbd><kbd>→</kbd> per guardarti intorno · <kbd>Shift</kbd> corri · <kbd>Spazio</kbd> salta · <kbd>E</kbd> interagisci · clic/<kbd>F</kbd> spara · <kbd>R</kbd> ricarica · <kbd>P</kbd> pausa · <kbd>M</kbd> audio
+
+---
+
+## L'hotel non euclideo
+
+> *Questo hotel è uno spazio non euclideo: dall'esterno sembra grande, ma all'interno è mastodontico, con centinaia di piani e stili diversi (cottage, brutalista, classico, moderno, futuristico…). I sogni accadono nelle stanze, ma potrebbero anche essere in zone dell'hotel o eventi casuali in qualunque momento.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Da fuori grande, dentro mastodontico | Da fuori la baita ha tre piani. Ai lati del portone ci sono due **ascensori** che portano a **500 piani**. Una targa accanto indica *Piano 88 · Sala giochi*. |
+| Centinaia di piani, stili diversi | Ogni piano ha la sua **architettura**, sempre la stessa per quel numero: **cottage** (stube con camino, fienile), **brutalista** (sale di cemento, un vuoto monumentale con una scala interrotta), **classico** (galleria delle statue, salone barocco, biblioteca, cappella gotica), **moderno** (salotto minimale, galleria d'arte, piscina), **futuristico** (corridoio al neon con ologramma, dormitorio a capsule, suite spaziale, discoteca, acquario). Ogni piano ha il suo atrio, il suo labirinto di stanze numerate (al piano 57: 5711, 5712…) e qualche stanza "intrusa" da un altro stile. |
+| Lo spazio non torna | Nell'ascensore il display impazzisce e ogni tanto mostra piani impossibili (∞, −7, 13½, 404). |
+| Eventi casuali in qualunque momento | Ogni minuto e mezzo circa, mentre esplori, può succedere qualcosa: le luci si abbassano in tutto l'hotel, un ascensore si apre e non esce nessuno, una risatina dietro una porta, la stanza che per un attimo si allunga, la musica della sala giochi che arriva da un piano lontano, la neve che cade dentro, un déjà-vu dell'amico. Ogni nuovo sogno può aggiungere i suoi eventi. |
+
+### Comandi dell'ascensore
+
+<kbd>E</kbd> davanti alle porte · poi <kbd>0</kbd>–<kbd>9</kbd> per digitare il piano e <kbd>Invio</kbd>, oppure <kbd>T</kbd> piano terra, <kbd>C</kbd> un piano a caso, <kbd>Esc</kbd> resta. Si può anche cliccare.
+
+---
+
+## III — La Sala Giochi (piano 88)
+
+> *Il prossimo sogno vorrei fosse un piano dell'hotel: un'immensa sala giochi. Semplicemente questo.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Un piano dell'hotel | Il **piano 88**. L'ascensore si apre in mezzo alla sala, davanti al banco premi. |
+| Immensa | Un'unica sala senza muri, con quasi 600 cabinati in file che si perdono nella penombra, flipper, air hockey, pedane da ballo, gru dei peluche, neon sul soffitto e insegne sospese. **Non finisce mai**: la sala è una tessera che si ripete, e camminando oltre il bordo si rientra dal lato opposto senza accorgersene. |
+| Una sala giochi | La musica è chiptune, si sentono bip dappertutto, gli schermi sono animati in "modalità dimostrativa" e quasi tutti ripetono *INSERT COIN*. |
+| Giocare | Un cabinato su tre è **giocabile** (<kbd>E</kbd>) su uno schermo a tubo catodico: **Gnomi Invaders** (gnomi a ondate, spari vapore da una teiera), **Fuga dal Demone** (il primo sogno in versione arcade), **Ping del Tè** (pong contro il tuo amico, che commenta ogni punto) e l'**Artiglio** (la gru dei peluche: tre tentativi, e la presa a volte si allenta). |
+| Premi | Ogni partita dà **biglietti**. Al **banco premi** si scambiano con paperella, cartolina del campo, dado di peluche, gnomo di ceramica, palla a specchi, razzo di latta, demone di peluche, lampada lava, teiera d'oro. I premi, vinti o comprati, finiscono sulla **mensola della suite 1313**, tra il tavolino del tè e il camino. |

@@ -357,6 +357,68 @@ export class AudioEngine {
     n.stop(t + 2.3);
   }
 
+  bleep(vol = 0.03) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const o = c.createOscillator();
+    o.type = 'square';
+    const f = [523, 659, 784, 1047, 880, 988][Math.floor(Math.random() * 6)];
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.setValueAtTime(f * (Math.random() < 0.5 ? 1.5 : 0.75), t + 0.06);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.15);
+  }
+
+  ding(vol = 0.2) {
+    this.chime(1175, vol);
+    setTimeout(() => this.chime(880, vol * 0.8), 260);
+  }
+
+  // Musichetta da sala giochi: un arpeggio a onda quadra che gira in loop.
+  chiptune(on, vol = 0.035) {
+    if (!this.ctx) return;
+    if (!on) {
+      clearInterval(this.chipTimer);
+      this.chipTimer = null;
+      return;
+    }
+    if (this.chipTimer) return;
+    const prog = [[220, 277, 330, 440], [196, 247, 294, 392], [175, 220, 262, 349], [196, 247, 294, 392]];
+    let step = 0;
+    this.chipTimer = setInterval(() => {
+      const c = this.ctx;
+      const t = c.currentTime;
+      const chord = prog[Math.floor(step / 16) % prog.length];
+      const f = chord[step % 4] * (step % 8 < 4 ? 1 : 2);
+      const o = c.createOscillator();
+      o.type = 'square';
+      o.frequency.value = f;
+      const g = c.createGain();
+      g.gain.setValueAtTime(vol, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 0.13);
+      if (step % 4 === 0) {
+        const b = c.createOscillator();
+        b.type = 'triangle';
+        b.frequency.value = chord[0] / 2;
+        const bg = c.createGain();
+        bg.gain.setValueAtTime(vol * 1.6, t);
+        bg.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        b.connect(bg).connect(this.master);
+        b.start(t);
+        b.stop(t + 0.32);
+      }
+      step++;
+    }, 140);
+  }
+
   // ---------- Musica d'atmosfera ----------
   // Un pad è un accordo di oscillatori lenti; si attivano/spengono con dissolvenza.
   pad(name, freqs, { vol = 0.06, type = 'sine', cutoff = 1200, tremolo = 0 } = {}) {

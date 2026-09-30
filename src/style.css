@@ -546,3 +546,266 @@ kbd {
   outline: 2px solid #c9a6ff;
   outline-offset: 3px;
 }
+
+/* ---------- Ascensore ---------- */
+#elevator,
+#prizes {
+  position: fixed;
+  inset: 0;
+  display: none;
+  place-items: center;
+  z-index: 30;
+  background: rgba(8, 5, 2, 0.55);
+}
+
+#elevator.show,
+#prizes.show {
+  display: grid;
+}
+
+.elev-panel,
+.prize-panel {
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 22px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #3a2a14, #22180a);
+  border: 2px solid #c8a050;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  color: #f4e6c8;
+}
+
+.elev-display {
+  background: #140c04;
+  border: 1px solid #6a4a1a;
+  border-radius: 8px;
+  text-align: center;
+  font: 800 42px 'Inter', monospace;
+  color: #ffb84a;
+  text-shadow: 0 0 12px #ff8a1a;
+  padding: 6px;
+  margin-bottom: 14px;
+}
+
+.elev-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.floor-list,
+.prize-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.floor-btn,
+.prize-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(200, 160, 80, 0.5);
+  background: rgba(255, 220, 150, 0.06);
+  color: inherit;
+  font: 500 14px 'Inter', sans-serif;
+  cursor: pointer;
+}
+
+.floor-btn b {
+  min-width: 44px;
+  font-size: 22px;
+  color: #ffb84a;
+  text-align: center;
+}
+
+.floor-btn small {
+  display: block;
+  opacity: 0.65;
+  font-size: 12px;
+}
+
+.floor-btn.here {
+  border-color: #ffb84a;
+}
+
+.floor-btn:hover,
+.prize-row:hover:not(:disabled),
+.floor-btn:focus-visible,
+.prize-row:focus-visible {
+  background: rgba(255, 200, 100, 0.16);
+}
+
+.elev-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.elev-input {
+  font: 600 16px 'Inter', sans-serif;
+}
+
+.elev-input span {
+  display: inline-block;
+  min-width: 52px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #140c04;
+  color: #ffb84a;
+  font-family: monospace;
+  font-size: 20px;
+  text-align: center;
+}
+
+.elev-input small {
+  opacity: 0.6;
+  font-size: 11px;
+}
+
+.elev-panel button:not(.floor-btn),
+.prize-panel > button {
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid #c8a050;
+  background: #c8a050;
+  color: #1a1206;
+  font: 700 13px 'Inter', sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.elev-panel button.ghost,
+.prize-panel > button.ghost {
+  background: transparent;
+  color: #f4e6c8;
+}
+
+.elev-keys {
+  margin: 6px 0 0;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.elev-ride {
+  text-align: center;
+  color: #ffb84a;
+  text-shadow: 0 0 16px #ff8a1a;
+}
+
+.elev-ride small {
+  display: block;
+  font: 600 12px 'Inter', sans-serif;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.elev-ride b {
+  font: 800 96px 'Inter', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Banco premi ---------- */
+.prize-panel {
+  background: linear-gradient(180deg, #2a1236, #140a1e);
+  border-color: #ff2a9a;
+}
+
+.prize-panel h3 {
+  margin: 0;
+  font: 800 22px monospace;
+  color: #ffe42a;
+  letter-spacing: 0.1em;
+}
+
+.prize-tickets {
+  margin: 4px 0 14px;
+  font: 700 15px 'Inter', sans-serif;
+  color: #ff8ad0;
+}
+
+.prize-row {
+  border-color: rgba(255, 42, 154, 0.45);
+}
+
+.prize-row span {
+  flex: 1;
+  min-width: 0;
+}
+
+.prize-row b {
+  color: #ffe42a;
+  font-variant-numeric: tabular-nums;
+}
+
+.prize-row:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.prize-note {
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* ---------- Cabinato: schermo a tubo catodico ---------- */
+#arcade {
+  position: fixed;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 30;
+  background: rgba(4, 2, 10, 0.82);
+}
+
+#arcade.show {
+  display: flex;
+}
+
+.crt {
+  position: relative;
+  width: min(720px, calc(100vw - 32px));
+  aspect-ratio: 4 / 3;
+  max-width: 100%;
+  border-radius: 28px;
+  padding: 18px;
+  background: #111;
+  box-shadow: 0 0 0 6px #2a2a2a, 0 0 60px rgba(120, 80, 255, 0.35);
+}
+
+.crt::after {
+  content: '';
+  position: absolute;
+  inset: 18px;
+  border-radius: 16px;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 4px);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.7);
+}
+
+#arcade-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  image-rendering: pixelated;
+  display: block;
+}
+
+#arcade-footer {
+  font-size: 13px;
+  opacity: 0.8;
+}

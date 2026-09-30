@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { prizeModel } from './prizes.js';
 
 // La suite 1313: una stanza da vivere, non da attraversare.
 // Coordinate locali: x verso est, z verso nord. Le pareti ovest e nord sono
@@ -108,6 +109,16 @@ export function buildSuite(a, rb) {
   a.box(1.1, 0.9, 0.25, a.mat('#5a2a1a'), -4.75, 0.9, fireZ, { collide: false, rotY: Math.PI / 2 });
   const armchair = { pos: W(-5.2, fireZ), facing: -Math.PI / 2 };
 
+  // mensola dei premi della sala giochi (parete ovest, tra tavolino e camino)
+  const shelfZ = -4.35;
+  a.box(0.08, 2.2, 1.5, darkWood, -E + 0.04, 1.1, shelfZ);
+  for (const dz of [-0.75, 0.75]) a.box(0.5, 2.2, 0.05, darkWood, -E + 0.25, 1.1, shelfZ + dz, { collide: false });
+  for (let r = 0; r < 4; r++) a.box(0.5, 0.05, 1.5, wood, -E + 0.25, 0.43 + r * 0.6, shelfZ, { collide: false });
+  a.collider(-E + 0.25, shelfZ, 0.5, 1.5);
+  const shelf = new THREE.Group();
+  rb.dynamic.add(shelf);
+  const shelfTrack = [];
+
   // divano e tappeto
   a.box(4.4, 0.03, 3.2, a.mat('#8a2a2a'), -1, 0.02, -2.5, { collide: false });
   a.box(1, 0.8, 3, a.mat('#4a5a7a'), 1.8, 0.4, -2.5);
@@ -128,6 +139,20 @@ export function buildSuite(a, rb) {
     setLamp(on) {
       lampLight.visible = on;
       lampShadeMat.emissiveIntensity = on ? 1.6 : 0.05;
+    },
+    // i premi vinti: tre per ripiano, dal basso verso l'alto
+    setPrizes(ids = []) {
+      shelf.clear();
+      shelfTrack.forEach((d) => d.dispose());
+      shelfTrack.length = 0;
+      const tr = (o) => (shelfTrack.push(o), o);
+      ids.slice(0, 9).forEach((id, i) => {
+        const m = prizeModel(id, tr);
+        const row = Math.floor(i / 3);
+        m.position.set(a.cx - E + 0.28, 0.46 + row * 0.6, a.cz + shelfZ + ((i % 3) - 1) * 0.45);
+        m.rotation.y = Math.PI / 2;
+        shelf.add(m);
+      });
     },
     setDay(day) {
       viewMat.map = day ? views.day : views.night;

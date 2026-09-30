@@ -424,6 +424,7 @@ export class RoomBuilder {
       glowMat: (...args) => B.glowMat(...args),
       texMat: (...args) => B.texMat(...args),
       anim: (fn) => B.anims.push(fn),
+      dynamicAdd: (o) => B.dynamic.add(o),
       collider: (x, z, w, d) => B.addCollider(room.cx + x - w / 2, room.cx + x + w / 2, room.cz + z - d / 2, room.cz + z + d / 2),
       // posizione libera lontana dalle porte e dagli altri arredi
       place(r, tries = 40) {
