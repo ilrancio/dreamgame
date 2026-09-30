@@ -43,7 +43,30 @@ export class UI {
   }
 
   objective(text) {
+    this.el.objective.classList.remove('checklist');
     this.el.objective.textContent = text || '';
+  }
+
+  // Lista gentile di cose da fare (es. i rituali della sera nella suite).
+  checklist(items) {
+    const o = this.el.objective;
+    o.classList.add('checklist');
+    o.innerHTML = items.map(([label, done]) => `${done ? '✓' : '○'} ${label}`).join('<br/>');
+  }
+
+  // Nei momenti di quiete spariscono barre e contatori.
+  calm(v) {
+    this.el.hud.classList.toggle('calm', v);
+  }
+
+  steam(v) {
+    document.getElementById('steam').style.opacity = v ? '1' : '0';
+  }
+
+  crosshair(show, fire = false) {
+    const c = document.getElementById('crosshair');
+    c.classList.toggle('show', show);
+    c.classList.toggle('fire', fire);
   }
 
   // Etichette dell'HUD: in macchina e a piedi mostrano cose diverse.

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Input } from './core/input.js';
 import { AudioEngine } from './core/audio.js';
-import { UI, formatTime } from './core/ui.js';
+import { UI } from './core/ui.js';
 import { loadProgress, saveProgress } from './core/progress.js';
 import { DemonDream } from './dreams/demone/DemonDream.js';
 import { HotelDream } from './dreams/hotel/HotelDream.js';
@@ -23,15 +23,14 @@ const ctx = {
   ui,
   progress: loadProgress(),
   saveProgress,
-  night: { stats: {} },
-  nextChapter: (stats) => {
-    Object.assign(ctx.night.stats, stats);
+  resumeHotel: false,
+  nextChapter: () => {
+    ctx.resumeHotel = false;
     goToChapter(chapterIndex + 1);
   },
-  endNight: (stats) => endNight(stats),
 };
 
-// Una sola notte, un solo sogno: i capitoli si susseguono senza menu né caricamenti visibili.
+// Un solo sogno che non finisce: il campo è il prologo, poi si vive nell'hotel.
 const CHAPTERS = [
   { id: 'campo', create: (c) => new DemonDream(c), card: 'Chiudi gli occhi. Stai già guidando.', color: '#000' },
   { id: 'hotel', create: (c) => new HotelDream(c), card: null, color: '#ffe2b0' },
@@ -40,7 +39,6 @@ const CHAPTERS = [
 let current = null;
 let running = false;
 let chapterIndex = 0;
-let summaryOpen = false;
 
 async function goToChapter(i, first = false) {
   const ch = CHAPTERS[i];
@@ -60,43 +58,6 @@ async function goToChapter(i, first = false) {
   await ui.fade(0, 1600, ch.color);
 }
 
-function endNight(stats) {
-  Object.assign(ctx.night.stats, stats);
-  const s = ctx.night.stats;
-  const total = (s.campo?.time || 0) + (s.hotel?.time || 0);
-  const prev = ctx.progress.bestNight;
-  const record = s.campo && s.hotel && (!prev || total < prev);
-  if (record) {
-    ctx.progress.bestNight = total;
-    saveProgress(ctx.progress);
-  }
-  ui.showHud(false);
-  ui.clearSubtitle();
-  ui.fade(0.88, 2500, '#1a1206');
-  setTimeout(() => {
-    ui.center(`<div class="panel">
-      <h2>…e poi ti sei svegliato.</h2>
-      <p class="poem">Il demone è ancora fermo nel suo campo.<br/>L'hotel ha ancora mille stanze. Gli gnomi, chissà.</p>
-      <div class="stats">
-        <div><b>${s.campo ? s.campo.dodges : '–'}</b><span>Macigni schivati</span></div>
-        <div><b>${s.hotel ? s.hotel.rooms : '–'}</b><span>Stanze scoperte</span></div>
-        <div><b>${s.hotel ? s.hotel.gnomes.toLocaleString('it-IT') : '–'}</b><span>Gnomi respinti</span></div>
-        <div><b>${formatTime(total)}</b><span>La notte${record ? ' · record' : ''}</span></div>
-      </div>
-      <p class="cta">Invio: sogna di nuovo</p>
-    </div>`);
-    summaryOpen = true;
-  }, 2500);
-}
-
-async function restartNight() {
-  summaryOpen = false;
-  ui.center(null);
-  ctx.night = { stats: {} };
-  await ui.fade(1, 800);
-  goToChapter(0);
-}
-
 function onResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   if (current) {
@@ -114,23 +75,39 @@ function frame(t) {
   timer.update(t);
   const dt = Math.min(timer.getDelta(), 1 / 20);
   if (current) {
-    if (running && !summaryOpen) current.update(dt);
+    if (running) current.update(dt);
     renderer.render(current.scene, current.camera);
   }
-  if (summaryOpen && ctx.input.wasPressed('Enter', 'Space')) restartNight();
   ctx.input.endFrame();
 }
 requestAnimationFrame(frame);
 
-// Schermata iniziale: il primo clic sblocca l'audio.
+// Schermata iniziale: il primo clic sblocca l'audio. Se il sogno è già
+// cominciato un'altra volta, si può riprendere direttamente dall'hotel.
 const title = document.getElementById('title');
-title.addEventListener('click', () => {
+const hasHotel = !!ctx.progress.hotel?.reached;
+function begin(chapter) {
   ctx.audio.init();
   title.style.opacity = '0';
+  title.style.pointerEvents = 'none';
   setTimeout(() => title.remove(), 800);
-  // scorciatoia di sviluppo: #hotel parte dal secondo capitolo
-  goToChapter(location.hash === '#hotel' ? 1 : 0, true);
-});
+  goToChapter(chapter, true);
+}
+if (hasHotel) {
+  document.getElementById('title-enter').classList.add('hidden');
+  document.getElementById('title-actions').classList.remove('hidden');
+  title.style.cursor = 'default';
+  document.getElementById('btn-continue').addEventListener('click', () => {
+    ctx.resumeHotel = true;
+    begin(1);
+  });
+  document.getElementById('btn-restart').addEventListener('click', () => begin(0));
+} else {
+  title.addEventListener('click', () => {
+    // scorciatoia di sviluppo: #hotel parte dall'arrivo in hotel
+    begin(location.hash === '#hotel' ? 1 : 0);
+  });
+}
 
 // accesso da console per debug: __dreamgame.current
 window.__dreamgame = { ctx, get current() { return current; } };

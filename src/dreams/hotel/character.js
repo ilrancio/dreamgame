@@ -53,6 +53,27 @@ export class Character {
     this.legR = limb(-0.11, 0.8, 0.78, 0.09, pantsM, shoeM);
     this.armL = limb(0.3, 1.46, 0.6, 0.065, shirtM, null);
     this.armR = limb(-0.3, 1.46, 0.6, 0.065, shirtM, null);
+
+    // pistola nella mano destra, nascosta finché non la prendi
+    this.gun = new THREE.Group();
+    const steel = m('#2a2c30');
+    mesh(new THREE.BoxGeometry(0.06, 0.26, 0.1), steel, this.gun, 0, -0.1, 0.02);
+    mesh(new THREE.BoxGeometry(0.05, 0.1, 0.14), m('#4a3020'), this.gun, 0, 0.02, -0.02);
+    this.gun.position.set(0, -0.62, 0.04);
+    this.gun.visible = false;
+    this.armR.add(this.gun);
+    this.muzzle = new THREE.Object3D();
+    this.muzzle.position.set(0, -0.24, 0.02);
+    this.gun.add(this.muzzle);
+
+    this.armed = false;
+    this.aimPitch = 0;
+    this.sitting = false;
+  }
+
+  setArmed(v) {
+    this.armed = v;
+    this.gun.visible = v;
   }
 
   track(o) {
@@ -95,8 +116,29 @@ export class Character {
       this.armL.rotation.z = 1.2;
       this.armR.rotation.z = -1.2;
     }
+    if (this.armed && !this.sitting) {
+      // mira a due mani nella direzione in cui guardi
+      this.armR.rotation.x = -1.5 - this.aimPitch;
+      this.armR.rotation.z = 0.12;
+      this.armL.rotation.x = -1.35 - this.aimPitch;
+      this.armL.rotation.z = -0.45;
+    }
+    if (this.sitting) {
+      this.legL.rotation.x = -1.45;
+      this.legR.rotation.x = -1.45;
+      this.armL.rotation.x = -0.7;
+      this.armR.rotation.x = -0.7;
+      this.armL.rotation.z = 0;
+      this.armR.rotation.z = 0;
+      this.body.position.y = -0.36;
+      this.body.rotation.x = 0;
+    }
     this.group.position.copy(this.pos);
     this.group.rotation.y = this.facing;
+  }
+
+  muzzleWorld(out = new THREE.Vector3()) {
+    return this.muzzle.getWorldPosition(out);
   }
 
   // Collisione cerchio-rettangoli (muri e arredi).

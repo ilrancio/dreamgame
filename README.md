@@ -1,6 +1,6 @@
 # Dreamgame
 
-Un gioco 3D fatto di sogni veri, cuciti in **un'unica esperienza continua**: niente menu, niente livelli separati. I sogni non vengono ricostruiti alla lettera: se ne restituisce la *sensazione*, trasformata in meccaniche che convivono nello stesso mondo.
+Un gioco 3D fatto di sogni veri, cuciti in **un sogno che non finisce**: niente menu, niente livelli separati, nessun risveglio. Il campo è il prologo; poi si vive in un hotel colossale, dove saranno ambientati molti dei sogni futuri. I sogni non vengono ricostruiti alla lettera: se ne restituisce la *sensazione*, trasformata in meccaniche che convivono nello stesso mondo.
 
 Tutto è generato nel codice: terreno, modelli, texture, musica ed effetti sonori (Three.js + Web Audio API). Non ci sono asset esterni.
 
@@ -12,14 +12,14 @@ npm run dev        # apri l'indirizzo che compare (di solito http://localhost:51
 npm run build      # versione statica in dist/
 ```
 
-Dopo il clic iniziale sei subito nel sogno, al volante. Scorciatoia per lo sviluppo: `#hotel` in fondo all'indirizzo parte direttamente dal secondo capitolo.
+La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel browser: le volte successive la schermata iniziale propone **Continua il sogno** (si riprende dalla suite) oppure **Ricomincia dal campo**. Scorciatoia per lo sviluppo: `#hotel` in fondo all'indirizzo parte dall'arrivo in hotel.
 
 ## Sogni raccontati finora
 
 | # | Sogno | Nel gioco |
 |---|-------|-------------|
 | I | [La Fuga dal Demone](docs/sogni.md#i--la-fuga-dal-demone) | Guida folle in un campo sconfinato, un demone gigante che lancia macigni, una strada di montagna fino a un hotel di legno enorme. |
-| II | [L'Hotel dalle Mille Stanze](docs/sogni.md#ii--lhotel-dalle-mille-stanze) | Un labirinto di stanze in stili diversi, una notte nella 1313 e, al mattino, migliaia di gnomi minuscoli. |
+| II | [L'Hotel dalle Mille Stanze](docs/sogni.md#ii--lhotel-dalle-mille-stanze) | Un labirinto di stanze in stili diversi. La suite 1313 da vivere: tè con l'amico, doccia, camino, letto. Al mattino, gnomi nella hall da eliminare sparando. |
 
 L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/sogni.md](docs/sogni.md).
 
@@ -28,9 +28,9 @@ L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/
 ```
 src/
   core/              input, audio sintetizzato, UI/HUD, cielo, particelle, texture procedurali
-  main.js            la notte: i capitoli in sequenza e il riepilogo finale
+  main.js            il prologo e l'hotel in sequenza, e la ripresa del sogno salvato
   dreams/demone/     capitolo I: il campo, la macchina, il demone, i macigni, la strada
-  dreams/hotel/      capitolo II: pianta a labirinto, stili delle stanze, personaggi a piedi, sciame di gnomi
+  dreams/hotel/      l'hotel: pianta a labirinto, stili delle stanze, suite e attività, personaggi, sciame di gnomi, spari
 ```
 
 Ogni nuovo sogno raccontato si aggiunge allo stesso mondo, con meccaniche che si intrecciano con quelle esistenti.

@@ -273,6 +273,90 @@ export class AudioEngine {
     o.stop(t + 0.16);
   }
 
+  shot(vol = 0.35) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const n = this.noise();
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.setValueAtTime(2400, t);
+    f.frequency.exponentialRampToValueAtTime(300, t + 0.12);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    n.connect(f).connect(g).connect(this.master);
+    n.start(t);
+    n.stop(t + 0.18);
+    const o = c.createOscillator();
+    o.frequency.setValueAtTime(160, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.1);
+    const og = c.createGain();
+    og.gain.setValueAtTime(vol * 0.9, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(og).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.13);
+  }
+
+  // Suoni continui (acqua, fuoco): si accendono e si spengono con dissolvenza.
+  loop(name, on, { freq = 1200, q = 0.7, vol = 0.12, type = 'bandpass', crackle = false } = {}) {
+    if (!this.ctx) return;
+    this.loops ??= new Map();
+    const cur = this.loops.get(name);
+    const t = this.ctx.currentTime;
+    if (on && !cur) {
+      const n = this.noise();
+      const f = this.ctx.createBiquadFilter();
+      f.type = type;
+      f.frequency.value = freq;
+      f.Q.value = q;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.8);
+      n.connect(f).connect(g).connect(this.master);
+      n.start(t);
+      const entry = { n, g };
+      if (crackle) {
+        entry.timer = setInterval(() => {
+          if (Math.random() < 0.5) this.thud(0.04 + Math.random() * 0.05);
+        }, 180);
+      }
+      this.loops.set(name, entry);
+    } else if (!on && cur) {
+      this.loops.delete(name);
+      cur.g.gain.cancelScheduledValues(t);
+      cur.g.gain.setValueAtTime(cur.g.gain.value, t);
+      cur.g.gain.linearRampToValueAtTime(0, t + 0.8);
+      clearInterval(cur.timer);
+      setTimeout(() => cur.n.stop(), 900);
+    }
+  }
+
+  stopLoops() {
+    if (!this.loops) return;
+    [...this.loops.keys()].forEach((k) => this.loop(k, false));
+  }
+
+  pour() {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const n = this.noise();
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 3;
+    f.frequency.setValueAtTime(700, t);
+    f.frequency.linearRampToValueAtTime(1500, t + 2);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.1, t + 0.2);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+    n.connect(f).connect(g).connect(this.master);
+    n.start(t);
+    n.stop(t + 2.3);
+  }
+
   // ---------- Musica d'atmosfera ----------
   // Un pad è un accordo di oscillatori lenti; si attivano/spengono con dissolvenza.
   pad(name, freqs, { vol = 0.06, type = 'sine', cutoff = 1200, tremolo = 0 } = {}) {

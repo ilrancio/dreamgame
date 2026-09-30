@@ -279,7 +279,7 @@ export const LOBBY_STYLE = {
 };
 
 export const SUITE_STYLE = {
-  key: 'suite', name: 'Stanza 1313', height: 5,
+  key: 'suite', name: 'Suite 1313', height: 5.5,
   floor: ['planks', ['#8a5a3a', '#7a4e32']], wall: ['stripes', ['#e8d8b8', '#dcc8a4']], ceil: '#f0e6d0', light: '#ffd9a0',
 };
 

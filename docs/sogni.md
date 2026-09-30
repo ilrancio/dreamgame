@@ -1,11 +1,13 @@
 # Diario dei sogni
 
-Il gioco è **una sola notte**: i sogni raccontati diventano capitoli che si susseguono senza menu né livelli separati. Ogni sogno è riportato come è stato raccontato, seguito da come è stato trasformato in gioco.
+Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel: di sera, di notte e di giorno, in un ciclo continuo. **Molti dei sogni futuri saranno ambientati qui**, come nuove stanze, nuovi eventi e nuove abitudini. Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
 
-Fili che attraversano tutta la notte:
-- **il tuo amico**, sempre accanto a te (in macchina, poi a piedi);
-- **la continuità**: ogni sogno finisce dove comincia il successivo;
-- **il risveglio** come unico finale, con il riepilogo di tutta la notte.
+Ogni sogno è riportato come è stato raccontato, seguito da come è stato trasformato in gioco.
+
+Fili che attraversano tutto:
+- **il tuo amico**, sempre accanto a te: in macchina, poi a piedi, al tavolino del tè, in poltrona davanti al camino, a sparare nella hall;
+- **i luoghi si vivono**: non si attraversano soltanto, ci si ferma, si fanno le cose di tutti i giorni;
+- **la continuità**: ogni sogno comincia dove finisce il precedente, senza menu e senza risveglio.
 
 ---
 
@@ -41,24 +43,24 @@ Fili che attraversano tutta la notte:
 ## II — L'Hotel dalle Mille Stanze
 
 > *All'interno c'è un colossale edificio con tantissime stanze e tantissimi stili diversi. Pernotto con un mio amico e il giorno dopo mi attaccano migliaia di piccolissimi gnomi.*
+>
+> *Vorrei non svegliarmi mai dalle esperienze. Vorrei soffermarmi sulla camera d'hotel, che è una suite: nei miei sogni molto spesso i posti in cui vado li "vivo". Vorrei un momento in cui prendi un tè al tavolo con l'amico, ti fai una doccia, vai a letto, hai un attimo di relax. Gli gnomi sono nella hall, e gli spari per eliminarli. Molti dei sogni saranno in questo hotel.*
 
 ### Dal sogno al gioco
 
 | Nel sogno | Nel gioco |
 |-----------|-----------|
-| Dentro, un edificio colossale | Dal portone si entra in un atrio alto 34 m, con piani e piani di gallerie e porte illuminate che salgono nel buio, una parete con centinaia di chiavi e una scala che finisce nel muro. È molto più grande dentro che fuori. |
-| Tantissime stanze, tantissimi stili | Un labirinto di 33 stanze collegate da porte, ognuna in uno stile diverso: giapponese, barocca, biblioteca, disco anni '70, acquario con pesci, serra tropicale, ghiaccio, tempio egizio, suite spaziale, cappella gotica, cameretta dei giganti, piscina deserta, stanza rossa, salotto pastello, sala delle caldaie, sala degli specchi. Sopra ogni porta c'è il numero della stanza in cui entri. Il gioco conta le stanze scoperte e l'amico commenta quelle più strane. |
-| Pernotto con un mio amico | Si suona il campanello della reception, una voce lontana consegna la chiave della **1313** e bisogna trovarla nel labirinto. L'amico fa strada ma ti aspetta. Nella 1313 ci sono due letti: <kbd>E</kbd> per dormire. |
-| Il giorno dopo | Dissolvenza nella notte ("qualcosa, da qualche parte, ridacchia"), poi *Il mattino dopo*: luce piena, finestre chiare. |
-| Migliaia di piccolissimi gnomi mi attaccano | Gnomi alti circa 30 cm, fino a 2.600 contemporaneamente, che trovano la strada tra le stanze con un campo di flusso. Escono prima da sotto i letti, poi da ogni stanza. Ti si **arrampicano addosso**: più ne hai, più sei lento e più energia perdi. Li respingi a **calci** (<kbd>F</kbd> o clic) oppure **saltando e ricadendo** (<kbd>Spazio</kbd>), che li spazza via tutti intorno e scrolla quelli aggrappati. Anche il tuo amico viene sommerso: se ne ha troppi addosso si blocca e chiede aiuto, e devi andare a liberarlo a calci. |
-| (finale non raccontato) | Per ora l'obiettivo è **scappare dall'hotel** tornando al portone, che al mattino è pieno di luce. Se gli gnomi ti sommergono, ti risvegli di nuovo nel letto e riprovi. |
+| Dentro, un edificio colossale | Dal portone si entra in una hall alta 34 m, con piani e piani di gallerie e porte illuminate che salgono nel buio, una parete con centinaia di chiavi e una scala che finisce nel muro. È molto più grande dentro che fuori. |
+| Tantissime stanze, tantissimi stili | Un labirinto di 33 stanze collegate da porte, in 16 stili diversi: giapponese, barocca, biblioteca, disco anni '70, acquario con pesci, serra tropicale, ghiaccio, tempio egizio, suite spaziale, cappella gotica, cameretta dei giganti, piscina deserta, stanza rossa, salotto pastello, sala delle caldaie, sala degli specchi. Sopra ogni porta c'è il numero della stanza in cui entri. Le stanze scoperte restano nella memoria del sogno. |
+| Pernotto con un mio amico, in una suite | Alla reception si suona il campanello e una voce lontana consegna la chiave della **suite 1313**, da cercare nel labirinto. La suite è da vivere: tavolino da tè accanto alla finestra, camino con poltrona, bagno con doccia, due letti con lampada da comodino. |
+| Il tè al tavolo con l'amico | <kbd>E</kbd> al tavolino: vi sedete uno di fronte all'altro, il tè viene versato, sale il vapore e l'amico chiacchiera (a volte ripensa al demone del campo). |
+| La doccia | <kbd>E</kbd> nella doccia: scende l'acqua, lo schermo si appanna di vapore. |
+| Il relax | Guardare fuori dalla finestra (in prima persona: montagne, stelle, e lontanissimo il bagliore rosso del campo), sedersi davanti al fuoco, accendere e spegnere la lampada. Nella suite spariscono barre e contatori e resta solo una lista gentile della sera: tè, doccia, letto. Nessun obbligo, nessun timer. |
+| Andare a letto | <kbd>E</kbd> sul letto: la notte passa, poi arriva *il mattino dopo*. Di giorno, a hall liberata, si può riposare fino a sera. |
+| Il giorno dopo, gli gnomi nella hall | Al mattino sul tavolino ci sono due pistole. Scendendo nella hall si scatena l'invasione: gnomi alti circa 30 cm, in tre ondate sempre più grandi (oltre un migliaio in tutto), che saltano giù dalle balconate e ti corrono addosso. |
+| Li sparo per eliminarli | Visuale sopra la spalla con mirino: clic o <kbd>F</kbd> per sparare. I colpi trapassano più gnomi e fanno un piccolo scoppio dove toccano terra. Gli gnomi colpiti scoppiano in coriandoli rossi, bianchi e blu. Caricatore da 30 colpi, <kbd>R</kbd> per ricaricare. Anche l'amico spara da solo. Chi ti si arrampica addosso ti rallenta e ti toglie energia: salta (<kbd>Spazio</kbd>) per scrollarlo via. |
+| Non svegliarsi mai | Se gli gnomi ti sommergono non si muore: ti rialzi sulla soglia della hall e continui. Finite le ondate torna il silenzio e l'hotel è di nuovo vostro. Ogni mattina gli gnomi tornano, un po' più numerosi. |
 
 ### Comandi a piedi
 
-<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · mouse (clic per catturarlo) o <kbd>←</kbd><kbd>→</kbd> per guardarti intorno · <kbd>Shift</kbd> corri · <kbd>Spazio</kbd> salta · <kbd>E</kbd> interagisci · <kbd>F</kbd>/clic calcio · <kbd>P</kbd> pausa
-
----
-
-## Il risveglio
-
-Quando esci dal portone la notte finisce: *…e poi ti sei svegliato.* Il riepilogo mostra i macigni schivati, le stanze scoperte, gli gnomi respinti e la durata della notte (con record locale). <kbd>Invio</kbd> fa sognare di nuovo dall'inizio.
+<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · mouse (clic per catturarlo) o <kbd>←</kbd><kbd>→</kbd> per guardarti intorno · <kbd>Shift</kbd> corri · <kbd>Spazio</kbd> salta · <kbd>E</kbd> interagisci · clic/<kbd>F</kbd> spara · <kbd>R</kbd> ricarica · <kbd>P</kbd> pausa · <kbd>M</kbd> audio

@@ -7,6 +7,7 @@ const RUN = 1;
 const CLING = 2;
 const FLY = 3;
 const WAIT = 4; // appena comparsi: esitano un attimo
+const FALL = 5; // si lanciano dalle balconate della hall
 
 function colored(geo, color) {
   const g = geo.index ? geo.toNonIndexed() : geo;
@@ -110,6 +111,93 @@ export class GnomeSwarm {
     this.scale[i] = 0.8 + Math.random() * 0.5;
     this.active++;
     return i;
+  }
+
+  // Uno gnomo che salta giù da una balconata: atterra e comincia a correre.
+  spawnFalling(x, y, z, vx, vz) {
+    const i = this.spawn(x, z);
+    if (i < 0) return -1;
+    this.state[i] = FALL;
+    this.y[i] = y;
+    this.vx[i] = vx;
+    this.vz[i] = vz;
+    this.vy[i] = 1 + Math.random() * 2;
+    return i;
+  }
+
+  eliminate(i) {
+    if (this.state[i] === CLING) this.clinging[this.target[i]]--;
+    this.state[i] = INACTIVE;
+    this.free.push(i);
+    this.active--;
+    // l'aggiornamento salta gli inattivi: azzera subito la matrice
+    const m = this.mesh.instanceMatrix.array;
+    for (let k = 0; k < 16; k++) m[i * 16 + k] = 0;
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+
+  // Colpo di pistola: raggio dalla canna. Trapassa fino a `pierce` gnomi e,
+  // dove il colpo tocca terra, fa un piccolo scoppio. Ritorna le posizioni colpite.
+  shoot(ox, oy, oz, dx, dy, dz, maxT, radius = 0.32, pierce = 5, splash = 0.9) {
+    const hits = [];
+    for (let i = 0; i < this.max; i++) {
+      const s = this.state[i];
+      if (s !== RUN && s !== WAIT && s !== FALL) continue;
+      const px = this.x[i] - ox;
+      const py = this.y[i] + 0.15 - oy;
+      const pz = this.z[i] - oz;
+      const t = px * dx + py * dy + pz * dz;
+      if (t < 0 || t > maxT) continue;
+      const cx = px - dx * t;
+      const cy = py - dy * t;
+      const cz = pz - dz * t;
+      // tolleranza che cresce con la distanza: i bersagli sono minuscoli
+      const r = radius * this.scale[i] * 1.25 + t * 0.022;
+      if (cx * cx + cy * cy + cz * cz < r * r) hits.push({ i, t });
+    }
+    hits.sort((a, b) => a.t - b.t);
+    const out = [];
+    for (const h of hits.slice(0, pierce)) {
+      out.push({ x: this.x[h.i], y: this.y[h.i] + 0.15, z: this.z[h.i] });
+      this.eliminate(h.i);
+    }
+    // scoppio dove il colpo si ferma a terra
+    if (splash > 0 && out.length < pierce) {
+      const ex = ox + dx * maxT;
+      const ez = oz + dz * maxT;
+      const ey = oy + dy * maxT;
+      if (ey < 0.4) {
+        for (let i = 0; i < this.max; i++) {
+          const s = this.state[i];
+          if (s !== RUN && s !== WAIT) continue;
+          const qx = this.x[i] - ex;
+          const qz = this.z[i] - ez;
+          if (qx * qx + qz * qz < splash * splash) {
+            out.push({ x: this.x[i], y: 0.15, z: this.z[i] });
+            this.eliminate(i);
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  // Gnomo più vicino a un punto (per la mira dell'amico).
+  nearest(x, z, maxR) {
+    let best = -1;
+    let bd = maxR * maxR;
+    for (let i = 0; i < this.max; i++) {
+      const s = this.state[i];
+      if (s !== RUN && s !== WAIT) continue;
+      const dx = this.x[i] - x;
+      const dz = this.z[i] - z;
+      const d = dx * dx + dz * dz;
+      if (d < bd) {
+        bd = d;
+        best = i;
+      }
+    }
+    return best;
   }
 
   launch(i, vx, vy, vz) {
@@ -236,6 +324,20 @@ export class GnomeSwarm {
         this.z[i] = tg.pos.z + Math.sin(a) * 0.3;
         this.y[i] = tg.pos.y + this.clingH[i] + Math.sin(t * 9 + i) * 0.03;
         this.yaw[i] = Math.atan2(-Math.cos(a), -Math.sin(a));
+      } else if (s === FALL) {
+        this.vy[i] -= 22 * dt;
+        this.x[i] += this.vx[i] * dt;
+        this.y[i] += this.vy[i] * dt;
+        this.z[i] += this.vz[i] * dt;
+        this.yaw[i] += dt * 6;
+        if (this.y[i] <= 0) {
+          this.y[i] = 0;
+          if (this.isBlocked(this.x[i], this.z[i])) {
+            this.x[i] -= this.vx[i] * dt * 3;
+            this.z[i] -= this.vz[i] * dt * 3;
+          }
+          this.state[i] = RUN;
+        }
       } else if (s === FLY) {
         this.vy[i] -= 22 * dt;
         this.x[i] += this.vx[i] * dt;

@@ -17,8 +17,15 @@ export class Input {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
+    this.mouseHeld = false;
     canvas.addEventListener('mousedown', (e) => {
-      if (this.locked && e.button === 0) this.pressed.add('Mouse0');
+      if (this.locked && e.button === 0) {
+        this.pressed.add('Mouse0');
+        this.mouseHeld = true;
+      }
+    });
+    window.addEventListener('mouseup', (e) => {
+      if (e.button === 0) this.mouseHeld = false;
     });
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === this.canvas) {
