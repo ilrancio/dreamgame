@@ -1,0 +1,294 @@
+// Tutto il suono è sintetizzato con la Web Audio API: nessun file audio da caricare.
+
+export class AudioEngine {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+    this.pads = new Map();
+  }
+
+  init() {
+    if (this.ctx) {
+      this.ctx.resume();
+      return;
+    }
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    this.ctx = new AC();
+    const comp = this.ctx.createDynamicsCompressor();
+    comp.threshold.value = -14;
+    comp.ratio.value = 6;
+    comp.connect(this.ctx.destination);
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.8;
+    this.master.connect(comp);
+
+    const len = this.ctx.sampleRate * 2;
+    this.noiseBuffer = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = this.noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+  }
+
+  get ready() {
+    return !!this.ctx;
+  }
+
+  toggleMute() {
+    if (!this.ctx) return;
+    this.muted = !this.muted;
+    this.master.gain.setTargetAtTime(this.muted ? 0 : 0.8, this.ctx.currentTime, 0.05);
+  }
+
+  noise() {
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuffer;
+    src.loop = true;
+    return src;
+  }
+
+  // ---------- Motore ----------
+  engineStart() {
+    if (!this.ctx || this.engine) return;
+    const c = this.ctx;
+    const o1 = c.createOscillator();
+    const o2 = c.createOscillator();
+    o1.type = 'sawtooth';
+    o2.type = 'square';
+    const filter = c.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.Q.value = 4;
+    const gain = c.createGain();
+    gain.gain.value = 0;
+    const g2 = c.createGain();
+    g2.gain.value = 0.35;
+    o1.connect(filter);
+    o2.connect(g2).connect(filter);
+    filter.connect(gain).connect(this.master);
+
+    const wind = this.noise();
+    const wf = c.createBiquadFilter();
+    wf.type = 'bandpass';
+    wf.frequency.value = 900;
+    wf.Q.value = 0.6;
+    const wg = c.createGain();
+    wg.gain.value = 0;
+    wind.connect(wf).connect(wg).connect(this.master);
+
+    o1.start();
+    o2.start();
+    wind.start();
+    this.engine = { o1, o2, filter, gain, wind, wg, wf };
+  }
+
+  engineUpdate(speedNorm, throttle, turbo) {
+    const e = this.engine;
+    if (!e) return;
+    const t = this.ctx.currentTime;
+    // finto cambio marce: il regime sale e ricade a ogni "marcia"
+    const gears = 5;
+    const g = Math.min(gears - 1, Math.floor(speedNorm * gears));
+    const inGear = speedNorm * gears - g;
+    const rpm = 0.35 + inGear * 0.65 + g * 0.06;
+    const f = 38 + rpm * 95 + (turbo ? 25 : 0);
+    e.o1.frequency.setTargetAtTime(f, t, 0.05);
+    e.o2.frequency.setTargetAtTime(f * 0.5, t, 0.05);
+    e.filter.frequency.setTargetAtTime(350 + rpm * 1400 + throttle * 600, t, 0.05);
+    e.gain.gain.setTargetAtTime(0.05 + throttle * 0.07 + speedNorm * 0.03, t, 0.08);
+    e.wg.gain.setTargetAtTime(Math.min(0.25, speedNorm * speedNorm * 0.3), t, 0.1);
+    e.wf.frequency.setTargetAtTime(600 + speedNorm * 1200, t, 0.1);
+  }
+
+  engineStop() {
+    const e = this.engine;
+    if (!e) return;
+    const t = this.ctx.currentTime;
+    e.gain.gain.setTargetAtTime(0, t, 0.2);
+    e.wg.gain.setTargetAtTime(0, t, 0.2);
+    setTimeout(() => {
+      e.o1.stop();
+      e.o2.stop();
+      e.wind.stop();
+    }, 1200);
+    this.engine = null;
+  }
+
+  // ---------- Effetti ----------
+  boom(vol = 1) {
+    if (!this.ctx || vol < 0.02) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const n = this.noise();
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(900, t);
+    f.frequency.exponentialRampToValueAtTime(80, t + 1.4);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol * 0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.6);
+    n.connect(f).connect(g).connect(this.master);
+    n.start(t);
+    n.stop(t + 1.7);
+
+    const o = c.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(90, t);
+    o.frequency.exponentialRampToValueAtTime(28, t + 0.9);
+    const og = c.createGain();
+    og.gain.setValueAtTime(vol * 0.8, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    o.connect(og).connect(this.master);
+    o.start(t);
+    o.stop(t + 1.1);
+  }
+
+  thud(vol = 0.5) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const n = this.noise();
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 500;
+    const g = c.createGain();
+    g.gain.setValueAtTime(Math.min(1, vol), t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+    n.connect(f).connect(g).connect(this.master);
+    n.start(t);
+    n.stop(t + 0.4);
+  }
+
+  roar(vol = 0.8) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const dur = 2.8;
+    const o = c.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(70, t);
+    o.frequency.linearRampToValueAtTime(52, t + dur);
+    const lfo = c.createOscillator();
+    lfo.frequency.value = 11;
+    const lfoG = c.createGain();
+    lfoG.gain.value = 9;
+    lfo.connect(lfoG).connect(o.frequency);
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(300, t);
+    f.frequency.linearRampToValueAtTime(900, t + 0.6);
+    f.frequency.linearRampToValueAtTime(200, t + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(vol * 0.6, t + 0.4);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(f).connect(g).connect(this.master);
+
+    const n = this.noise();
+    const nf = c.createBiquadFilter();
+    nf.type = 'bandpass';
+    nf.frequency.value = 400;
+    nf.Q.value = 1.5;
+    const ng = c.createGain();
+    ng.gain.setValueAtTime(0.001, t);
+    ng.gain.exponentialRampToValueAtTime(vol * 0.5, t + 0.3);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    n.connect(nf).connect(ng).connect(this.master);
+
+    o.start(t);
+    lfo.start(t);
+    n.start(t);
+    o.stop(t + dur);
+    lfo.stop(t + dur);
+    n.stop(t + dur);
+  }
+
+  whoosh(vol = 0.4) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const n = this.noise();
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 2;
+    f.frequency.setValueAtTime(300, t);
+    f.frequency.exponentialRampToValueAtTime(1800, t + 0.5);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.25);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+    n.connect(f).connect(g).connect(this.master);
+    n.start(t);
+    n.stop(t + 0.8);
+  }
+
+  chime(freq = 880, vol = 0.15) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    [1, 1.5].forEach((m, i) => {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = freq * m;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.001, t + i * 0.07);
+      g.gain.exponentialRampToValueAtTime(vol, t + i * 0.07 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.8);
+      o.connect(g).connect(this.master);
+      o.start(t + i * 0.07);
+      o.stop(t + i * 0.07 + 0.9);
+    });
+  }
+
+  // ---------- Musica d'atmosfera ----------
+  // Un pad è un accordo di oscillatori lenti; si attivano/spengono con dissolvenza.
+  pad(name, freqs, { vol = 0.06, type = 'sine', cutoff = 1200, tremolo = 0 } = {}) {
+    if (!this.ctx || this.pads.has(name)) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const out = c.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(vol, t + 3);
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = cutoff;
+    f.connect(out).connect(this.master);
+    const nodes = [];
+    freqs.forEach((fr, i) => {
+      for (const det of [-6, 6]) {
+        const o = c.createOscillator();
+        o.type = type;
+        o.frequency.value = fr;
+        o.detune.value = det + i * 1.5;
+        const g = c.createGain();
+        g.gain.value = 1 / (freqs.length * 2);
+        o.connect(g).connect(f);
+        o.start(t);
+        nodes.push(o);
+      }
+    });
+    if (tremolo > 0) {
+      const lfo = c.createOscillator();
+      lfo.frequency.value = tremolo;
+      const lg = c.createGain();
+      lg.gain.value = vol * 0.6;
+      lfo.connect(lg).connect(out.gain);
+      lfo.start(t);
+      nodes.push(lfo);
+    }
+    this.pads.set(name, { out, nodes });
+  }
+
+  stopPad(name, fade = 2.5) {
+    const p = this.pads.get(name);
+    if (!p) return;
+    this.pads.delete(name);
+    const t = this.ctx.currentTime;
+    p.out.gain.cancelScheduledValues(t);
+    p.out.gain.setValueAtTime(p.out.gain.value, t);
+    p.out.gain.linearRampToValueAtTime(0, t + fade);
+    setTimeout(() => p.nodes.forEach((n) => n.stop()), fade * 1000 + 100);
+  }
+
+  stopAllPads(fade = 1.5) {
+    [...this.pads.keys()].forEach((k) => this.stopPad(k, fade));
+  }
+}

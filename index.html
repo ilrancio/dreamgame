@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dreamgame</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <div id="hud" class="hidden">
+      <div id="objective"></div>
+      <div id="compass"><div class="arrow">▲</div></div>
+      <div id="stats-top">
+        <span id="hud-time">0:00</span>
+        <span id="hud-dodges">Schivate 0</span>
+      </div>
+      <div id="dash">
+        <div id="speed"><span id="speed-value">0</span><small>km/h</small></div>
+        <div class="bar-label">Turbo <kbd>Shift</kbd></div>
+        <div class="bar"><div id="turbo-fill"></div></div>
+        <div class="bar-label">Macchina</div>
+        <div class="bar"><div id="health-fill"></div></div>
+      </div>
+      <div id="controls-hint">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> guida · <kbd>Spazio</kbd> freno a mano ·
+        <kbd>R</kbd> rimetti in strada · <kbd>Esc</kbd> pausa
+      </div>
+    </div>
+
+    <div id="subtitle"></div>
+    <div id="popups"></div>
+    <div id="center"></div>
+    <div id="hint"></div>
+    <div id="fade"></div>
+
+    <div id="title">
+      <div class="title-inner">
+        <h1>DREAMGAME</h1>
+        <p class="tagline">i sogni diventano livelli</p>
+        <p class="enter">clicca per entrare</p>
+        <p class="small">cuffie consigliate</p>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
