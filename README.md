@@ -19,7 +19,7 @@ La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel bro
 | # | Sogno | Nel gioco |
 |---|-------|-------------|
 | I | [La Fuga dal Demone](docs/sogni.md#i--la-fuga-dal-demone) | Guida folle in un campo sconfinato, un demone gigante che lancia macigni, una strada di montagna fino a un hotel di legno enorme. |
-| II | [L'Hotel dalle Mille Stanze](docs/sogni.md#ii--lhotel-dalle-mille-stanze) | Un labirinto di stanze in stili diversi. La suite 1313 da vivere: tè con l'amico, doccia, camino, letto. Al mattino, gnomi nella hall da eliminare sparando. |
+| II | [L'Hotel dalle Mille Stanze](docs/sogni.md#ii--lhotel-dalle-mille-stanze) | Corridoi e stanze con le porte, un concierge che fa fare il giro lungo, la suite 1313 con il suo bagno: tè con l'amico, doccia o vasca, camino, letto, porta chiusa a chiave. Al mattino, gnomi nella hall da eliminare sparando. |
 | — | [L'hotel non euclideo](docs/sogni.md#lhotel-non-euclideo) | Ascensori verso 500 piani in cinque architetture (cottage, brutalista, classico, moderno, futuristico) ed eventi casuali in qualunque momento. |
 | III | [La Sala Giochi](docs/sogni.md#iii--la-sala-giochi-piano-88) | Il piano 88: una sala giochi infinita, cabinati giocabili, biglietti e premi per la suite. |
 
@@ -32,7 +32,8 @@ src/
   core/              input, audio sintetizzato, UI/HUD, cielo, particelle, texture procedurali
   main.js            il prologo e l'hotel in sequenza, e la ripresa del sogno salvato
   dreams/demone/     capitolo I: il campo, la macchina, il demone, i macigni, la strada
-  dreams/hotel/      l'hotel: piani e architetture, ascensore, stili delle stanze, suite e attività,
+  dreams/hotel/      l'hotel: pianta a corridoi, porte, concierge, piani e architetture, ascensore,
+                     stili delle stanze, suite con bagno e attività,
                      personaggi, gnomi e spari, sala giochi con minigiochi e premi, eventi casuali
 ```
 

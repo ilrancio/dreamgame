@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { STYLES } from './rooms.js';
+import { STYLES, corridorProps } from './rooms.js';
 
 // L'hotel non è euclideo: da fuori ha tre piani, dentro ne ha centinaia.
 // Ogni piano ha un'architettura; le sue stanze pescano dagli stili di quella
@@ -146,6 +146,7 @@ const NEW_STYLES = [
 export const ARCHITECTURES = [
   {
     key: 'cottage', name: 'Cottage',
+    corridor: { floor: ['planks', ['#6a4a30', '#5a3e28']], wall: ['planks', ['#8a6040', '#7a5436']], ceil: '#4a3020', light: '#ffc98a', runner: '#5a2a1a' },
     hall: { floor: ['planks', ['#7a5436', '#6a4830']], wall: ['planks', ['#8a6040', '#7a5436']], ceil: '#4a3020', light: '#ffc98a', height: 9 },
     rooms: ['baita', 'fienile', 'serra', 'biblioteca', 'pastello'],
     hallProps(a) {
@@ -159,6 +160,7 @@ export const ARCHITECTURES = [
   },
   {
     key: 'brutalista', name: 'Brutalista',
+    corridor: { floor: ['concrete', ['#6a6864', '#555350']], wall: ['concrete', ['#8a8884', '#6a6864']], ceil: '#4a4844', light: '#dfe8f0', runner: '#3a3a3a' },
     hall: { floor: ['concrete', ['#7a7874', '#5a5854']], wall: ['concrete', ['#8a8884', '#6a6864']], ceil: '#4a4844', light: '#d8e2ec', height: 16 },
     rooms: ['cemento', 'vuoto', 'industriale', 'specchi'],
     hallProps(a) {
@@ -170,6 +172,7 @@ export const ARCHITECTURES = [
   },
   {
     key: 'classico', name: 'Classico',
+    corridor: { floor: ['damask', ['#3a2a4a', '#4a3a5a']], wall: ['damask', ['#d8c8a8', '#cab890']], ceil: '#e8dcc0', light: '#ffe6c0', runner: '#5a1a2a' },
     hall: { floor: ['checker', ['#efe8da', '#8a6a4a']], wall: ['damask', ['#d8c8a8', '#cab890']], ceil: '#e8dcc0', light: '#ffe6c0', height: 12 },
     rooms: ['marmo', 'barocco', 'biblioteca', 'gotico'],
     hallProps(a) {
@@ -182,6 +185,7 @@ export const ARCHITECTURES = [
   },
   {
     key: 'moderno', name: 'Moderno',
+    corridor: { floor: ['plain', ['#cfcfcb']], wall: ['plain', ['#f2f2f0']], ceil: '#fafafa', light: '#ffffff', runner: '#8a8a88' },
     hall: { floor: ['plain', ['#dcdcd8']], wall: ['plain', ['#f4f4f2']], ceil: '#fafafa', light: '#ffffff', height: 8 },
     rooms: ['minimal', 'galleria', 'piscina', 'pastello'],
     hallProps(a) {
@@ -195,6 +199,7 @@ export const ARCHITECTURES = [
   },
   {
     key: 'futuristico', name: 'Futuristico',
+    corridor: { floor: ['grid', ['#0c0c18', '#8a4aff']], wall: ['plain', ['#14141f']], ceil: '#08080e', light: '#8a6aff', runner: '#1a1a3a' },
     hall: { floor: ['grid', ['#0c0c18', '#2af0ff']], wall: ['plain', ['#12121e']], ceil: '#06060c', light: '#8a6aff', height: 10 },
     rooms: ['neon', 'capsule', 'spaziale', 'disco', 'acquario'],
     hallProps(a) {
@@ -210,6 +215,16 @@ export const ARCHITECTURES = [
 ];
 
 export const ALL_STYLES = [...STYLES, ...NEW_STYLES];
+
+// Stile dei corridoi di un'architettura.
+export function corridorStyle(arch) {
+  const c = arch.corridor;
+  return {
+    key: `corridoio-${arch.key}`, name: 'Corridoio', height: 4.6, noDefaultLamp: true, noPopup: true,
+    floor: c.floor, wall: c.wall, ceil: c.ceil, light: c.light,
+    props: (a) => corridorProps(a, arch.hall.light, c.runner),
+  };
+}
 export const styleByKey = (k) => byKey(k) || NEW_STYLES.find((s) => s.key === k);
 
 // Architettura di un piano: deterministica, ma senza un ordine prevedibile.

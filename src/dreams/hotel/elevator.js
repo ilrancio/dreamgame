@@ -6,7 +6,7 @@ export const ARCADE_FLOOR = 88;
 
 // Piani con un nome: compaiono nel pannello dell'ascensore.
 export const KNOWN_FLOORS = [
-  { floor: 0, name: 'Piano terra', note: 'La hall, il labirinto di stanze, la suite 1313' },
+  { floor: 0, name: 'Piano terra', note: 'La hall, i corridoi, la suite 1313' },
   { floor: ARCADE_FLOOR, name: 'Sala giochi', note: 'Un piano intero. Forse più di uno.' },
 ];
 

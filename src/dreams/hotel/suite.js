@@ -1,140 +1,183 @@
 import * as THREE from 'three';
 import { prizeModel } from './prizes.js';
 
-// La suite 1313: una stanza da vivere, non da attraversare.
-// Coordinate locali: x verso est, z verso nord. Le pareti ovest e nord sono
-// muri esterni dell'hotel (lì stanno finestra, camino, bagno e letti); le porte
-// possono aprirsi solo sui lati est e sud.
-export function buildSuite(a, rb) {
-  const W = (x, z) => new THREE.Vector3(a.cx + x, 0, a.cz + z);
+// La suite 1313: una stanza da vivere, e un posto sicuro.
+// Coordinate in metri dall'angolo sud-ovest della suite (x verso est, z verso
+// nord). La suite è 18 × 24 m: porta principale a nord (sul corridoio), porta di
+// servizio a ovest (dritta nella hall), bagno nell'angolo sud-est con la sua porta.
+export function buildSuite(a, bathApi, rb) {
+  const S = a.room;
+  const P = (x, z) => [S.minX + x - a.cx, S.minZ + z - a.cz]; // coordinate per la suite
+  const Q = (x, z) => [S.minX + x - bathApi.cx, S.minZ + z - bathApi.cz]; // per il bagno
+  const W = (x, z, y = 0) => new THREE.Vector3(S.minX + x, y, S.minZ + z);
+  const box = (w, h, d, m, x, y, z, o) => a.box(w, h, d, m, ...spread(P(x, z), y), o);
+  const bbox = (w, h, d, m, x, y, z, o) => bathApi.box(w, h, d, m, ...spread(Q(x, z), y), o);
+  const cyl = (rt, rbot, h, m, x, y, z, o) => a.cyl(rt, rbot, h, m, ...spread(P(x, z), y), o);
+  const bcyl = (rt, rbot, h, m, x, y, z, o) => bathApi.cyl(rt, rbot, h, m, ...spread(Q(x, z), y), o);
+
   const wood = a.mat('#6a4028');
   const darkWood = a.mat('#3a2416');
   const sheet = a.mat('#f0ece0');
   const stone = a.mat('#7a7068');
-  const E = 8.5; // faccia interna dei muri
+  const porcelain = a.mat('#f4f2ee');
+  const chrome = a.mat('#c8ccd0', { metal: true });
+  const paper = a.texMat('stripes', ['#e8d8b8', '#dcc8a4'], [2, 1]);
 
-  // ---------- Bagno (angolo nord-ovest) ----------
-  const tiles = a.texMat('tiles', ['#e8eef0', '#b8c4c8'], [3, 3]);
-  a.box(5.3, 0.03, 5.9, tiles, -E + 2.65, 0.015, E - 2.95, { collide: false });
-  const partition = a.mat('#d8ccb0');
-  a.box(0.2, 3, 3.7, partition, -3.2, 1.5, E - 1.85); // lato est, con passaggio verso sud
-  a.box(5.3, 3, 0.2, partition, -E + 2.65, 1.5, 2.6); // lato sud
-  // doccia: vetro, piatto e soffione
-  const glass = a.mat('#cfe8f0', { transparent: 0.3 });
-  a.box(0.06, 2.3, 1.9, glass, -6.6, 1.15, E - 0.95);
-  a.box(1.9, 0.08, 1.9, a.mat('#9aa4a8'), -E + 0.95, 0.04, E - 0.95, { collide: false });
-  a.cyl(0.03, 0.03, 0.5, a.mat('#c8ccd0', { metal: true }), -7.5, 2.45, E - 0.25, { collide: false });
-  a.cyl(0.18, 0.12, 0.06, a.mat('#c8ccd0', { metal: true }), -7.5, 2.2, E - 0.5, { collide: false });
-  // lavandino e specchio
-  a.box(0.6, 0.9, 1.1, a.mat('#f4f4f0'), -E + 0.3, 0.45, 4.2);
-  a.box(0.05, 1.1, 1, a.mat('#e0e8f8', { metal: true, emissive: 0.08 }), -E + 0.03, 1.75, 4.2, { collide: false });
+  // ---------- Il lato-suite delle pareti del bagno (carta da parati) ----------
+  box(0.25, 5.5, 7.75, paper, 9.875, 2.75, 4.125, { collide: false });
+  box(2.5, 5.5, 0.25, paper, 11.25, 2.75, 8.125, { collide: false });
+  box(3.25, 5.5, 0.25, paper, 16.125, 2.75, 8.125, { collide: false });
+  box(2, 2.9, 0.25, paper, 13.5, 4.05, 8.125, { collide: false });
 
-  // ---------- Letti (parete nord) ----------
-  const beds = [];
-  const lampMeshes = [];
-  for (const [x, cover] of [[0.5, '#2f4f8f'], [4.5, '#b8862a']]) {
-    const z = E - 1.75;
-    a.box(2.2, 0.5, 3.4, wood, x, 0.25, z);
-    a.box(2.1, 0.3, 3.2, sheet, x, 0.62, z, { collide: false });
-    a.box(2.15, 0.12, 2.1, a.mat(cover), x, 0.8, z - 0.5, { collide: false });
-    a.box(1.2, 0.25, 0.6, sheet, x, 0.85, z + 1.2, { collide: false });
-    a.box(2.2, 1.5, 0.15, darkWood, x, 0.95, E - 0.08, { collide: false });
-    beds.push(W(x, z - 2.2));
-  }
-  a.box(0.8, 0.7, 0.6, darkWood, 2.5, 0.35, E - 0.4);
-  const lampShadeMat = new THREE.MeshStandardMaterial({ color: '#ffe2b0', emissive: '#ffb860', emissiveIntensity: 1.6 });
-  a.track(lampShadeMat);
-  const shade = a.cyl(0.18, 0.26, 0.3, lampShadeMat, 2.5, 1.05, E - 0.4, { collide: false, dynamic: true });
-  lampMeshes.push(shade);
-  const lampLight = new THREE.PointLight('#ffc27a', 14, 12, 1.6);
-  lampLight.position.set(a.cx + 2.5, 1.4, a.cz + E - 0.7);
-  rb.dynamic.add(lampLight);
-
-  // ---------- Angolo del tè, davanti alla finestra (parete ovest) ----------
-  const tableP = { x: -6.1, z: -2.4 };
-  const winZ = 0.7; // la finestra è accanto al tavolino, verso nord
-  a.cyl(0.75, 0.75, 0.06, darkWood, tableP.x, 0.76, tableP.z);
-  a.cyl(0.07, 0.1, 0.74, darkWood, tableP.x, 0.37, tableP.z, { collide: false });
+  // ---------- Angolo del tè, davanti alla grande finestra (parete sud) ----------
+  const table = { x: 3.8, z: 2.4 };
+  cyl(0.75, 0.75, 0.06, darkWood, table.x, 0.76, table.z);
+  cyl(0.07, 0.1, 0.74, darkWood, table.x, 0.37, table.z, { collide: false });
   const chairs = [];
-  for (const [dz, facing] of [[1.25, Math.PI], [-1.25, 0]]) {
-    const cz = tableP.z + dz;
-    a.box(0.6, 0.08, 0.6, a.mat('#8a2a2a'), tableP.x, 0.46, cz, { collide: false });
-    for (const [lx, lz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) a.box(0.05, 0.44, 0.05, darkWood, tableP.x + lx, 0.22, cz + lz, { collide: false });
-    a.box(0.6, 0.7, 0.06, darkWood, tableP.x, 0.85, cz + Math.sign(dz) * 0.28, { collide: false });
-    chairs.push({ pos: W(tableP.x, cz), facing });
+  for (const [dx, facing] of [[-1.3, Math.PI / 2], [1.3, -Math.PI / 2]]) {
+    const cx = table.x + dx;
+    box(0.6, 0.08, 0.6, a.mat('#8a2a2a'), cx, 0.46, table.z, { collide: false });
+    for (const [lx, lz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) box(0.05, 0.44, 0.05, darkWood, cx + lx, 0.22, table.z + lz, { collide: false });
+    box(0.06, 0.7, 0.6, darkWood, cx + Math.sign(dx) * 0.28, 0.85, table.z, { collide: false });
+    chairs.push({ pos: W(cx, table.z), facing });
   }
-  // teiera e tazze
-  const porcelain = a.mat('#f2eee6');
-  a.sphere(0.13, porcelain, tableP.x + 0.15, 0.9, tableP.z, { collide: false }).scale.set(1, 0.85, 1);
-  a.cyl(0.02, 0.03, 0.14, porcelain, tableP.x + 0.3, 0.93, tableP.z, { collide: false }).rotation.z = -1;
-  for (const dz of [0.45, -0.45]) a.cyl(0.05, 0.04, 0.07, porcelain, tableP.x - 0.15, 0.83, tableP.z + dz, { collide: false });
-  // due pistole compaiono sul tavolo al mattino
+  a.sphere(0.13, porcelain, ...spread(P(table.x, table.z + 0.15), 0.9), { collide: false }).scale.set(1, 0.85, 1);
+  for (const dx of [0.45, -0.45]) cyl(0.05, 0.04, 0.07, porcelain, table.x + dx, 0.83, table.z - 0.15, { collide: false });
   const guns = new THREE.Group();
-  for (const dz of [0.25, -0.25]) {
-    const g = new THREE.Mesh(a.track(new THREE.BoxGeometry(0.26, 0.05, 0.08)), a.mat('#2a2c30'));
-    g.position.set(a.cx + tableP.x - 0.3, 0.82, a.cz + tableP.z + dz);
+  for (const dx of [0.25, -0.25]) {
+    const g = new THREE.Mesh(a.track(new THREE.BoxGeometry(0.08, 0.05, 0.26)), a.mat('#2a2c30'));
+    g.position.copy(W(table.x + dx, table.z - 0.3, 0.82));
     g.rotation.y = 0.4;
     guns.add(g);
   }
   guns.visible = false;
   rb.dynamic.add(guns);
 
-  // finestra con il panorama dipinto (notte / alba)
   const views = { night: a.track(viewTexture(false)), day: a.track(viewTexture(true)) };
   const viewMat = a.track(new THREE.MeshBasicMaterial({ map: views.night }));
-  const view = new THREE.Mesh(a.track(new THREE.PlaneGeometry(3.6, 2.6)), viewMat);
-  view.position.set(a.cx - E + 0.03, 2.3, a.cz + winZ);
-  view.rotation.y = Math.PI / 2;
+  const view = new THREE.Mesh(a.track(new THREE.PlaneGeometry(5, 2.9)), viewMat);
+  view.position.copy(W(5, 0.27, 2.45));
   rb.dynamic.add(view);
-  a.box(0.15, 0.15, 3.9, darkWood, -E + 0.08, 0.95, winZ, { collide: false });
-  a.box(0.15, 0.15, 3.9, darkWood, -E + 0.08, 3.65, winZ, { collide: false });
-  a.box(0.15, 0.1, 3.6, darkWood, -E + 0.1, 2.3, winZ, { collide: false });
-  for (const dz of [-1.95, 1.95]) a.box(0.4, 3.2, 0.9, a.mat('#7a1a24'), -E + 0.25, 1.95, winZ + dz * 1.0, { collide: false });
+  box(5.4, 0.15, 0.15, darkWood, 5, 0.95, 0.33, { collide: false });
+  box(5.4, 0.15, 0.15, darkWood, 5, 3.95, 0.33, { collide: false });
+  for (const x of [2.1, 7.9]) box(0.9, 3.6, 0.3, a.mat('#7a1a24'), x, 2.1, 0.45, { collide: false });
 
-  // ---------- Camino e poltrona ----------
-  const fireZ = -6.6;
-  a.box(0.9, 2.6, 2.8, stone, -E + 0.45, 1.3, fireZ);
-  a.box(0.95, 1.1, 1.5, a.mat('#120c08'), -E + 0.5, 0.6, fireZ, { collide: false });
-  a.box(1.1, 0.15, 3, darkWood, -E + 0.55, 2.65, fireZ, { collide: false });
-  const fireGlow = a.glowSprite('#ff8a3a', -E + 1.1, 0.55, fireZ, 2.2, 0.9);
+  // ---------- Camino, poltrona, mensola dei premi (parete ovest) ----------
+  const fireZ = 9;
+  box(0.9, 2.6, 2.8, stone, 0.7, 1.3, fireZ);
+  box(0.95, 1.1, 1.5, a.mat('#120c08'), 0.75, 0.6, fireZ, { collide: false });
+  box(1.1, 0.15, 3, darkWood, 0.8, 2.65, fireZ, { collide: false });
+  const fireGlow = a.glowSprite('#ff8a3a', ...spread(P(1.35, fireZ), 0.55), 2.2, 0.9);
   const fireLight = new THREE.PointLight('#ff9a4a', 10, 10, 1.6);
-  fireLight.position.set(a.cx - E + 1.6, 0.9, a.cz + fireZ);
+  fireLight.position.copy(W(1.9, fireZ, 0.9));
   rb.dynamic.add(fireLight);
   a.anim((t) => {
     const f = 0.85 + Math.sin(t * 11) * 0.08 + Math.sin(t * 17.3) * 0.06;
     fireGlow.scale.setScalar(2.2 * f);
     fireLight.intensity = 10 * f;
   });
-  a.box(1.1, 0.5, 1.1, a.mat('#5a2a1a'), -5.2, 0.25, fireZ);
-  a.box(1.1, 0.9, 0.25, a.mat('#5a2a1a'), -4.75, 0.9, fireZ, { collide: false, rotY: Math.PI / 2 });
-  const armchair = { pos: W(-5.2, fireZ), facing: -Math.PI / 2 };
+  box(1.1, 0.5, 1.1, a.mat('#5a2a1a'), 2.9, 0.25, fireZ);
+  box(0.25, 0.9, 1.1, a.mat('#5a2a1a'), 3.4, 0.9, fireZ, { collide: false });
+  const armchair = { pos: W(2.9, fireZ), facing: -Math.PI / 2 };
 
-  // mensola dei premi della sala giochi (parete ovest, tra tavolino e camino)
-  const shelfZ = -4.35;
-  a.box(0.08, 2.2, 1.5, darkWood, -E + 0.04, 1.1, shelfZ);
-  for (const dz of [-0.75, 0.75]) a.box(0.5, 2.2, 0.05, darkWood, -E + 0.25, 1.1, shelfZ + dz, { collide: false });
-  for (let r = 0; r < 4; r++) a.box(0.5, 0.05, 1.5, wood, -E + 0.25, 0.43 + r * 0.6, shelfZ, { collide: false });
-  a.collider(-E + 0.25, shelfZ, 0.5, 1.5);
+  const shelfZ = 12.6;
+  box(0.08, 2.2, 1.5, darkWood, 0.29, 1.1, shelfZ);
+  for (const dz of [-0.75, 0.75]) box(0.5, 2.2, 0.05, darkWood, 0.5, 1.1, shelfZ + dz, { collide: false });
+  for (let r = 0; r < 4; r++) box(0.5, 0.05, 1.5, wood, 0.5, 0.43 + r * 0.6, shelfZ, { collide: false });
+  a.collider(...P(0.5, shelfZ), 0.5, 1.5);
   const shelf = new THREE.Group();
   rb.dynamic.add(shelf);
   const shelfTrack = [];
 
-  // divano e tappeto
-  a.box(4.4, 0.03, 3.2, a.mat('#8a2a2a'), -1, 0.02, -2.5, { collide: false });
-  a.box(1, 0.8, 3, a.mat('#4a5a7a'), 1.8, 0.4, -2.5);
+  // ---------- Zona notte: due letti contro la parete est ----------
+  const beds = [];
+  for (const [z, cover] of [[12.5, '#2f4f8f'], [18.5, '#b8862a']]) {
+    const x = 16.05;
+    box(3.4, 0.5, 2.2, wood, x, 0.25, z);
+    box(3.2, 0.3, 2.1, sheet, x, 0.62, z, { collide: false });
+    box(2.1, 0.12, 2.15, a.mat(cover), x - 0.5, 0.8, z, { collide: false });
+    box(0.6, 0.25, 1.2, sheet, x + 1.2, 0.85, z, { collide: false });
+    box(0.15, 1.5, 2.2, darkWood, 17.67, 0.95, z, { collide: false });
+    beds.push(W(13.6, z));
+  }
+  box(0.6, 0.7, 0.8, darkWood, 17.35, 0.35, 15.5);
+  const lampShadeMat = new THREE.MeshStandardMaterial({ color: '#ffe2b0', emissive: '#ffb860', emissiveIntensity: 1.6 });
+  a.track(lampShadeMat);
+  cyl(0.18, 0.26, 0.3, lampShadeMat, 17.35, 1.05, 15.5, { collide: false, dynamic: true });
+  const lampLight = new THREE.PointLight('#ffc27a', 14, 12, 1.6);
+  lampLight.position.copy(W(17, 15.5, 1.4));
+  rb.dynamic.add(lampLight);
+
+  // salotto, armadio, valigie
+  box(5, 0.03, 3.6, a.mat('#8a2a2a'), 8, 0.02, 15, { collide: false });
+  box(3.2, 0.8, 1, a.mat('#4a5a7a'), 8, 0.4, 12.6);
+  box(3.2, 0.7, 0.25, a.mat('#4a5a7a'), 8, 1, 12.1, { collide: false });
+  box(1.2, 0.45, 0.7, darkWood, 8, 0.23, 15.5);
+  box(2.4, 2.6, 0.7, wood, 10, 1.3, 23.3);
+  box(0.8, 0.6, 0.35, a.mat('#2a4a3a'), 6.4, 0.3, 23.3);
+  box(0.6, 0.5, 0.35, a.mat('#6a2a1a'), 7.3, 0.25, 23.3);
+  a.glowSprite('#ffe2b0', ...spread(P(9, 16), 5.1), 6, 0.3);
+
+  // ---------- Il bagno: una stanza a sé, con la sua porta ----------
+  const tiles = bathApi.mat('#f2f4f4');
+  // doccia nell'angolo nord-est
+  bbox(1.85, 0.08, 1.85, bathApi.mat('#9aa4a8'), 16.85, 0.04, 6.85, { collide: false });
+  bbox(0.06, 2.3, 1.85, bathApi.mat('#cfe8f0', { transparent: 0.3 }), 15.9, 1.15, 6.85);
+  bcyl(0.03, 0.03, 0.4, chrome, 16.8, 2.45, 7.65, { collide: false });
+  bcyl(0.18, 0.12, 0.06, chrome, 16.8, 2.2, 7.45, { collide: false });
+  // vasca lungo la parete sud
+  bbox(3.6, 0.6, 1.6, porcelain, 12.3, 0.3, 1.1);
+  const waterMat = bathApi.track(new THREE.MeshStandardMaterial({ color: '#8ad0e8', transparent: true, opacity: 0.75, roughness: 0.1 }));
+  bbox(3.3, 0.02, 1.3, waterMat, 12.3, 0.52, 1.1, { collide: false, dynamic: true });
+  bcyl(0.03, 0.03, 0.35, chrome, 10.6, 0.8, 1.1, { collide: false });
+  bbox(0.9, 0.02, 0.6, bathApi.mat('#6a9ab0'), 12.3, 0.012, 2.4, { collide: false });
+  // water e bidet, parete est
+  for (const [z, tank] of [[3.2, true], [4.6, false]]) {
+    bcyl(0.2, 0.16, 0.4, porcelain, 17.35, 0.2, z);
+    bbox(0.5, 0.08, 0.45, porcelain, 17.3, 0.42, z, { collide: false });
+    if (tank) bbox(0.2, 0.45, 0.5, porcelain, 17.65, 0.7, z, { collide: false });
+    else bcyl(0.015, 0.015, 0.12, chrome, 17.55, 0.5, z, { collide: false });
+  }
+  // lavandino e specchio, parete ovest
+  bbox(0.6, 0.9, 1.2, bathApi.mat('#d8d0c4'), 10.55, 0.45, 5.2);
+  bbox(0.45, 0.06, 0.6, porcelain, 10.6, 0.93, 5.2, { collide: false });
+  bcyl(0.015, 0.015, 0.2, chrome, 10.35, 1.05, 5.2, { collide: false });
+  bbox(0.04, 1, 1.1, bathApi.mat('#e0e8f8', { metal: true, emissive: 0.1 }), 10.28, 1.8, 5.2, { collide: false });
+  // portasciugamani
+  bbox(0.05, 0.05, 1, chrome, 10.3, 1.4, 3, { collide: false });
+  bbox(0.1, 0.7, 0.45, bathApi.mat('#f0e8d8'), 10.33, 1.1, 2.75, { collide: false });
+  bbox(0.1, 0.7, 0.4, bathApi.mat('#b8d8e0'), 10.33, 1.1, 3.25, { collide: false });
+  // piastrelle anche sulle pareti che il bagno condivide con la suite
+  const tileWall = bathApi.texMat('tiles', ['#e4ecee', '#c0ccd0'], [2, 1]);
+  bbox(0.02, 5.5, 7.75, tileWall, 17.74, 2.75, 4.125, { collide: false });
+  bbox(7.5, 5.5, 0.02, tileWall, 14, 2.75, 0.26, { collide: false });
+  void tiles;
+  bathApi.glowSprite('#f0f8ff', ...spread(Q(14, 4), 5.1), 5, 0.35);
+  const bathLight = new THREE.PointLight('#f4f8ff', 10, 10, 1.5);
+  bathLight.position.copy(W(14, 4, 4));
+  rb.dynamic.add(bathLight);
 
   return {
     beds,
     chairs,
     armchair,
-    table: W(tableP.x, tableP.z),
-    teaSpout: new THREE.Vector3(a.cx + tableP.x + 0.1, 1, a.cz + tableP.z),
-    shower: W(-7.5, E - 1),
-    showerHead: new THREE.Vector3(a.cx - 7.5, 2.15, a.cz + E - 0.5),
-    windowSpot: W(-E + 1.4, winZ),
-    windowLook: new THREE.Vector3(a.cx - E, 2.3, a.cz + winZ),
-    lampSpot: W(2.5, E - 1.6),
-    fireplace: W(-E + 1.4, fireZ),
+    table: W(table.x, table.z),
+    teaSpout: W(table.x, table.z + 0.25, 1),
+    teaCam: W(7.2, 5.8, 1.9),
+    teaLook: W(3.8, 1.2, 0.95),
+    cups: [W(table.x + 0.45, table.z - 0.15), W(table.x - 0.45, table.z - 0.15)],
+    shower: W(16.8, 6.8),
+    showerHead: W(16.8, 7.45, 2.15),
+    showerCam: W(12.6, 3.2, 2.3),
+    tub: W(12.3, 1.1),
+    tubCam: W(15.6, 5.2, 2.2),
+    sink: W(11.2, 5.2),
+    sinkCam: W(12.6, 4.4, 1.95),
+    sinkLook: W(10.3, 5.2, 1.7),
+    windowSpot: W(6.6, 1.4),
+    windowLook: W(6, 0, 2.3),
+    lampSpot: W(14.9, 15.5),
+    fireplace: W(1.4, fireZ),
     guns,
     setLamp(on) {
       lampLight.visible = on;
@@ -149,7 +192,7 @@ export function buildSuite(a, rb) {
       ids.slice(0, 9).forEach((id, i) => {
         const m = prizeModel(id, tr);
         const row = Math.floor(i / 3);
-        m.position.set(a.cx - E + 0.28, 0.46 + row * 0.6, a.cz + shelfZ + ((i % 3) - 1) * 0.45);
+        m.position.copy(W(0.53, shelfZ + ((i % 3) - 1) * 0.45, 0.46 + row * 0.6));
         m.rotation.y = Math.PI / 2;
         shelf.add(m);
       });
@@ -159,6 +202,11 @@ export function buildSuite(a, rb) {
       viewMat.needsUpdate = true;
     },
   };
+}
+
+// [x, z] + y → argomenti (x, y, z) per le funzioni della stanza
+function spread([x, z], y) {
+  return [x, y, z];
 }
 
 // Panorama dipinto su canvas: montagne, cielo, e in lontananza il campo del primo sogno.

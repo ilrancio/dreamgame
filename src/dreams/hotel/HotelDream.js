@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { Particles } from '../../core/particles.js';
 import { clamp, lerp, mulberry32 } from '../../core/noise.js';
 import { buildLayout, roomAt, FlowField, CELL, COLS, ROWS, X0, Z0, NW, NH, ENTRANCE_W } from './layout.js';
-import { RoomBuilder, STYLES, LOBBY_STYLE, SUITE_STYLE } from './rooms.js';
+import { RoomBuilder, STYLES, LOBBY_STYLE, SUITE_STYLE, CORRIDOR_STYLE, BATH_STYLE } from './rooms.js';
+import { DoorSystem } from './doors.js';
 import { Character } from './character.js';
 import { GnomeSwarm } from './gnomes.js';
 import { buildSuite } from './suite.js';
 import { Tracers } from './tracers.js';
-import { ARCHITECTURES, ALL_STYLES, architectureFor, styleByKey } from './architectures.js';
+import { ALL_STYLES, architectureFor, styleByKey, corridorStyle } from './architectures.js';
 import { buildElevatorDoors, ElevatorPanel, ARCADE_FLOOR, label as floorLabel, rideSequence } from './elevator.js';
 import { arcadeLayout, buildArcade, ARCADE_STYLE } from './arcade.js';
 import { ArcadeScreen, GAMES } from './games.js';
@@ -16,6 +17,29 @@ import { EventDirector } from './events.js';
 import { glowTexture, textTexture } from '../../core/textures.js';
 
 const FRIEND = 'Il tuo amico:';
+const CONCIERGE = 'Il concierge:';
+
+// Il giro che fa il concierge per portarti alla suite 1313, che in realtà è
+// proprio accanto alla hall. Ogni tappa può avere una battuta.
+const CONCIERGE_ROUTE = [
+  [0, 23.2, 'Buonasera. Suite 1313? La accompagno io. Mi segua, prego.'],
+  [-10, 16],
+  [-17, 16, 'La suite è un po\'... fuori mano.'],
+  [-30, 16],
+  [-38, 16],
+  [-38, 40, 'Da questa parte. Sempre dritto.'],
+  [-38, 66],
+  [-24, 66, 'Di qua. No. Un attimo.'],
+  [-38, 66, 'Di là. Sì. Decisamente di là.'],
+  [-38, 98, 'Questo corridoio l\'hanno allungato l\'anno scorso.'],
+  [0, 98],
+  [38, 98, 'Quasi arrivati. Credo.'],
+  [38, 70],
+  [38, 42, 'Il 1313 è sempre l\'ultima porta. Sempre.'],
+  [38, 38],
+  [26, 38],
+  [21.5, 38.4, 'Ecco a lei. Suite 1313. Buon riposo.'],
+];
 
 // Cosa dice l'amico entrando per la prima volta in certe stanze.
 const ROOM_LINES = {
@@ -97,6 +121,14 @@ export class HotelDream {
     this.elevatorPanel = new ElevatorPanel();
     this.arcadeScreen = new ArcadeScreen();
     this.events = new EventDirector(this);
+    // il concierge: divisa bordeaux, berretto, sempre dietro la reception
+    this.concierge = new Character(this.scene, { skin: '#d8a888', hair: '#9a9a9a', shirt: '#6a1020', pants: '#1a1a22' });
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.12, 14), new THREE.MeshStandardMaterial({ color: '#4a0a14' }));
+    cap.position.y = 0.16;
+    this.concierge.head.add(cap);
+    this.concierge.track(cap.geometry);
+    this.concierge.track(cap.material);
+    this.conciergeState = 'desk';
     this.loadFloor(0);
     this.goal = null;
     this.flowTimer = 0;
@@ -124,6 +156,8 @@ export class HotelDream {
     for (const room of L.rooms) {
       if (room.lobby) room.styleDef = LOBBY_STYLE;
       else if (room.suite) room.styleDef = SUITE_STYLE;
+      else if (room.bath) room.styleDef = BATH_STYLE;
+      else if (room.corridor) room.styleDef = CORRIDOR_STYLE;
       else {
         if (!bag.length) {
           bag = [...STYLES];
@@ -135,7 +169,7 @@ export class HotelDream {
         room.styleDef = bag.pop();
       }
       if (room.suite) numbers[room.id] = '1313';
-      else if (!room.lobby) {
+      else if (room.kind === 'room') {
         let n;
         do n = String(100 + Math.floor(rand() * 2800));
         while (used.has(n));
@@ -150,13 +184,18 @@ export class HotelDream {
   buildRooms() {
     const L = this.layout;
     const rb = this.rb;
+    let suiteApi = null;
+    let bathApi = null;
     for (const room of L.rooms) {
       const api = rb.build(room, room.styleDef);
       if (room.lobby) this.buildLobby(api);
-      if (room.suite) {
-        this.suiteKit = buildSuite(api, rb);
-        this.suite = room;
-      }
+      if (room.suite) suiteApi = api;
+      if (room.bath) bathApi = api;
+    }
+    if (suiteApi) {
+      this.suiteKit = buildSuite(suiteApi, bathApi, rb);
+      this.suite = suiteApi.room;
+      this.bathRoom = bathApi.room;
     }
     rb.numberPlates(this.numbers);
     rb.mergeStatic();
@@ -236,7 +275,7 @@ export class HotelDream {
     // lampadari enormi
     for (const z of [-8, 6]) a.chandelier(0, 20, z, '#ffd89a', 3);
     // scala impossibile: sale e finisce nel muro
-    for (let s = 0; s < 14; s++) a.box(4, 0.6, 1.2, wood, -a.hw + 3, 0.3 + s * 0.65, -6 + s * 1.2, { collide: s < 2 });
+    for (let s = 0; s < 14; s++) a.box(4, 0.6, 1.1, wood, -a.hw + 3, 0.3 + s * 0.65, 2 + s * 1.1, { collide: s < 2 });
     // divani e piante
     for (const sx of [-1, 1]) {
       a.box(4, 0.9, 1.4, a.mat('#6a1a2a'), sx * 6, 0.45, -8);
@@ -278,6 +317,7 @@ export class HotelDream {
     this.exitGlow = null;
     this.arcade = null;
     this.arch = null;
+    this.bathRoom = null;
     this.elevators = [];
     if (n === 0) {
       this.layout = buildLayout(1313);
@@ -293,6 +333,10 @@ export class HotelDream {
       this.elevators = [this.arcade.elevator];
       this.makeBuckets();
     } else this.buildGenericFloor(n);
+    this.doors = new DoorSystem(this.rb, this.layout);
+    const service = this.doors.list.find((d) => d.kind === 'service');
+    if (service && this.serviceOpen) this.doors.setLocked(Object.assign(service, { auto: true }), false);
+    this.concierge.group.visible = n === 0;
     this.swarm.blocked = this.layout.blocked;
     for (const f of [this.flowP, this.flowF, this.flowGoal]) f.blocked = this.layout.blocked;
     this.flowTimer = 0;
@@ -310,6 +354,10 @@ export class HotelDream {
     for (const room of this.layout.rooms) {
       if (room.lobby) {
         room.styleDef = { key: `atrio-${arch.key}`, name: `Atrio · ${arch.name}`, noDefaultLamp: true, ...arch.hall };
+        continue;
+      }
+      if (room.corridor) {
+        room.styleDef = corridorStyle(arch);
         continue;
       }
       // quasi sempre lo stile del piano; ogni tanto una stanza intrusa da un altro mondo
@@ -338,6 +386,11 @@ export class HotelDream {
     return this.suite ? this.suite.id : -99;
   }
 
+  // La suite comprende il suo bagno.
+  isSuiteRoom(room) {
+    return room >= 0 && (room === this.suiteId || (this.bathRoom && room === this.bathRoom.id));
+  }
+
   // Siamo nella hall del piano terra?
   inHall(room) {
     return this.floorNum === 0 && room === 0;
@@ -352,6 +405,7 @@ export class HotelDream {
     this.visited = new Set(s.visited || [0]);
     this.hasKey = !!s.hasKey;
     this.tickets = s.tickets || 0;
+    this.serviceOpen = !!s.serviceOpen;
     this.prizes = s.prizes || [];
   }
 
@@ -366,6 +420,7 @@ export class HotelDream {
       gnomesTotal: this.gnomesTotal,
       visited: [...this.visited],
       tickets: this.tickets,
+      serviceOpen: this.serviceOpen,
       prizes: this.prizes,
     };
     this.ctx.saveProgress(p);
@@ -508,7 +563,7 @@ export class HotelDream {
     if (this.timeOfDay === 'night') {
       ui.checklist([
         ['Un tè con il tuo amico, al tavolino', this.ritual.tea],
-        ['Una doccia calda', this.ritual.shower],
+        ['Una doccia calda, o un bagno in vasca', this.ritual.shower],
         ['A letto', false],
       ]);
     } else if (this.suiteKit.guns.visible) ui.objective('Sul tavolino ci sono due pistole.');
@@ -522,13 +577,93 @@ export class HotelDream {
     this.hasKey = true;
     audio.chime(1320, 0.25);
     setTimeout(() => audio.chime(1760, 0.15), 250);
-    ui.subtitle('Una voce lontana:', 'Suite 1313. Buonanotte.', 3);
     ui.popup('Chiave 1313');
-    ui.objective('Trova la suite 1313.');
+    ui.objective('Segui il concierge fino alla suite 1313.');
     this.setGoal('suite');
-    this.script.push({ at: this.time + 3.4, fn: () => ui.subtitle(FRIEND, '1313... dev\'essere in fondo. Di qua, credo.', 3) });
     this.bellGlow.material.opacity = 0;
+    this.startConcierge();
     this.save();
+  }
+
+  // ---------- Il concierge ----------
+  startConcierge() {
+    this.conciergeState = 'lead';
+    this.cIdx = 0;
+    this.cLineT = 0;
+    this.concierge.pos.set(0, 0, 25.4);
+    this.concierge.group.visible = this.floorNum === 0;
+  }
+
+  updateConcierge(dt) {
+    const c = this.concierge;
+    if (this.floorNum !== 0) return;
+    const { ui } = this.ctx;
+    const p = this.player.pos;
+    let speed = 0;
+    this.cLineT = (this.cLineT || 0) - dt;
+    const st = this.conciergeState;
+    if (st === 'desk') {
+      c.pos.set(0, 0, 28.3);
+      c.facing = Math.PI;
+    } else if (st === 'lead') {
+      // se entri nella suite da solo, il concierge ti raggiunge alla porta
+      if (this.isSuiteRoom(roomAt(this.layout, p.x, p.z))) this.cIdx = CONCIERGE_ROUTE.length - 1;
+      const [tx, tz, line] = CONCIERGE_ROUTE[this.cIdx];
+      const dp = Math.hypot(p.x - c.pos.x, p.z - c.pos.z);
+      if (dp > 9 && this.cIdx > 0) {
+        // ti aspetta, e si gira verso di te
+        c.facing = Math.atan2(p.x - c.pos.x, p.z - c.pos.z);
+        if (this.cLineT <= 0) {
+          ui.subtitle(CONCIERGE, ['Prego, da questa parte.', 'Mi segua, non si perda.', 'Di qua, di qua.'][Math.floor(Math.random() * 3)], 2.4);
+          this.cLineT = 7;
+        }
+      } else {
+        const dx = tx - c.pos.x;
+        const dz = tz - c.pos.z;
+        const d = Math.hypot(dx, dz);
+        if (d < 0.35) {
+          if (line) {
+            ui.subtitle(CONCIERGE, line, 3.2);
+            this.cLineT = 4;
+          }
+          if (this.cIdx === 10) this.later(3.5, () => ui.subtitle(FRIEND, 'Ma la 1313... non era proprio dietro la reception?', 3));
+          this.cIdx++;
+          if (this.cIdx >= CONCIERGE_ROUTE.length) {
+            this.conciergeState = 'bow';
+            this.cT = 0;
+          }
+        } else {
+          speed = 3.3;
+          c.pos.x += (dx / d) * speed * dt;
+          c.pos.z += (dz / d) * speed * dt;
+          const want = Math.atan2(dx, dz);
+          let dd = want - c.facing;
+          dd = Math.atan2(Math.sin(dd), Math.cos(dd));
+          c.facing += dd * (1 - Math.exp(-10 * dt));
+        }
+      }
+    } else if (st === 'bow') {
+      this.cT += dt;
+      c.facing = Math.atan2(p.x - c.pos.x, p.z - c.pos.z);
+      c.body.rotation.x = this.cT < 1.2 ? Math.sin((this.cT / 1.2) * Math.PI) * 0.45 : 0;
+      if (this.cT > 4.5 && !this.flags.cBye) {
+        this.flags.cBye = true;
+        ui.subtitle(CONCIERGE, 'Se ha bisogno, la reception è sempre aperta. È più vicina di quanto sembri.', 3.6);
+      }
+      if (this.cT > 8) {
+        this.conciergeState = 'leave';
+        this.cT = 0;
+      }
+    } else if (st === 'leave') {
+      // se ne va lungo il corridoio... e ricompare dietro la reception
+      this.cT += dt;
+      speed = 3;
+      c.facing = Math.PI / 2;
+      c.pos.x += speed * dt;
+      if (this.cT > 4) this.conciergeState = 'desk';
+    }
+    if (st !== 'bow') c.body.rotation.x = 0;
+    c.animate(dt, speed, 0);
   }
 
   async sleep() {
@@ -632,22 +767,40 @@ export class HotelDream {
       this.friend.sitting = true;
       const pool = [...TEA_TALK].sort(() => Math.random() - 0.5).slice(0, 3);
       this.activity.lines = pool;
-      this.activity.cam = k.table.clone().add(new THREE.Vector3(2.8, 1.7, 0.3));
-      this.activity.look = k.table.clone().add(new THREE.Vector3(-0.6, 0.85, 0));
+      this.activity.cam = k.teaCam.clone();
+      this.activity.look = k.teaLook.clone();
       this.activity.duration = 16;
     } else if (kind === 'shower') {
       p.pos.copy(k.shower);
-      p.facing = Math.PI;
-      this.activity.cam = k.shower.clone().add(new THREE.Vector3(3.4, 2.1, -3.2));
+      p.facing = -Math.PI / 2;
+      this.activity.cam = k.showerCam.clone();
       this.activity.look = k.shower.clone().add(new THREE.Vector3(0, 1.3, 0));
       this.activity.duration = 11;
       audio.loop('water', true, { freq: 2600, q: 0.5, vol: 0.09 });
       ui.subtitle(null, 'L\'acqua è calda. I pensieri scivolano via.', 4);
+    } else if (kind === 'bath') {
+      p.pos.copy(k.tub);
+      p.pos.y = 0.18;
+      p.facing = Math.PI / 2;
+      p.sitting = true;
+      this.activity.cam = k.tubCam.clone();
+      this.activity.look = k.tub.clone().add(new THREE.Vector3(0, 0.7, 0));
+      this.activity.duration = 999;
+      audio.loop('water', true, { freq: 900, q: 0.4, vol: 0.03, type: 'lowpass' });
+      ui.subtitle(null, 'L\'acqua calda fino al mento. Fuori, da qualche parte, l\'hotel continua a crescere.', 5);
+    } else if (kind === 'sink') {
+      p.pos.copy(k.sink);
+      p.facing = -Math.PI / 2;
+      this.activity.cam = k.sinkCam.clone();
+      this.activity.look = k.sinkLook.clone();
+      this.activity.duration = 6;
+      audio.loop('water', true, { freq: 1800, q: 0.6, vol: 0.05 });
+      ui.subtitle(null, 'Acqua fredda sul viso. Nello specchio, per un attimo, dietro di te c\'è un corridoio che non esiste.', 5);
     } else if (kind === 'window') {
       p.pos.copy(k.windowSpot);
-      p.facing = -Math.PI / 2;
+      p.facing = Math.PI;
       // in prima persona: guardi fuori con i tuoi occhi
-      this.activity.cam = k.windowSpot.clone().add(new THREE.Vector3(0.2, 1.7, 0));
+      this.activity.cam = k.windowSpot.clone().add(new THREE.Vector3(0, 1.7, 0.2));
       p.group.visible = false;
       this.activity.look = k.windowLook.clone();
       this.activity.duration = 999;
@@ -686,7 +839,7 @@ export class HotelDream {
         this.glints.emit(k.teaSpout.x + 0.12, k.teaSpout.y - 0.05, k.teaSpout.z, 0, -1.5, 0, { color: [0.7, 0.45, 0.2], size: 0.03, life: 0.15 });
       }
       if (Math.random() < 0.25) {
-        for (const dz of [0.45, -0.45]) this.fx.emit(k.table.x - 0.15, 0.9, k.table.z + dz, (Math.random() - 0.5) * 0.05, 0.25, 0, { color: [0.95, 0.95, 0.95], size: 0.08, endSize: 0.3, life: 2.2, alpha: 0.25 });
+        for (const c of k.cups) this.fx.emit(c.x, 0.9, c.z, (Math.random() - 0.5) * 0.05, 0.25, 0, { color: [0.95, 0.95, 0.95], size: 0.08, endSize: 0.3, life: 2.2, alpha: 0.25 });
       }
       a.lines.forEach(([who, text], i) => {
         const at = 2.5 + i * 4.3;
@@ -705,6 +858,13 @@ export class HotelDream {
       if (Math.random() < 0.3) this.fx.emit(k.shower.x + (Math.random() - 0.5), 1 + Math.random(), k.shower.z + (Math.random() - 0.5), 0, 0.3, 0, { color: [0.95, 0.96, 1], size: 0.6, endSize: 2.2, life: 4, alpha: 0.18 });
       if (a.t > 1.5) ui.steam(true);
       if (a.t > 1) this.ritual.shower = true;
+    } else if (a.kind === 'bath') {
+      if (Math.random() < 0.5) this.glints.emit(k.tub.x + (Math.random() - 0.5) * 3, 0.56, k.tub.z + (Math.random() - 0.5) * 1.1, 0, 0.12, 0, { color: [0.95, 0.97, 1], size: 0.1 + Math.random() * 0.1, life: 3, alpha: 0.6 });
+      if (Math.random() < 0.2) this.fx.emit(k.tub.x + (Math.random() - 0.5) * 3, 0.7, k.tub.z, 0, 0.3, 0, { color: [0.95, 0.96, 1], size: 0.5, endSize: 1.8, life: 4, alpha: 0.15 });
+      if (a.t > 3) ui.steam(true);
+      if (a.t > 1) this.ritual.shower = true;
+    } else if (a.kind === 'sink') {
+      if (a.t < 3 && Math.random() < 0.7) this.glints.emit(k.sink.x - 0.85, 1.02, k.sink.z, 0, -1.2, 0, { color: [0.6, 0.8, 1], size: 0.03, life: 0.2, alpha: 0.7 });
     }
     // la camera va dolcemente in posizione
     this.camPos.lerp(a.cam, 1 - Math.exp(-2.5 * dt));
@@ -728,15 +888,22 @@ export class HotelDream {
     if (a.kind === 'shower') {
       audio.loop('water', false);
       setTimeout(() => ui.steam(false), 1200);
-      // si esce dalla doccia verso il bagno
-      this.player.pos.set(this.suiteKit.shower.x + 1.8, 0, this.suiteKit.shower.z - 1.6);
+      // si esce dalla doccia verso il centro del bagno
+      this.player.pos.set(this.suiteKit.shower.x - 2.4, 0, this.suiteKit.shower.z - 1.6);
+    }
+    if (a.kind === 'bath' || a.kind === 'sink') {
+      audio.loop('water', false);
+      if (a.kind === 'bath') {
+        setTimeout(() => ui.steam(false), 1500);
+        this.player.pos.set(this.suiteKit.tub.x, 0, this.suiteKit.tub.z + 1.8);
+      } else this.player.pos.x += 0.6;
     }
     if (a.kind === 'fire') {
       audio.loop('fireClose', false);
       audio.loop('fire', true, { freq: 500, q: 0.4, vol: 0.025, type: 'lowpass', crackle: true });
       this.player.pos.x += 1.2;
     }
-    if (a.kind === 'tea') this.player.pos.x += 1;
+    if (a.kind === 'tea') this.player.pos.z += 1.3;
     this.camYaw = this.player.facing;
     this.snapCamera();
     this.updateObjectiveInSuite();
@@ -970,7 +1137,7 @@ export class HotelDream {
     if (this.prizeOpen) this.prizeKeys(input);
 
     const room = roomAt(this.layout, this.player.pos.x, this.player.pos.z);
-    const inSuite = room === this.suiteId;
+    const inSuite = this.isSuiteRoom(room);
     if (inSuite !== this.wasInSuite && this.phase === 'explore') {
       if (inSuite) this.enterSuiteMood();
       else if (this.wasInSuite !== undefined) {
@@ -989,6 +1156,17 @@ export class HotelDream {
       this.updateCamera(dt);
     }
     this.updateFriend(dt);
+    this.updateConcierge(dt);
+    const actors = [this.player.pos, this.friend.pos];
+    if (this.floorNum === 0 && this.conciergeState !== 'desk') actors.push(this.concierge.pos);
+    this.doors.update(dt, actors);
+    if (this.floorNum === 0 && inSuite && !this.serviceOpen && !this.flags.askService) {
+      const sd = this.doors.list.find((d) => d.kind === 'service');
+      if (sd && Math.hypot(sd.x - this.player.pos.x, sd.z - this.player.pos.z) < 5) {
+        this.flags.askService = true;
+        ui.subtitle(FRIEND, 'E quella porta laggiù? Dove porterà?', 3);
+      }
+    }
     if (this.phase === 'fight' || this.phase === 'down' || this.swarm.active > 0) this.updateSwarm(dt);
     if (this.phase === 'fight') this.updateFight(dt);
     this.updateRoomAtmosphere(dt);
@@ -1031,6 +1209,47 @@ export class HotelDream {
       ui.updateHud({ speed: this.visited.size, turbo: this.stamina, health: this.health, time: this.time, counter: '' });
     }
     this.updateCompass(room);
+  }
+
+  // ---------- Porte della suite ----------
+  doorInteraction(d, room, E) {
+    const { ui, audio } = this.ctx;
+    const inside = this.isSuiteRoom(room);
+    if (d.kind === 'service' && !this.serviceOpen) {
+      if (!inside) return 'Porta di servizio. Non si apre da questo lato.';
+      if (!E) return '<kbd>E</kbd> apri la porta di servizio';
+      this.discoverShortcut(d);
+      return null;
+    }
+    if (!inside) {
+      if (d.locked) return 'Chiusa a chiave. Dall\'interno.';
+      return null;
+    }
+    if (E) {
+      this.doors.setLocked(d, !d.locked);
+      audio.thud(0.18);
+      if (d.locked) {
+        ui.subtitle(null, this.flags.lockedOnce ? 'Click.' : 'Click. La serratura scatta. Qui dentro non entra niente.', 3);
+        this.flags.lockedOnce = true;
+      }
+    }
+    return `<kbd>E</kbd> ${d.locked ? 'apri la porta' : 'chiudi a chiave'}`;
+  }
+
+  // La porta di servizio della suite: dà dritta sulla hall.
+  discoverShortcut(d) {
+    const { ui, audio } = this.ctx;
+    this.serviceOpen = true;
+    d.auto = true;
+    this.doors.setLocked(d, false);
+    d.target = 1;
+    audio.thud(0.2);
+    this.save();
+    this.later(1.2, () => ui.subtitle(FRIEND, '...È la hall. La reception è lì, a dieci metri.', 3.2));
+    this.later(4.8, () => ui.subtitle(FRIEND, 'Abbiamo fatto il giro di tutto l\'albergo. Per niente.', 3));
+    this.later(8.4, () => {
+      if (this.conciergeState === 'desk') ui.subtitle('Il concierge, dalla reception:', 'Buonanotte! Via di servizio, molto comoda.', 3.2);
+    });
   }
 
   // ---------- Effetti del sogno (usati dagli eventi) ----------
@@ -1274,7 +1493,7 @@ export class HotelDream {
       if (E) this.ringBell();
       return '<kbd>E</kbd> suona il campanello';
     }
-    if (this.hasKey && room === this.suiteId && !this.flags.suiteFound) {
+    if (this.hasKey && this.isSuiteRoom(room) && !this.flags.suiteFound) {
       this.flags.suiteFound = true;
       if (this.goal === 'suite') {
         ui.subtitle(FRIEND, 'Eccola, la 1313. È... una suite. Guarda che camino!', 3.4);
@@ -1290,6 +1509,13 @@ export class HotelDream {
       }
     }
     if (this.arcade) return this.arcadeInteractions(near, E);
+
+    // porte della suite: la si può chiudere a chiave, e diventa un posto sicuro
+    const door = this.doors.nearest(p.x, p.z, 1.8);
+    if (door && (door.kind === 'suite' || door.kind === 'service')) {
+      const hint = this.doorInteraction(door, room, E);
+      if (hint) return hint;
+    }
     if (!inSuite) return null;
     if (k.guns.visible && near(k.table, 1.9)) {
       if (E) this.takeGuns();
@@ -1302,6 +1528,14 @@ export class HotelDream {
     if (near(k.shower, 1.3)) {
       if (E) this.startActivity('shower');
       return '<kbd>E</kbd> fatti una doccia';
+    }
+    if (near(k.tub, 1.9)) {
+      if (E) this.startActivity('bath');
+      return '<kbd>E</kbd> fai un bagno caldo';
+    }
+    if (near(k.sink, 1.1)) {
+      if (E) this.startActivity('sink');
+      return '<kbd>E</kbd> lavati il viso';
     }
     if (near(k.windowSpot, 1.2)) {
       if (E) this.startActivity('window');
@@ -1363,7 +1597,7 @@ export class HotelDream {
     const sprint = active && input.down('ShiftLeft', 'ShiftRight') && this.stamina > 0.05 && (mx || mz);
     if (sprint) this.stamina = Math.max(0, this.stamina - dt * 0.3);
     else this.stamina = Math.min(1, this.stamina + dt * 0.18);
-    const inSuite = roomAt(this.layout, p.pos.x, p.pos.z) === this.suiteId;
+    const inSuite = this.isSuiteRoom(roomAt(this.layout, p.pos.x, p.pos.z));
     const speed = (sprint ? 9 : inSuite && this.phase !== 'fight' ? 3.6 : 5.5) * burden;
     const k = 1 - Math.exp(-12 * dt);
     p.vel.x += (mx * speed - p.vel.x) * k;
@@ -1399,7 +1633,7 @@ export class HotelDream {
 
     p.pos.x += p.vel.x * dt;
     p.pos.z += p.vel.z * dt;
-    p.collide(this.boxesNear(p.pos));
+    p.collide(this.boxesNear(p.pos).concat(this.doors.lockedBoxes()));
     if (this.layout.wrap) {
       const [sx, sz] = this.wrapTile(p.pos);
       if (sx || sz) {
@@ -1440,7 +1674,7 @@ export class HotelDream {
     if (room >= 0 && !this.visited.has(vkey) && this.phase !== 'riding') {
       this.visited.add(vkey);
       const r = this.layout.rooms[room];
-      this.ctx.ui.popup(r.styleDef.name);
+      if (!r.styleDef.noPopup) this.ctx.ui.popup(r.styleDef.name);
       audio.chime(740 + this.visited.size * 12, 0.08);
       const line = ROOM_LINES[r.styleDef.key];
       if (line && this.lineTimer <= 0 && this.phase === 'explore' && Math.random() < 0.7) {
@@ -1483,7 +1717,7 @@ export class HotelDream {
     this.flowTimer -= dt;
     const pRoom = roomAt(this.layout, p.pos.x, p.pos.z);
     const fRoom = roomAt(this.layout, f.pos.x, f.pos.z);
-    const suiteCalm = pRoom === this.suiteId && fRoom === this.suiteId && this.phase === 'explore';
+    const suiteCalm = this.isSuiteRoom(pRoom) && this.isSuiteRoom(fRoom) && this.phase === 'explore';
     if (f.sitting) {
       // resta seduto finché siete tranquilli nella suite
       if (this.activity || suiteCalm || this.phase === 'sleeping') {
@@ -1538,7 +1772,7 @@ export class HotelDream {
         f.sitting = true;
         this.friendSatAt = this.time;
       }
-    } else if (d > 6 || !this.goal) {
+    } else if (d > 6 || !this.goal || this.conciergeState === 'lead') {
       if (d > 3) {
         this.refreshFlowP();
         [tx, tz] = this.flowDir(this.flowP, f.pos);
@@ -1559,7 +1793,7 @@ export class HotelDream {
     f.vel.z += (tz * speed - f.vel.z) * k;
     f.pos.x += f.vel.x * dt;
     f.pos.z += f.vel.z * dt;
-    f.collide(this.boxesNear(f.pos));
+    f.collide(this.boxesNear(f.pos).concat(this.doors.lockedBoxes()));
     if (this.layout.wrap) {
       const [sx, sz] = this.wrapTile(f.pos);
       f.pos.x += sx;
@@ -1627,10 +1861,10 @@ export class HotelDream {
       const r = pr.room;
       if (Math.hypot(r.cx - this.player.pos.x, r.cz - this.player.pos.z) > 30) continue;
       if (pr.kind === 'bubbles' && Math.random() < 0.5) {
-        this.glints.emit(r.cx + (Math.random() - 0.5) * 14, 0.2, r.cz + (Math.random() - 0.5) * 14, 0, 0.8 + Math.random(), 0, { color: [0.5, 0.85, 1], size: 0.12 + Math.random() * 0.15, life: 7, alpha: 0.7 });
+        this.glints.emit(r.cx + (Math.random() - 0.5) * (r.maxX - r.minX - 2), 0.2, r.cz + (Math.random() - 0.5) * (r.maxZ - r.minZ - 2), 0, 0.8 + Math.random(), 0, { color: [0.5, 0.85, 1], size: 0.12 + Math.random() * 0.15, life: 7, alpha: 0.7 });
       }
       if (pr.kind === 'snow' && Math.random() < 0.7) {
-        this.glints.emit(r.cx + (Math.random() - 0.5) * 16, r.style.height - 0.5, r.cz + (Math.random() - 0.5) * 16, (Math.random() - 0.5) * 0.3, -0.7, (Math.random() - 0.5) * 0.3, { color: [0.9, 0.95, 1], size: 0.08, life: 10, alpha: 0.8 });
+        this.glints.emit(r.cx + (Math.random() - 0.5) * (r.maxX - r.minX - 2), r.style.height - 0.5, r.cz + (Math.random() - 0.5) * (r.maxZ - r.minZ - 2), (Math.random() - 0.5) * 0.3, -0.7, (Math.random() - 0.5) * 0.3, { color: [0.9, 0.95, 1], size: 0.08, life: 10, alpha: 0.8 });
       }
     }
   }
@@ -1646,7 +1880,7 @@ export class HotelDream {
     const aiming = p.armed && this.phase === 'fight';
     const room = roomAt(this.layout, p.pos.x, p.pos.z);
     const ceil = room >= 0 ? this.layout.rooms[room].height - 0.4 : 30;
-    const inSuite = room === this.suiteId;
+    const inSuite = this.isSuiteRoom(room);
     let target;
     let look;
     if (aiming) {
@@ -1699,7 +1933,7 @@ export class HotelDream {
 
   updateCompass(room) {
     const { ui } = this.ctx;
-    const show = this.goal && !(this.goal === 'suite' && room === this.suiteId) && !(this.goal === 'hall' && this.inHall(room)) && this.phase === 'explore';
+    const show = this.goal && !(this.goal === 'suite' && this.isSuiteRoom(room)) && !(this.goal === 'hall' && this.inHall(room)) && this.phase === 'explore';
     if (!show) {
       ui.compass(null);
       return;
@@ -1742,6 +1976,7 @@ export class HotelDream {
     this.flashTex.dispose();
     this.player.dispose();
     this.friend.dispose();
+    this.concierge.dispose();
     this.swarm.dispose();
     this.fx.dispose();
     this.glints.dispose();

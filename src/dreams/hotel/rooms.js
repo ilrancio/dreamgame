@@ -105,7 +105,8 @@ export const STYLES = [
       a.anim((t) =>
         fish.forEach((q) => {
           const ang = t * q.s + q.o;
-          q.f.position.set(a.cx + Math.cos(ang) * q.r, q.y + Math.sin(t + q.o) * 0.3, a.cz + Math.sin(ang) * q.r);
+          const [fx, fz] = a.toWorld(Math.cos(ang) * q.r, Math.sin(ang) * q.r);
+          q.f.position.set(fx, q.y + Math.sin(t + q.o) * 0.3, fz);
           q.f.rotation.y = -ang;
         }),
       );
@@ -278,8 +279,37 @@ export const LOBBY_STYLE = {
   floor: ['checker', ['#c8b89a', '#5a3a2a']], wall: ['planks', ['#6a4028', '#5a3420']], ceil: '#1a120c', light: '#ffc98a',
 };
 
+// Corridoi da albergo classico: moquette, carta da parati, applique.
+export function corridorProps(a, lampColor = '#ffd08a', runner = '#6a1420') {
+  const r = a.room;
+  const w = r.maxX - r.minX;
+  const d = r.maxZ - r.minZ;
+  const alongX = w > d;
+  const len = alongX ? w : d;
+  const half = (alongX ? d : w) / 2 - 0.3;
+  a.box(alongX ? len - 0.6 : 1.8, 0.02, alongX ? 1.8 : len - 0.6, a.mat(runner), 0, 0.012, 0, { collide: false });
+  for (let t = -len / 2 + 3.5; t < len / 2 - 2; t += 7) {
+    for (const side of [-1, 1]) {
+      const x = alongX ? t : side * half;
+      const z = alongX ? side * half : t;
+      a.lamp(x, 3.1, z, lampColor, 0.1);
+    }
+  }
+}
+
+export const CORRIDOR_STYLE = {
+  key: 'corridoio', name: 'Corridoio', height: 4.6, noDefaultLamp: true, noPopup: true,
+  floor: ['damask', ['#4a1018', '#5a1a22']], wall: ['stripes', ['#e6d6b4', '#d8c49c']], ceil: '#efe4cc', light: '#ffd9a0',
+  props: (a) => corridorProps(a),
+};
+
+export const BATH_STYLE = {
+  key: 'bagno', name: 'Bagno della suite', height: 5.5, noDefaultLamp: true, noPopup: true,
+  floor: ['tiles', ['#f0f2f2', '#b8c4c8']], wall: ['tiles', ['#e4ecee', '#c0ccd0']], ceil: '#f4f6f6', light: '#f0f8ff',
+};
+
 export const SUITE_STYLE = {
-  key: 'suite', name: 'Suite 1313', height: 5.5,
+  key: 'suite', name: 'Suite 1313', height: 5.5, noDefaultLamp: true,
   floor: ['planks', ['#8a5a3a', '#7a4e32']], wall: ['stripes', ['#e8d8b8', '#dcc8a4']], ceil: '#f0e6d0', light: '#ffd9a0',
 };
 
@@ -374,7 +404,8 @@ export class RoomBuilder {
     const cz = room.cz;
 
     const floorMat = this.texMat(style.floor[0], style.floor[1], [w / 4.5, d / 4.5]);
-    const floor = this.mesh(this.track(new THREE.PlaneGeometry(w, d)), floorMat, cx, 0, cz);
+    // un ambiente dentro un altro (il bagno nella suite) ha il pavimento appena più alto
+    const floor = this.mesh(this.track(new THREE.PlaneGeometry(w, d)), floorMat, cx, room.parent !== undefined ? 0.015 : 0, cz);
     floor.rotation.x = -Math.PI / 2;
     const ceil = this.mesh(this.track(new THREE.PlaneGeometry(w, d)), this.mat(style.ceil), cx, style.height, cz);
     ceil.rotation.x = Math.PI / 2;
@@ -399,8 +430,7 @@ export class RoomBuilder {
       }
     }
 
-    const hw = Math.min(w, d) / 2 - WALL_T - 0.3;
-    const api = this.api(room, style, hw);
+    const api = this.api(room, style);
     if (style.props) style.props(api);
     if (!style.noDefaultLamp && style.props) {
       // un lampadario a sfera per dare luce a ogni stanza
@@ -409,92 +439,135 @@ export class RoomBuilder {
     return api;
   }
 
-  api(room, style, hw) {
+  // Sistema di riferimento della stanza. Le stanze normali sono "disegnate"
+  // in uno spazio virtuale quadrato (±8.2 m) con la porta sempre a sud (-z):
+  // qui lo si adatta alla stanza vera, di qualunque misura e orientamento,
+  // così gli arredi non finiscono mai davanti alla porta.
+  frameFor(room) {
+    const w = room.maxX - room.minX;
+    const d = room.maxZ - room.minZ;
+    if (room.kind !== 'room') {
+      return { theta: 0, sx: 1, sz: 1, hw: Math.min(w, d) / 2 - WALL_T - 0.3 };
+    }
+    const door = this.layout.doorways.find((q) => q.room === room.id && q.kind === 'door');
+    const theta = { S: 0, N: Math.PI, W: Math.PI / 2, E: -Math.PI / 2 }[door?.dir ?? 'S'];
+    const turned = Math.abs(Math.sin(theta)) > 0.5;
+    const hx = (turned ? d : w) / 2;
+    const hz = (turned ? w : d) / 2;
+    return { theta, sx: Math.max(0.3, (hx - 0.8) / 8.2), sz: Math.max(0.3, (hz - 0.8) / 8.2), hw: 8.2 };
+  }
+
+  api(room, style) {
     const B = this;
     const placed = [];
     const doorways = this.layout.doorways.filter((d) => d.room === room.id);
+    const { theta, sx, sz, hw } = this.frameFor(room);
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+    const turned = Math.abs(sin) > 0.5;
+    // da coordinate della stanza a coordinate del mondo
+    const W = (x, z) => {
+      const lx = x * sx;
+      const lz = z * sz;
+      return [room.cx + lx * cos + lz * sin, room.cz - lx * sin + lz * cos];
+    };
+    const boxCollider = (x, z, w, d) => {
+      const [wx, wz] = W(x, z);
+      const ex = (turned ? d : w) / 2;
+      const ez = (turned ? w : d) / 2;
+      B.addCollider(wx - ex, wx + ex, wz - ez, wz + ez);
+    };
     const a = {
       room,
       cx: room.cx,
       cz: room.cz,
       h: style.height,
       hw,
+      theta,
+      toWorld: (x, z) => W(x, z),
       track: (o) => B.track(o),
       mat: (...args) => B.mat(...args),
       glowMat: (...args) => B.glowMat(...args),
       texMat: (...args) => B.texMat(...args),
       anim: (fn) => B.anims.push(fn),
       dynamicAdd: (o) => B.dynamic.add(o),
-      collider: (x, z, w, d) => B.addCollider(room.cx + x - w / 2, room.cx + x + w / 2, room.cz + z - d / 2, room.cz + z + d / 2),
+      collider: (x, z, w, d) => boxCollider(x, z, w, d),
       // posizione libera lontana dalle porte e dagli altri arredi
       place(r, tries = 40) {
         for (let i = 0; i < tries; i++) {
           const x = (Math.random() * 2 - 1) * (hw - r);
           const z = (Math.random() * 2 - 1) * (hw - r);
-          const wx = room.cx + x;
-          const wz = room.cz + z;
-          if (doorways.some((q) => Math.hypot(q.x - wx, q.z - wz) < r + 3.5)) continue;
+          const [wx, wz] = W(x, z);
+          if (doorways.some((q) => Math.hypot(q.x - wx, q.z - wz) < r + 2.5)) continue;
           if (placed.some((p) => Math.hypot(p.x - x, p.z - z) < p.r + r + 0.6)) continue;
-          if (Math.hypot(x, z) < r + 1.2 && room.suite) continue;
           placed.push({ x, z, r });
           return { x, z };
         }
         return null;
       },
       box(w, h, d, material, x, y, z, { collide = true, rotY = 0, dynamic = false } = {}) {
-        const m = B.mesh(B.boxGeo, material, room.cx + x, y, room.cz + z, dynamic ? B.dynamic : B.group);
+        const [wx, wz] = W(x, z);
+        const m = B.mesh(B.boxGeo, material, wx, y, wz, dynamic ? B.dynamic : B.group);
         m.scale.set(w, h, d);
-        m.rotation.y = rotY;
+        m.rotation.y = rotY + theta;
         if (collide && y - h / 2 < 1.5) {
-          const ext = rotY ? Math.max(w, d) / 2 : null;
-          if (ext) B.addCollider(room.cx + x - ext * 0.8, room.cx + x + ext * 0.8, room.cz + z - ext * 0.8, room.cz + z + ext * 0.8);
-          else B.addCollider(room.cx + x - w / 2, room.cx + x + w / 2, room.cz + z - d / 2, room.cz + z + d / 2);
+          if (rotY) {
+            const ext = (Math.max(w, d) / 2) * 0.8;
+            B.addCollider(wx - ext, wx + ext, wz - ext, wz + ext);
+          } else boxCollider(x, z, w, d);
           placed.push({ x, z, r: Math.max(w, d) / 2 });
         }
         return m;
       },
       cyl(rt, rb, h, material, x, y, z, { collide = true, dynamic = false } = {}) {
-        const m = B.mesh(B.track(new THREE.CylinderGeometry(rt, rb, h, 14)), material, room.cx + x, y, room.cz + z, dynamic ? B.dynamic : B.group);
+        const [wx, wz] = W(x, z);
+        const m = B.mesh(B.track(new THREE.CylinderGeometry(rt, rb, h, 14)), material, wx, y, wz, dynamic ? B.dynamic : B.group);
+        m.rotation.y = theta;
         if (collide && y - h / 2 < 1.5) {
           const r = Math.max(rt, rb);
-          B.addCollider(room.cx + x - r, room.cx + x + r, room.cz + z - r, room.cz + z + r);
+          B.addCollider(wx - r, wx + r, wz - r, wz + r);
           placed.push({ x, z, r });
         }
         return m;
       },
       sphere(r, material, x, y, z, { collide = true, dynamic = false } = {}) {
-        const m = B.mesh(B.track(new THREE.SphereGeometry(r, 18, 12)), material, room.cx + x, y, room.cz + z, dynamic ? B.dynamic : B.group);
+        const [wx, wz] = W(x, z);
+        const m = B.mesh(B.track(new THREE.SphereGeometry(r, 18, 12)), material, wx, y, wz, dynamic ? B.dynamic : B.group);
         if (collide && y - r < 1.5) {
-          B.addCollider(room.cx + x - r * 0.8, room.cx + x + r * 0.8, room.cz + z - r * 0.8, room.cz + z + r * 0.8);
+          B.addCollider(wx - r * 0.8, wx + r * 0.8, wz - r * 0.8, wz + r * 0.8);
           placed.push({ x, z, r });
         }
         return m;
       },
       ico(r, material, x, y, z) {
-        const m = B.mesh(B.track(new THREE.IcosahedronGeometry(r, 0)), material, room.cx + x, y, room.cz + z);
-        B.addCollider(room.cx + x - r * 0.7, room.cx + x + r * 0.7, room.cz + z - r * 0.7, room.cz + z + r * 0.7);
+        const [wx, wz] = W(x, z);
+        const m = B.mesh(B.track(new THREE.IcosahedronGeometry(r, 0)), material, wx, y, wz);
+        B.addCollider(wx - r * 0.7, wx + r * 0.7, wz - r * 0.7, wz + r * 0.7);
         return m;
       },
       cone(r, h, material, x, y, z, { collide = true, dynamic = false } = {}) {
-        const m = B.mesh(B.track(new THREE.ConeGeometry(r, h, 10)), material, room.cx + x, y, room.cz + z, dynamic ? B.dynamic : B.group);
+        const [wx, wz] = W(x, z);
+        const m = B.mesh(B.track(new THREE.ConeGeometry(r, h, 10)), material, wx, y, wz, dynamic ? B.dynamic : B.group);
         if (collide && y - h / 2 < 1.5 && !dynamic) {
-          B.addCollider(room.cx + x - r, room.cx + x + r, room.cz + z - r, room.cz + z + r);
+          B.addCollider(wx - r, wx + r, wz - r, wz + r);
           placed.push({ x, z, r });
         }
         return m;
       },
       disc(r, material, x, y, z, rotY) {
-        const m = B.mesh(B.track(new THREE.CircleGeometry(r, 32)), material, room.cx + x, y, room.cz + z);
-        m.rotation.y = rotY;
+        const [wx, wz] = W(x, z);
+        const m = B.mesh(B.track(new THREE.CircleGeometry(r, 32)), material, wx, y, wz);
+        m.rotation.y = rotY + theta;
         return m;
       },
       starMat() {
         return B.starMaterial();
       },
       glowSprite(color, x, y, z, size = 3, opacity = 0.8) {
+        const [wx, wz] = W(x, z);
         const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: B.glowTex, color, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity }));
         B.track(s.material);
-        s.position.set(room.cx + x, y, room.cz + z);
+        s.position.set(wx, y, wz);
         s.scale.set(size, size, 1);
         B.dynamic.add(s);
         return s;
@@ -507,13 +580,16 @@ export class RoomBuilder {
         return m;
       },
       chandelier(x, y, z, color, size = 1) {
+        const [wx, wz] = W(x, z);
         const gold = B.mat('#c9a040', { metal: true });
-        const ring = B.mesh(B.track(new THREE.TorusGeometry(1.6 * size, 0.08 * size, 8, 32)), gold, room.cx + x, y, room.cz + z);
+        const ring = B.mesh(B.track(new THREE.TorusGeometry(1.6 * size, 0.08 * size, 8, 32)), gold, wx, y, wz);
         ring.rotation.x = Math.PI / 2;
-        a.cyl(0.04, 0.04, style.height - y, gold, x, (style.height + y) / 2, z, { collide: false });
+        const rod = B.mesh(B.track(new THREE.CylinderGeometry(0.04, 0.04, style.height - y, 6)), gold, wx, (style.height + y) / 2, wz);
+        void rod;
+        const bulb = B.glowMat(color, 2);
         for (let k = 0; k < 8; k++) {
           const ang = (k / 8) * Math.PI * 2;
-          a.lamp(x + Math.cos(ang) * 1.6 * size, y + 0.15, z + Math.sin(ang) * 1.6 * size, color, 0.14 * size);
+          B.mesh(B.track(new THREE.SphereGeometry(0.14 * size, 10, 8)), bulb, wx + Math.cos(ang) * 1.6 * size, y + 0.15, wz + Math.sin(ang) * 1.6 * size);
         }
         a.glowSprite(color, x, y, z, 7 * size, 0.5);
       },
