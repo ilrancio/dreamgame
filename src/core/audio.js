@@ -238,6 +238,41 @@ export class AudioEngine {
     });
   }
 
+  // Vocine degli gnomi: brevi squittii acuti.
+  squeak(vol = 0.08) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const o = c.createOscillator();
+    o.type = Math.random() < 0.5 ? 'square' : 'triangle';
+    const f = 900 + Math.random() * 1400;
+    o.frequency.setValueAtTime(f, t);
+    o.frequency.exponentialRampToValueAtTime(f * (Math.random() < 0.5 ? 1.6 : 0.6), t + 0.09);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.14);
+  }
+
+  pop(vol = 0.2) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const o = c.createOscillator();
+    o.type = 'sine';
+    o.frequency.setValueAtTime(420, t);
+    o.frequency.exponentialRampToValueAtTime(90, t + 0.12);
+    const g = c.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    o.connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + 0.16);
+  }
+
   // ---------- Musica d'atmosfera ----------
   // Un pad è un accordo di oscillatori lenti; si attivano/spengono con dissolvenza.
   pad(name, freqs, { vol = 0.06, type = 'sine', cutoff = 1200, tremolo = 0 } = {}) {

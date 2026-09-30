@@ -12,6 +12,10 @@ export class UI {
       time: $('hud-time'),
       dodges: $('hud-dodges'),
       speed: $('speed-value'),
+      speedUnit: $('speed-unit'),
+      turboLabel: $('turbo-label'),
+      healthLabel: $('health-label'),
+      controls: $('controls-hint'),
       turbo: $('turbo-fill'),
       health: $('health-fill'),
       subtitle: $('subtitle'),
@@ -42,12 +46,20 @@ export class UI {
     this.el.objective.textContent = text || '';
   }
 
-  updateHud({ speed, turbo, health, time, dodges }) {
+  // Etichette dell'HUD: in macchina e a piedi mostrano cose diverse.
+  configureHud({ unit, turboLabel, healthLabel, controls }) {
+    this.el.speedUnit.textContent = unit;
+    this.el.turboLabel.innerHTML = turboLabel;
+    this.el.healthLabel.textContent = healthLabel;
+    this.el.controls.innerHTML = controls;
+  }
+
+  updateHud({ speed, turbo, health, time, counter }) {
     this.el.speed.textContent = Math.round(speed);
     this.el.turbo.style.width = `${Math.max(0, turbo) * 100}%`;
     this.el.health.style.width = `${Math.max(0, health) * 100}%`;
     this.el.time.textContent = formatTime(time);
-    this.el.dodges.textContent = `Schivate ${dodges}`;
+    this.el.dodges.textContent = counter;
   }
 
   compass(angle) {

@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { createSky } from '../../core/sky.js';
 import { Particles } from '../../core/particles.js';
 import { clamp, lerp, smoothstep } from '../../core/noise.js';
-import { formatTime } from '../../core/ui.js';
 import { Terrain, START, DEMON_POS, HOTEL } from './terrain.js';
 import { Car } from './car.js';
 import { Demon } from './demon.js';
@@ -125,6 +124,12 @@ export class DemonDream {
 
     const { ui, audio } = this.ctx;
     ui.showHud(true);
+    ui.configureHud({
+      unit: 'km/h',
+      turboLabel: 'Turbo <kbd>Shift</kbd>',
+      healthLabel: 'Macchina',
+      controls: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> guida · <kbd>Spazio</kbd> freno a mano · <kbd>R</kbd> rimetti in strada · <kbd>P</kbd> pausa',
+    });
     ui.center(null);
     ui.objective('Sfuggi al demone. Raggiungi la strada tra le montagne.');
     audio.stopAllPads(1);
@@ -443,7 +448,7 @@ export class DemonDream {
       this.dust.emit(c.pos.x - c.fwdX * 2, c.pos.y + 0.4, c.pos.z - c.fwdZ * 2, (Math.random() - 0.5) * 3, 2, (Math.random() - 0.5) * 3, { color: [0.5, 0.45, 0.35], size: 2, endSize: 7, life: 1.2, alpha: c.drifting ? 0.5 : 0.25, drag: 1 });
     }
 
-    ui.updateHud({ speed: c.speed * 3.6, turbo: c.turbo, health: this.health, time: this.time, dodges: this.dodges });
+    ui.updateHud({ speed: c.speed * 3.6, turbo: c.turbo, health: this.health, time: this.time, counter: `Schivate ${this.dodges}` });
     this.updateCompass(road);
   }
 
@@ -538,36 +543,10 @@ export class DemonDream {
     audio.stopAllPads(3);
     audio.pad('home', [130.8, 196, 261.6, 329.6, 392], { vol: 0.05, cutoff: 2000 });
     this.endStart = this.camera.position.clone();
-    this.saveResult();
-  }
-
-  saveResult() {
-    const { progress, saveProgress } = this.ctx;
-    const prev = progress.demone || {};
-    const rank = this.rank();
-    const ranks = ['C', 'B', 'A', 'S'];
-    progress.demone = {
-      completed: true,
-      bestTime: prev.bestTime ? Math.min(prev.bestTime, this.time) : this.time,
-      bestRank: ranks.indexOf(rank) > ranks.indexOf(prev.bestRank ?? 'C') ? rank : prev.bestRank ?? rank,
-      maxDodges: Math.max(prev.maxDodges || 0, this.dodges),
-    };
-    this.isRecord = !prev.bestTime || this.time < prev.bestTime;
-    saveProgress(progress);
-  }
-
-  rank() {
-    let score = 0;
-    if (this.time < 150) score++;
-    if (this.time < 110) score++;
-    if (this.hits <= 2) score++;
-    if (this.hits === 0) score++;
-    if (this.dodges >= 8) score++;
-    return score >= 4 ? 'S' : score >= 3 ? 'A' : score >= 2 ? 'B' : 'C';
   }
 
   updateEnding(dt) {
-    const { ui, input } = this.ctx;
+    const { ui } = this.ctx;
     this.endT += dt;
     const c = this.car;
     // la macchina si ferma dolcemente
@@ -593,38 +572,14 @@ export class DemonDream {
       }
     }
 
-    if (this.endT > 4 && !this.flags.endText1) {
+    if (this.endT > 3.5 && !this.flags.endText1) {
       this.flags.endText1 = true;
-      ui.subtitle(null, 'Il legno scricchiola. Le finestre sono calde. Volevi solo passare la notte qui.', 5);
+      ui.subtitle(null, 'Il portone è aperto. Dentro, una luce calda. Il legno scricchiola.', 4);
     }
-    if (this.endT > 9 && !this.flags.endFade) {
-      this.flags.endFade = true;
-      ui.showHud(false);
-      ui.fade(0.85, 3000, '#1a1206');
-      setTimeout(() => {
-        if (this.disposed) return;
-        const rank = this.rank();
-        ui.clearSubtitle();
-        ui.center(`<div class="panel">
-          <h2>…e poi ti sei svegliato.</h2>
-          <p class="poem">Il demone è ancora lì, fermo nel suo campo.<br/>Ma stanotte non ti ha trovato.</p>
-          <div class="stats">
-            <div><b>${formatTime(this.time)}</b><span>Tempo${this.isRecord ? ' · record' : ''}</span></div>
-            <div><b>${this.dodges}</b><span>Schivate</span></div>
-            <div><b>${this.hits}</b><span>Colpi presi</span></div>
-            <div><b>${rank}</b><span>Voto</span></div>
-          </div>
-          <p class="cta">Invio: sogna di nuovo</p>
-        </div>`);
-        this.flags.canLeave = true;
-      }, 3000);
-    }
-    if (this.flags.canLeave) {
-      if (input.wasPressed('Enter', 'Space', 'KeyR')) {
-        this.flags.canLeave = false;
-        ui.fade(0, 300);
-        this.resetRun();
-      }
+    // si entra nell'hotel: il sogno continua, senza interruzioni
+    if (this.endT > 7.5 && !this.flags.nextChapter) {
+      this.flags.nextChapter = true;
+      this.ctx.nextChapter({ campo: { time: this.time, dodges: this.dodges, hits: this.hits } });
     }
   }
 

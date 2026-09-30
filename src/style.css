@@ -422,7 +422,7 @@ kbd {
 #hint {
   position: fixed;
   left: 50%;
-  bottom: 32px;
+  bottom: 66px;
   transform: translateX(-50%);
   font-size: 13px;
   opacity: 0;

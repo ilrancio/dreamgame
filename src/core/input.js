@@ -17,6 +17,9 @@ export class Input {
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
     window.addEventListener('blur', () => this.keys.clear());
+    canvas.addEventListener('mousedown', (e) => {
+      if (this.locked && e.button === 0) this.pressed.add('Mouse0');
+    });
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement === this.canvas) {
         this.mouseDX += e.movementX;
