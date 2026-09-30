@@ -26,7 +26,7 @@ Ogni sogno è riportato come è stato raccontato, seguito da come è stato trasf
 
 - **Schivate**: macigni caduti vicino a te senza colpirti.
 - **Colpi presi**: la macchina regge circa 3 colpi diretti. Se va in pezzi, il sogno "si incrina" e ricomincia.
-- **Voto** (S/A/B/C): dipende da tempo, colpi presi e schivate. Record e voto migliore compaiono sopra la porta nella Stanza dei Sogni.
+- **Voto** (S/A/B/C): dipende da tempo, colpi presi e schivate.
 
 ### Comandi
 

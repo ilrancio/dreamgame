@@ -265,12 +265,11 @@ export class DemonDream {
     if (input.wasPressed('Escape', 'KeyP') && (this.state === 'play' || this.paused)) {
       this.paused = !this.paused;
       ui.center(this.paused ? `<div class="panel pause"><h2>Pausa</h2>
-        <p><kbd>Esc</kbd> riprendi</p><p><kbd>R</kbd> ricomincia il sogno</p><p><kbd>Q</kbd> torna alla stanza dei sogni</p><p><kbd>M</kbd> audio on/off</p></div>` : null);
+        <p><kbd>Esc</kbd> riprendi</p><p><kbd>R</kbd> ricomincia il sogno</p><p><kbd>M</kbd> audio on/off</p></div>` : null);
       if (this.paused) audio.engineUpdate(0, 0, false);
     }
     if (input.wasPressed('KeyM')) audio.toggleMute();
     if (this.paused) {
-      if (input.wasPressed('KeyQ')) this.ctx.goToHub();
       if (input.wasPressed('KeyR')) this.resetRun();
       this.sky.update(this.camera, 0);
       return;
@@ -615,16 +614,13 @@ export class DemonDream {
             <div><b>${this.hits}</b><span>Colpi presi</span></div>
             <div><b>${rank}</b><span>Voto</span></div>
           </div>
-          <p class="cta">Invio: torna alla stanza dei sogni · R: risogna</p>
+          <p class="cta">Invio: sogna di nuovo</p>
         </div>`);
         this.flags.canLeave = true;
       }, 3000);
     }
     if (this.flags.canLeave) {
-      if (input.wasPressed('Enter', 'Space', 'Escape')) {
-        this.flags.canLeave = false;
-        this.ctx.goToHub();
-      } else if (input.wasPressed('KeyR')) {
+      if (input.wasPressed('Enter', 'Space', 'KeyR')) {
         this.flags.canLeave = false;
         ui.fade(0, 300);
         this.resetRun();

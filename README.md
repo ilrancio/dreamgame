@@ -1,6 +1,6 @@
 # Dreamgame
 
-Un gioco 3D in cui **ogni sogno diventa un livello**. Nei livelli non si ricostruisce il sogno alla lettera: si cerca di restituire la *sensazione* che ha lasciato, trasformandola in meccaniche di gioco.
+Un gioco 3D fatto di sogni veri, cuciti in **un'unica esperienza continua**: niente menu, niente livelli separati. I sogni non vengono ricostruiti alla lettera: se ne restituisce la *sensazione*, trasformata in meccaniche che convivono nello stesso mondo.
 
 Tutto è generato nel codice: terreno, modelli, texture, musica ed effetti sonori (Three.js + Web Audio API). Non ci sono asset esterni.
 
@@ -12,13 +12,11 @@ npm run dev        # apri l'indirizzo che compare (di solito http://localhost:51
 npm run build      # versione statica in dist/
 ```
 
-Si comincia nella **Stanza dei Sogni**, un'isola sospesa nel vuoto con il letto da cui ti sei appena alzato e una porta per ogni sogno. Per sognare basta attraversare una porta accesa. Le porte spente aspettano i sogni che verranno.
+Dopo il clic iniziale sei subito nel sogno, al volante.
 
-Scorciatoia per lo sviluppo: `?dream=demone` salta la stanza e apre direttamente il sogno.
+## Sogni raccontati finora
 
-## Sogni
-
-| # | Sogno | Descrizione |
+| # | Sogno | Nel gioco |
 |---|-------|-------------|
 | I | [La Fuga dal Demone](docs/sogni.md#i--la-fuga-dal-demone) | Guida folle in un campo sconfinato, un demone gigante che lancia macigni, una strada di montagna, un hotel di legno enorme. |
 
@@ -30,9 +28,7 @@ L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/
 src/
   main.js            avvio, cambio di scena, ciclo di rendering
   core/              input, audio sintetizzato, UI/HUD, cielo, particelle, texture procedurali
-  hub/Hub.js         la Stanza dei Sogni
-  dreams/index.js    registro dei sogni (uno per porta)
-  dreams/demone/     Sogno I: terreno, macchina, demone, macigni, hotel, scenario
+  dreams/demone/     il campo, la macchina, il demone, i macigni, la strada, l'hotel
 ```
 
-Per aggiungere un sogno: si crea una cartella in `src/dreams/`, con una classe che espone `scene`, `camera`, `update(dt)` e `dispose()`, e la si registra in `src/dreams/index.js`. La porta nella stanza compare da sola.
+Ogni nuovo sogno raccontato si aggiunge allo stesso mondo, con meccaniche che si intrecciano con quelle esistenti.
