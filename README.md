@@ -21,6 +21,7 @@ La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel bro
 | I | [La Fuga dal Demone](docs/sogni.md#i--la-fuga-dal-demone) | Guida folle in un campo sconfinato, un demone gigante che lancia macigni, una strada di montagna fino a un hotel di legno enorme. |
 | II | [L'Hotel dalle Mille Stanze](docs/sogni.md#ii--lhotel-dalle-mille-stanze) | Corridoi e stanze con le porte, un concierge che fa fare il giro lungo, la suite 1313 con il suo bagno: tè con l'amico, doccia o vasca, camino, letto, porta chiusa a chiave. Al mattino, gnomi nella hall da eliminare sparando. |
 | — | [L'hotel non euclideo](docs/sogni.md#lhotel-non-euclideo) | Ascensori verso 500 piani in cinque architetture (cottage, brutalista, classico, moderno, futuristico) ed eventi casuali in qualunque momento. |
+| — | [Le creature dei sogni](docs/sogni.md#le-creature-dei-sogni) | Le entità battute finiscono in una vetrina nella suite; ne scegli una e ti segue (si comincia con 10 gnomi, che crescono fino a 100). |
 | III | [La Sala Giochi](docs/sogni.md#iii--la-sala-giochi-piano-88) | Il piano 88: una sala giochi infinita, cabinati giocabili, biglietti e premi per la suite. |
 
 L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/sogni.md](docs/sogni.md).

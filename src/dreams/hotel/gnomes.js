@@ -24,16 +24,16 @@ function colored(geo, color) {
 }
 
 // Uno gnomo alto ~32 cm: cappello rosso, barba bianca, giacca colorata.
-function gnomeGeometry() {
+export function gnomeGeometry(hat = '#d82a2a', coat = '#3a5ac8') {
   const parts = [];
   const add = (geo, color, x, y, z) => {
     geo.translate(x, y, z);
     parts.push(colored(geo, color));
   };
-  add(new THREE.CylinderGeometry(0.07, 0.09, 0.13, 7), '#3a5ac8', 0, 0.085, 0); // giacca
+  add(new THREE.CylinderGeometry(0.07, 0.09, 0.13, 7), coat, 0, 0.085, 0); // giacca
   add(new THREE.SphereGeometry(0.055, 8, 6), '#f0c0a0', 0, 0.19, 0); // faccia
   add(new THREE.ConeGeometry(0.05, 0.08, 7), '#f4f4f0', 0, 0.15, 0.03); // barba
-  add(new THREE.ConeGeometry(0.065, 0.14, 7), '#d82a2a', 0, 0.28, 0); // cappello
+  add(new THREE.ConeGeometry(0.065, 0.14, 7), hat, 0, 0.28, 0); // cappello
   add(new THREE.SphereGeometry(0.012, 5, 4), '#111', 0.02, 0.2, 0.05);
   add(new THREE.SphereGeometry(0.012, 5, 4), '#111', -0.02, 0.2, 0.05);
   add(new THREE.SphereGeometry(0.018, 6, 4), '#ff9a8a', 0, 0.185, 0.055); // naso

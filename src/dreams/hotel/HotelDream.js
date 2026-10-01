@@ -14,6 +14,7 @@ import { arcadeLayout, buildArcade, ARCADE_STYLE } from './arcade.js';
 import { ArcadeScreen, GAMES } from './games.js';
 import { PRIZES, prizeById } from './prizes.js';
 import { EventDirector } from './events.js';
+import { ENTITIES, UNKNOWN_SLOTS, GnomeFollowers, entityLabel } from './companions.js';
 import { glowTexture, textTexture } from '../../core/textures.js';
 
 const FRIEND = 'Il tuo amico:';
@@ -143,6 +144,9 @@ export class HotelDream {
 
     if (ctx.resumeHotel && this.saved?.reached) this.resume();
     else this.arrive();
+    this.followers = null;
+    this.idleT = 0;
+    if (this.activeEntity) this.setCompanion(this.activeEntity, true);
   }
 
   // ---------- Costruzione ----------
@@ -200,6 +204,7 @@ export class HotelDream {
     rb.numberPlates(this.numbers);
     rb.mergeStatic();
     this.suiteKit?.setPrizes(this.prizes);
+    this.suiteKit?.setEntities(this.entities, this.activeEntity);
     this.makeBuckets();
   }
 
@@ -406,6 +411,8 @@ export class HotelDream {
     this.hasKey = !!s.hasKey;
     this.tickets = s.tickets || 0;
     this.serviceOpen = !!s.serviceOpen;
+    this.entities = s.entities || {};
+    this.activeEntity = s.activeEntity || null;
     this.prizes = s.prizes || [];
   }
 
@@ -421,6 +428,8 @@ export class HotelDream {
       visited: [...this.visited],
       tickets: this.tickets,
       serviceOpen: this.serviceOpen,
+      entities: this.entities,
+      activeEntity: this.activeEntity,
       prizes: this.prizes,
     };
     this.ctx.saveProgress(p);
@@ -987,7 +996,118 @@ export class HotelDream {
     this.script.push({ at: this.time + 4, fn: () => ui.subtitle(FRIEND, 'Torniamo su? Un tè ce lo siamo meritato.', 3) });
     ui.objective('La hall è tranquilla. L\'hotel è vostro: esplora, o torna nella suite.');
     this.setGoal(null);
+    this.collectEntity('gnomi');
     this.save();
+  }
+
+  // ---------- Creature collezionate ----------
+  // Battere un'entità la aggiunge alla vetrina; ribatterla la fa crescere.
+  collectEntity(id) {
+    const { ui } = this.ctx;
+    const e = ENTITIES.find((q) => q.id === id);
+    const cur = this.entities[id] || 0;
+    const next = e.tiers.find((t) => t > cur);
+    if (!next) return;
+    this.entities[id] = next;
+    this.suiteKit?.setEntities(this.entities, this.activeEntity);
+    if (this.activeEntity === id) this.followers?.setCount(next);
+    this.later(7.5, () => {
+      ui.popup(cur ? `${entityLabel(id, next)}!` : `Nuova creatura: ${entityLabel(id, next)}`);
+      ui.subtitle(null, cur
+        ? `Gli gnomi che restano non scappano più. Adesso sono ${next}, e aspettano nella vetrina della suite.`
+        : 'Dieci gnomi non scappano. Si mettono in fila e ti guardano. Ti aspettano nella vetrina della suite.', 4.5);
+    });
+  }
+
+  setCompanion(id, silent = false) {
+    const { ui } = this.ctx;
+    this.followers?.dispose();
+    this.followers = null;
+    this.activeEntity = id;
+    if (id === 'gnomi' && this.entities.gnomi) {
+      this.followers = new GnomeFollowers(this.scene, this.entities.gnomi);
+      if (!silent) {
+        ui.popup(`${entityLabel(id, this.entities.gnomi)} con te`);
+        if (!this.flags.firstCompanion) {
+          this.flags.firstCompanion = true;
+          this.later(1.2, () => ui.subtitle(FRIEND, 'Degli gnomi che ci seguono. Va bene. Nessuno ci farà caso.', 3));
+        }
+      }
+    } else this.activeEntity = null;
+    this.suiteKit?.setEntities(this.entities, this.activeEntity);
+    this.save();
+  }
+
+  openBestiary() {
+    this.ctx.input.unlock();
+    this.bestiaryOpen = true;
+    this.renderBestiary();
+    document.getElementById('bestiary').classList.add('show');
+  }
+
+  renderBestiary() {
+    const el = document.getElementById('bestiary');
+    const rows = ENTITIES.map((e, i) => {
+      const lvl = this.entities[e.id] || 0;
+      if (!lvl) return `<div class="prize-row locked"><kbd>${i + 1}</kbd><span>???<small> · ${e.hint}</small></span></div>`;
+      const on = this.activeEntity === e.id;
+      return `<button class="prize-row${on ? ' active' : ''}" data-entity="${e.id}"><kbd>${i + 1}</kbd><span>${entityLabel(e.id, lvl)}<small> · ${e.origin}</small></span><b>${on ? 'con te' : 'prendi'}</b></button>`;
+    });
+    for (let k = 0; k < UNKNOWN_SLOTS; k++) rows.push('<div class="prize-row locked"><span>???<small> · una creatura di un sogno non ancora sognato</small></span></div>');
+    el.innerHTML = `<div class="prize-panel bestiary">
+      <h3>Vetrina delle creature</h3>
+      <p class="prize-note">Le entità che hai battuto. Scegline una: ti seguirà ovunque.</p>
+      <div class="prize-list">${rows.join('')}</div>
+      <div class="elev-row">
+        <button class="ghost" data-entity-none>Lascia tutti nella vetrina <kbd>0</kbd></button>
+        <button class="ghost" data-close-bestiary>Chiudi <kbd>Esc</kbd></button>
+      </div>
+    </div>`;
+    if (!this.bestiaryClick) {
+      this.bestiaryClick = (ev) => {
+        const b = ev.target.closest('[data-entity]');
+        if (b) this.pickEntity(b.dataset.entity);
+        if (ev.target.closest('[data-entity-none]')) this.pickEntity(null);
+        if (ev.target.closest('[data-close-bestiary]')) this.closeBestiary();
+      };
+      el.addEventListener('click', this.bestiaryClick);
+    }
+  }
+
+  pickEntity(id) {
+    if (id && !this.entities[id]) return;
+    if (id === this.activeEntity) id = null;
+    this.setCompanion(id);
+    if (!id) this.ctx.ui.popup('Tutti nella vetrina');
+    this.renderBestiary();
+  }
+
+  bestiaryKeys(input) {
+    ENTITIES.forEach((e, i) => {
+      if (input.wasPressed(`Digit${i + 1}`, `Numpad${i + 1}`)) this.pickEntity(e.id);
+    });
+    if (input.wasPressed('Digit0', 'Numpad0')) this.pickEntity(null);
+    if (input.wasPressed('Escape', 'KeyQ', 'KeyE')) this.closeBestiary();
+  }
+
+  closeBestiary() {
+    this.bestiaryOpen = false;
+    document.getElementById('bestiary').classList.remove('show');
+  }
+
+  updateFollowers(dt, inSuite) {
+    if (!this.followers) return;
+    const p = this.player;
+    const moving = Math.hypot(p.vel.x, p.vel.z) > 0.3;
+    this.idleT = moving ? 0 : this.idleT + dt;
+    // nella suite, quando ti fermi, vanno a sedersi davanti al camino
+    let mode = 'follow';
+    let spot = null;
+    if (inSuite && this.suiteKit && (this.idleT > 2.5 || this.activity) && this.phase !== 'fight') {
+      mode = 'gather';
+      spot = { x: this.suiteKit.fireplace.x, z: this.suiteKit.fireplace.z, facing: 0 };
+    }
+    this.followers.update(dt, this.time, p, this.layout.blocked, mode, spot);
   }
 
   spawnGnome(fromBalcony) {
@@ -1115,7 +1235,7 @@ export class HotelDream {
   // ---------- Ciclo ----------
   update(dt) {
     const { input, ui, audio } = this.ctx;
-    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen;
+    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen;
     if (!menus && input.wasPressed('KeyP', 'Escape') && this.phase !== 'sleeping' && this.phase !== 'riding') {
       this.paused = !this.paused;
       ui.center(this.paused ? '<div class="panel pause"><h2>Pausa</h2><p><kbd>P</kbd> riprendi</p><p><kbd>M</kbd> audio on/off</p><p>Il sogno si salva da solo.</p></div>' : null);
@@ -1135,6 +1255,7 @@ export class HotelDream {
     if (this.elevatorPanel.open) this.elevatorPanel.handleKeys(input);
     if (this.arcadeScreen.open) this.arcadeScreen.update(dt, input);
     if (this.prizeOpen) this.prizeKeys(input);
+    if (this.bestiaryOpen) this.bestiaryKeys(input);
 
     const room = roomAt(this.layout, this.player.pos.x, this.player.pos.z);
     const inSuite = this.isSuiteRoom(room);
@@ -1157,6 +1278,7 @@ export class HotelDream {
     }
     this.updateFriend(dt);
     this.updateConcierge(dt);
+    this.updateFollowers(dt, inSuite);
     const actors = [this.player.pos, this.friend.pos];
     if (this.floorNum === 0 && this.conciergeState !== 'desk') actors.push(this.concierge.pos);
     this.doors.update(dt, actors);
@@ -1544,6 +1666,10 @@ export class HotelDream {
     if (near(k.armchair.pos, 1.4)) {
       if (E) this.startActivity('fire');
       return '<kbd>E</kbd> siediti davanti al fuoco';
+    }
+    if (near(k.vitrineSpot, 1.5)) {
+      if (E) this.openBestiary();
+      return '<kbd>E</kbd> apri la vetrina delle creature';
     }
     if (near(k.lampSpot, 1.3)) {
       if (E) {
@@ -1971,6 +2097,8 @@ export class HotelDream {
     this.elevatorPanel.close();
     if (this.arcadeScreen.open) this.arcadeScreen.finish();
     this.closePrizes();
+    this.closeBestiary();
+    this.followers?.dispose();
     this.rb.dispose();
     this.floorExtra?.dispose();
     this.flashTex.dispose();

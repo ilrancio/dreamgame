@@ -549,7 +549,8 @@ kbd {
 
 /* ---------- Ascensore ---------- */
 #elevator,
-#prizes {
+#prizes,
+#bestiary {
   position: fixed;
   inset: 0;
   display: none;
@@ -559,7 +560,8 @@ kbd {
 }
 
 #elevator.show,
-#prizes.show {
+#prizes.show,
+#bestiary.show {
   display: grid;
 }
 
@@ -808,4 +810,43 @@ kbd {
 #arcade-footer {
   font-size: 13px;
   opacity: 0.8;
+}
+
+/* ---------- Vetrina delle creature ---------- */
+.prize-panel.bestiary {
+  background: linear-gradient(180deg, #2a2016, #16100a);
+  border-color: #c8a050;
+}
+
+.prize-panel.bestiary h3 {
+  font-family: 'Cormorant Garamond', serif;
+  letter-spacing: 0.04em;
+  color: #f4e2b8;
+}
+
+.prize-row.locked {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.prize-row.active {
+  border-color: #ffd28a;
+  background: rgba(255, 210, 138, 0.12);
+}
+
+.prize-panel.bestiary .elev-row button {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid #c8a050;
+  background: transparent;
+  color: #f4e6c8;
+  font: 700 12px 'Inter', sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.prize-panel.bestiary .elev-row button:hover,
+.prize-panel.bestiary .elev-row button:focus-visible {
+  background: rgba(200, 160, 80, 0.18);
 }

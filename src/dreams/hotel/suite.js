@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { prizeModel } from './prizes.js';
+import { ENTITIES, UNKNOWN_SLOTS, entityLabel } from './companions.js';
+import { textTexture } from '../../core/textures.js';
 
 // La suite 1313: una stanza da vivere, e un posto sicuro.
 // Coordinate in metri dall'angolo sud-ovest della suite (x verso est, z verso
@@ -118,7 +120,26 @@ export function buildSuite(a, bathApi, rb) {
   box(0.6, 0.5, 0.35, a.mat('#6a2a1a'), 7.3, 0.25, 23.3);
   a.glowSprite('#ffe2b0', ...spread(P(9, 16), 5.1), 6, 0.3);
 
+  // ---------- Vetrina delle creature (parete nord, accanto all'armadio) ----------
+  const vx = 13.6;
+  const vz = 23.4;
+  box(2.4, 0.15, 0.62, darkWood, vx, 0.08, vz);
+  box(2.4, 0.12, 0.62, darkWood, vx, 2.3, vz, { collide: false });
+  for (const dx of [-1.17, 1.17]) box(0.06, 2.2, 0.62, darkWood, vx + dx, 1.2, vz, { collide: false });
+  box(2.3, 2.1, 0.03, a.mat('#d8ecf4', { transparent: 0.2 }), vx, 1.2, vz - 0.3, { collide: false });
+  for (let r = 0; r < 2; r++) box(2.3, 0.04, 0.55, a.mat('#e8e0d0'), vx, 0.8 + r * 0.75, vz, { collide: false });
+  a.collider(...P(vx, vz), 2.4, 0.62);
+  const vLight = a.glowSprite('#fff4dc', ...spread(P(vx, vz - 0.1), 2.1), 2.4, 0.35);
+  void vLight;
+  const vitrineGroup = new THREE.Group();
+  rb.dynamic.add(vitrineGroup);
+  const vitrineTrack = [];
+  // posti nella vetrina: due ripiani, due posti per ripiano
+  const slots = [[-0.55, 0.84], [0.55, 0.84], [-0.55, 1.59], [0.55, 1.59]];
+
   // ---------- Il bagno: una stanza a sé, con la sua porta ----------
+
+  // (il bagno: una stanza a sé, con la sua porta)
   const tiles = bathApi.mat('#f2f4f4');
   // doccia nell'angolo nord-est
   bbox(1.85, 0.08, 1.85, bathApi.mat('#9aa4a8'), 16.85, 0.04, 6.85, { collide: false });
@@ -195,6 +216,52 @@ export function buildSuite(a, bathApi, rb) {
         m.position.copy(W(0.53, shelfZ + ((i % 3) - 1) * 0.45, 0.46 + row * 0.6));
         m.rotation.y = Math.PI / 2;
         shelf.add(m);
+      });
+    },
+    vitrineSpot: W(vx, vz - 1.4),
+    // statuette delle creature: quelle sbloccate, e sagome scure per le altre
+    setEntities(levels = {}, active = null) {
+      vitrineGroup.clear();
+      vitrineTrack.forEach((d) => d.dispose());
+      vitrineTrack.length = 0;
+      const tr = (o) => (vitrineTrack.push(o), o);
+      const items = [...ENTITIES.map((e) => ({ e, level: levels[e.id] || 0 })), ...Array.from({ length: UNKNOWN_SLOTS }, () => ({ e: null, level: 0 }))];
+      items.slice(0, slots.length).forEach(({ e, level }, k) => {
+        const [sx, sy] = slots[k];
+        const base = W(vx + sx, vz, sy);
+        const g = new THREE.Group();
+        g.position.copy(base);
+        vitrineGroup.add(g);
+        if (e && level) {
+          // tanti gnomini di ceramica quanti ne hai (fino a dieci, per stare nel ripiano)
+          const shown = Math.min(10, level);
+          for (let q = 0; q < shown; q++) {
+            const m = prizeModel('gnomo', tr);
+            m.scale.setScalar(0.55);
+            m.position.set(((q % 5) - 2) * 0.1, 0, Math.floor(q / 5) * 0.12 - 0.06);
+            m.rotation.y = Math.PI + (Math.random() - 0.5) * 0.4;
+            g.add(m);
+          }
+          const label = entityLabel(e.id, level) + (active === e.id ? ' · con te' : '');
+          const t = tr(textTexture(label, { width: 256, height: 64, font: '600 30px Cormorant Garamond, serif', color: '#3a2416', bg: '#f0e6cc' }));
+          const plate = new THREE.Mesh(tr(new THREE.PlaneGeometry(0.42, 0.1)), tr(new THREE.MeshBasicMaterial({ map: t })));
+          plate.position.set(0, 0.03, -0.27);
+          plate.rotation.y = Math.PI;
+          g.add(plate);
+        } else {
+          // sagoma scura: una creatura di un sogno non ancora sognato
+          const dark = tr(new THREE.MeshStandardMaterial({ color: '#141018', roughness: 1 }));
+          const body = new THREE.Mesh(tr(new THREE.CylinderGeometry(0.06, 0.1, 0.22, 10)), dark);
+          body.position.y = 0.11;
+          const head = new THREE.Mesh(tr(new THREE.SphereGeometry(0.08, 10, 8)), dark);
+          head.position.y = 0.3;
+          g.add(body, head);
+          const t = tr(textTexture('???', { width: 256, height: 64, font: '600 34px Cormorant Garamond, serif', color: '#8a8070', bg: '#2a2420' }));
+          const plate = new THREE.Mesh(tr(new THREE.PlaneGeometry(0.42, 0.1)), tr(new THREE.MeshBasicMaterial({ map: t })));
+          plate.position.set(0, 0.03, -0.27);
+          plate.rotation.y = Math.PI;
+          g.add(plate);
+        }
       });
     },
     setDay(day) {

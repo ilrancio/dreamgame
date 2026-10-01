@@ -99,3 +99,16 @@ Fili che attraversano tutto:
 | Una sala giochi | La musica è chiptune, si sentono bip dappertutto, gli schermi sono animati in "modalità dimostrativa" e quasi tutti ripetono *INSERT COIN*. |
 | Giocare | Un cabinato su tre è **giocabile** (<kbd>E</kbd>) su uno schermo a tubo catodico: **Gnomi Invaders** (gnomi a ondate, spari vapore da una teiera), **Fuga dal Demone** (il primo sogno in versione arcade), **Ping del Tè** (pong contro il tuo amico, che commenta ogni punto) e l'**Artiglio** (la gru dei peluche: tre tentativi, e la presa a volte si allenta). |
 | Premi | Ogni partita dà **biglietti**. Al **banco premi** si scambiano con paperella, cartolina del campo, dado di peluche, gnomo di ceramica, palla a specchi, razzo di latta, demone di peluche, lampada lava, teiera d'oro. I premi, vinti o comprati, finiscono sulla **mensola della suite 1313**, tra il tavolino del tè e il camino. |
+
+---
+
+## Le creature dei sogni
+
+> *Vorrei una meccanica di creature collecting: collezioni le entità che batti. Quando batti l'evento degli gnomi sblocchi l'entità "10 gnomi". Puoi scegliere l'entità da una mensola nella tua suite e questa ti segue. I 10 gnomi sono ovviamente un gruppo di 10 gnomi che ti seguono.* (Pura compagnia; il demone del campo resta fuori.)
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Collezioni le entità che batti | Ogni entità battuta diventa una **statuetta nella vetrina della suite**, contro la parete nord accanto all'armadio. È separata dalla mensola dei premi della sala giochi. Le creature non ancora incontrate sono **sagome scure con "???"**: aspettano i sogni futuri. |
+| Gli gnomi: "10 gnomi" | Liberando la hall al mattino sblocchi **10 gnomi**. Ogni mattina che la liberi di nuovo il gruppo cresce: **25, poi 50, poi 100 gnomi**. Nella vetrina compaiono come gnomini di ceramica con la targhetta. |
+| La scegli e ti segue | <kbd>E</kbd> davanti alla vetrina apre la **Vetrina delle creature**: scegli chi portare con te (una creatura alla volta, oltre all'amico), oppure "lascia tutti nella vetrina". La scelta resta salvata. |
+| Un gruppo di gnomi che ti segue | Gnomi amici, con il **cappello blu e la giacca gialla** come la maglietta del tuo amico, che ti trotterellano dietro in fila da cinque, su ogni piano, in ascensore e nella sala giochi. Quando sei fermo si guardano intorno e ogni tanto fanno un saltello. **Pura compagnia**: non combattono e non servono a niente. Nella suite, quando ti fermi o fai qualcosa con calma, vanno a sedersi in semicerchio davanti al camino. |
