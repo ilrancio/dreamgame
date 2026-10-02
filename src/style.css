@@ -850,3 +850,10 @@ kbd {
 .prize-panel.bestiary .elev-row button:focus-visible {
   background: rgba(200, 160, 80, 0.18);
 }
+
+/* Il cannocchiale del belvedere: un cerchio di vista nel buio */
+.scope-mask {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, transparent 0 30vmin, rgba(0, 0, 0, 0.6) 31vmin, rgba(0, 0, 0, 0.97) 33vmin);
+}

@@ -419,6 +419,83 @@ export class AudioEngine {
     }, 140);
   }
 
+  // Campana di bronzo: parziali inarmoniche con una lunga coda che si spegne.
+  bell(vol = 0.3, base = 196) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    [[0.5, 1], [1, 0.8], [1.19, 0.5], [1.5, 0.4], [2, 0.35], [2.52, 0.2], [3.01, 0.12]].forEach(([m, a]) => {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = base * m;
+      const g = c.createGain();
+      const dur = 6 / Math.sqrt(m);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol * a, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + dur + 0.1);
+    });
+  }
+
+  // Natura all'aperto: uccellini di giorno, grilli di notte.
+  ambience(kind) {
+    clearInterval(this.ambTimer);
+    this.ambTimer = null;
+    if (!this.ctx || !kind) return;
+    this.ambTimer = setInterval(() => {
+      if (this.muted) return;
+      if (kind === 'birds') {
+        if (Math.random() < 0.3) this.chirp();
+      } else if (Math.random() < 0.6) this.cricket();
+    }, kind === 'birds' ? 320 : 380);
+  }
+
+  chirp(vol = 0.018) {
+    const c = this.ctx;
+    let t = c.currentTime;
+    const f = 2600 + Math.random() * 1800;
+    const n = 2 + Math.floor(Math.random() * 3);
+    for (let k = 0; k < n; k++) {
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(f, t);
+      o.frequency.exponentialRampToValueAtTime(f * (1.2 + Math.random() * 0.4), t + 0.06);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 0.1);
+      t += 0.09 + Math.random() * 0.05;
+    }
+  }
+
+  cricket(vol = 0.01) {
+    const c = this.ctx;
+    const t0 = c.currentTime;
+    const f = 4000 + Math.random() * 600;
+    for (let k = 0; k < 3; k++) {
+      const t = t0 + k * 0.05;
+      const o = c.createOscillator();
+      o.type = 'square';
+      o.frequency.value = f;
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = f;
+      bp.Q.value = 8;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      o.connect(bp).connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 0.04);
+    }
+  }
+
   // ---------- Musica d'atmosfera ----------
   // Un pad è un accordo di oscillatori lenti; si attivano/spengono con dissolvenza.
   pad(name, freqs, { vol = 0.06, type = 'sine', cutoff = 1200, tremolo = 0 } = {}) {

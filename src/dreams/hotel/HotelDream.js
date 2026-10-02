@@ -142,8 +142,10 @@ export class HotelDream {
     this.onCanvasClick = () => ctx.input.lock();
     ctx.renderer.domElement.addEventListener('click', this.onCanvasClick);
 
-    if (ctx.resumeHotel && this.saved?.reached) this.resume();
+    if (ctx.resumeHotel && this.saved?.reached && ctx.hotelEntry === 'door') this.enterFromDoor();
+    else if (ctx.resumeHotel && this.saved?.reached) this.resume();
     else this.arrive();
+    ctx.hotelEntry = null;
     this.followers = null;
     this.idleT = 0;
     if (this.activeEntity) this.setCompanion(this.activeEntity, true);
@@ -478,6 +480,44 @@ export class HotelDream {
     this.snapCamera();
     this.enterSuiteMood();
     this.script = [{ at: 1.5, fn: () => this.ctx.ui.subtitle(FRIEND, this.timeOfDay === 'night' ? 'Eccoti. Il tè è ancora caldo.' : 'Bentornato. La hall è tranquilla, oggi.', 3) }];
+  }
+
+  // Si rientra dal portone dopo una passeggiata fuori: si è nella hall.
+  enterFromDoor() {
+    const s = this.saved;
+    const { ui, audio } = this.ctx;
+    this.resetCommon();
+    if (s.timeOfDay === 'day' && !s.hallCleared) {
+      // il mattino degli gnomi non è passato: le pistole aspettano nella suite
+      this.startMorning(false);
+      audio.stopAllPads(1);
+      audio.loop('fire', false);
+    } else {
+      this.timeOfDay = s.timeOfDay || 'night';
+      this.hallCleared = s.hallCleared ?? true;
+    }
+    this.hasKey = !!s.hasKey;
+    this.player.pos.set(0, 0, 2.4);
+    this.player.vel.set(0, 0, 0);
+    this.player.facing = 0;
+    this.friend.pos.set(1.6, 0, 2);
+    this.camYaw = 0;
+    this.camPitch = 0.25;
+    this.applyTime();
+    this.snapCamera();
+    if (this.timeOfDay === 'night') audio.pad('hotel', [98, 146.8, 196, 246.9], { vol: 0.04, cutoff: 1100 });
+    if (!this.hasKey) {
+      this.setGoal('bell');
+      ui.objective('Suona il campanello della reception.');
+    } else if (this.timeOfDay === 'day' && !this.hallCleared) {
+      this.setGoal('suite');
+      ui.objective('Le pistole sono rimaste sul tavolino della suite.');
+    } else {
+      this.setGoal(null);
+      ui.objective(this.timeOfDay === 'night' ? 'Torna nella suite, quando vuoi.' : 'L\'hotel è vostro. Fuori, il borgo in vetta.');
+    }
+    this.script = [{ at: this.time + 1.4, fn: () => ui.subtitle(FRIEND, this.timeOfDay === 'night' ? 'Ah, il caldo del legno. Si sta bene, dentro.' : 'Rieccoci. L\'atrio sembra ancora più grande, dopo l\'aria di fuori.', 3.2) }];
+    this.save();
   }
 
   resetCommon() {
@@ -1691,6 +1731,14 @@ export class HotelDream {
     return null;
   }
 
+  goOutside() {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.ctx.ui.hint(null);
+    this.save();
+    this.ctx.goOutside();
+  }
+
   updatePlayer(dt, active) {
     const { input, audio } = this.ctx;
     const p = this.player;
@@ -1769,8 +1817,9 @@ export class HotelDream {
         }
       }
     } else {
-      // dal portone non si esce: il sogno continua qui dentro
+      // dal portone si esce all'aperto (la strada sale fino al borgo in vetta)
       p.pos.x = clamp(p.pos.x, X0 + 0.6, X0 + NW - 0.6);
+      if (active && this.floorNum === 0 && this.phase === 'explore' && !this.activity && p.pos.z < 1.1 && mz < -0.5 && Math.abs(p.pos.x) < ENTRANCE_W / 2 - 0.4) this.goOutside();
       p.pos.z = clamp(p.pos.z, 0.9, Z0 + NH - 0.6);
     }
 

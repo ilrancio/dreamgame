@@ -1,6 +1,6 @@
 # Diario dei sogni
 
-Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel, che **non è uno spazio euclideo**: da fuori sembra una grande baita di tre piani, dentro è mastodontico, con **centinaia di piani** in stili diversi. I sogni possono accadere nelle stanze, in intere zone o piani dell'hotel, oppure come **eventi casuali** in qualunque momento. Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
+Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel, che **non è uno spazio euclideo**: da fuori sembra una grande baita di tre piani, dentro è mastodontico, con **centinaia di piani** in stili diversi. I sogni possono accadere nelle stanze, in intere zone o piani dell'hotel, oppure come **eventi casuali** in qualunque momento. Dal portone dell'hotel si può anche **uscire**: la strada continua a salire fino a un borgo di montagna in vetta. Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
 
 Ogni sogno è riportato come è stato raccontato, seguito da come è stato trasformato in gioco.
 
@@ -112,3 +112,18 @@ Fili che attraversano tutto:
 | Gli gnomi: "10 gnomi" | Liberando la hall al mattino sblocchi **10 gnomi**. Ogni mattina che la liberi di nuovo il gruppo cresce: **25, poi 50, poi 100 gnomi**. Nella vetrina compaiono come gnomini di ceramica con la targhetta. |
 | La scegli e ti segue | <kbd>E</kbd> davanti alla vetrina apre la **Vetrina delle creature**: scegli chi portare con te (una creatura alla volta, oltre all'amico), oppure "lascia tutti nella vetrina". La scelta resta salvata. |
 | Un gruppo di gnomi che ti segue | Gnomi amici, con il **cappello blu e la giacca gialla** come la maglietta del tuo amico, che ti trotterellano dietro in fila da cinque, su ogni piano, in ascensore e nella sala giochi. Quando sei fermo si guardano intorno e ogni tanto fanno un saltello. **Pura compagnia**: non combattono e non servono a niente. Nella suite, quando ti fermi o fai qualcosa con calma, vanno a sedersi in semicerchio davanti al camino. |
+
+---
+
+## La strada continua: il borgo in vetta
+
+> *Vorrei che la strada che porta all'hotel continuasse e portasse a un villaggio tipico italiano di montagna, sulla vetta.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| La strada continua oltre l'hotel | Dalla hall si esce dal **portone** e ci si ritrova in cima alla scalinata, all'aperto, alla stessa ora che c'era dentro (giorno o notte stellata). La macchina rossa è parcheggiata davanti all'hotel. Dal piazzale parte un secondo tratto di strada, **circa 900 m di tornanti** che salgono di 200 m fino alla vetta di una montagna nuova, accanto all'hotel. |
+| A piedi o in macchina | Si sale a piedi (<kbd>Shift</kbd> per correre) oppure si torna al volante: <kbd>E</kbd> vicino alla macchina per salire, <kbd>E</kbd> da fermi per scendere. Nessun demone, stavolta: il tuo amico ti invita a goderti il panorama. Gli gnomi che hai scelto nella vetrina ti seguono anche fuori, ma restano a casa quando sei in macchina. |
+| Un villaggio tipico italiano di montagna | **Sant'Onirio, 1913 m s.l.m.**: un altopiano lastricato di ciottoli, una trentina di case di pietra e d'intonaco con il tetto a falde, le **persiane verdi**, i **gerani** alle finestre, i balconi di legno, le cataste di legna, i fili del bucato tra le case. Al centro la **piazza con la fontana**, i lampioni e le panchine. A nord la **chiesa bianca** con il rosone e il **campanile**, a sud il **Bar Alpino** con la tenda a righe e i tavolini all'aperto. All'ingresso del paese il cartello e un'**edicola votiva** con un lumino sempre acceso. Di notte le finestre si accendono una a una. |
+| Sulla vetta | Dal **belvedere**, oltre la ringhiera, si vede tutta la valle. Il **cannocchiale** (<kbd>E</kbd>) inquadra l'hotel, minuscolo laggiù; muovendo il mouse si cerca il campo, dove il demone è ancora fermo. Da quassù nessuno ci vede. |
+| I luoghi si vivono | Come nella suite, qui ci si ferma: un **caffè al Bar Alpino** seduti al tavolino con il tuo amico (ogni volta parlate di cose diverse), un sorso d'acqua gelida alla **fontana**, la corda della **campana** (tre rintocchi che rimbombano per la valle, e gli anziani in piazza che brontolano). Si chiacchiera con gli abitanti: il barista, due anziani che giocano a carte sulla panchina, una signora con lo scialle al belvedere. Di giorno cantano gli uccellini, di notte i grilli. |
+| Si torna a casa | Si rientra camminando dentro il portone: si è di nuovo nella hall, senza interruzioni. Se fuori era mattina e la hall è ancora piena di gnomi, le pistole sono rimaste sul tavolino della suite. |

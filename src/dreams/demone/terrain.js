@@ -14,6 +14,8 @@ export const FIELD = { cx: 0, cz: -250, rx: 820, rz: 720 };
 export const START = { x: 120, z: -850, heading: 0.12 };
 export const DEMON_POS = { x: -430, z: -80 };
 export const HOTEL = { x: -80, z: 1330, plateau: 215 };
+// Il borgo in vetta: la strada, oltre l'hotel, continua a salire fin quassù.
+export const VILLAGE = { x: 380, z: 1180, plateau: 420, r: 130 };
 export const ROAD_HALF = 7;
 const ROAD_FLAT = 19;
 const ROAD_BLEND = 48;
@@ -36,6 +38,20 @@ const ROAD_POINTS = [
   [-200, 1130],
   [-130, 1180],
   [-85, 1228],
+];
+
+// Il tratto che dal parcheggio dell'hotel sale al borgo, a tornanti.
+const UPPER_POINTS = [
+  [-20, 1255],
+  [70, 1215],
+  [160, 1250],
+  [150, 1340],
+  [240, 1400],
+  [350, 1440],
+  [460, 1400],
+  [520, 1300],
+  [500, 1210],
+  [455, 1180],
 ];
 
 export class Terrain {
@@ -71,6 +87,14 @@ export class Terrain {
       const r = ridged(this.noise2, x / 600, z / 600, 4);
       h += m * (220 + 360 * r + 40 * n(x / 180, z / 180));
     }
+    // la montagna del borgo: un cono che sale fino all'altopiano della vetta
+    const dv = Math.hypot(x - VILLAGE.x, z - VILLAGE.z);
+    if (dv < 480) {
+      const peak = VILLAGE.plateau - smoothstep(VILLAGE.r, 470, dv) * (VILLAGE.plateau - 120) + 6 * n(x / 40, z / 40) * smoothstep(VILLAGE.r, VILLAGE.r + 60, dv);
+      h = Math.max(h, peak);
+      const flat = 1 - smoothstep(VILLAGE.r - 15, VILLAGE.r + 25, dv);
+      if (flat > 0) h += (VILLAGE.plateau - h) * flat;
+    }
     // altopiano dell'hotel
     const dh = Math.hypot(x - HOTEL.x, z - HOTEL.z);
     const p = 1 - smoothstep(120, 230, dh);
@@ -78,31 +102,38 @@ export class Terrain {
     return h;
   }
 
+  // Due tratti di strada: dal campo all'hotel (quello del prologo) e dall'hotel
+  // al borgo in vetta. I campioni stanno in un unico elenco: prima il primo
+  // tratto, poi il secondo; `s` continua a crescere lungo tutto il percorso.
   buildRoadCurve() {
-    const curve = new THREE.CatmullRomCurve3(
-      ROAD_POINTS.map(([x, z]) => new THREE.Vector3(x, 0, z)),
-      false,
-      'centripetal',
-    );
-    this.roadLength = curve.getLength();
-    const count = Math.floor(this.roadLength / 2);
-    const pts = curve.getSpacedPoints(count);
-    const h0 = this.natural(pts[0].x, pts[0].z);
-    const h1 = HOTEL.plateau;
-    this.road = pts.map((p, i) => {
-      const s = (i / count) * this.roadLength;
-      const t = clamp((s - 150) / (this.roadLength - 220), 0, 1);
-      // salita con leggero "ease" all'inizio e alla fine
-      const e = t * t * (3 - 2 * t) * 0.35 + t * 0.65;
-      return { x: p.x, z: p.z, s, h: h0 + (h1 - h0) * e, tx: 0, tz: 1 };
-    });
-    for (let i = 0; i < this.road.length; i++) {
-      const a = this.road[Math.max(0, i - 1)];
-      const b = this.road[Math.min(this.road.length - 1, i + 1)];
-      const l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
-      this.road[i].tx = (b.x - a.x) / l;
-      this.road[i].tz = (b.z - a.z) / l;
-    }
+    const sample = (points, s0, h0, h1, easeFrom, roadId) => {
+      const curve = new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, 0, z)), false, 'centripetal');
+      const len = curve.getLength();
+      const count = Math.floor(len / 2);
+      const pts = curve.getSpacedPoints(count);
+      const startH = h0 ?? this.natural(pts[0].x, pts[0].z);
+      const out = pts.map((p, i) => {
+        const ls = (i / count) * len;
+        const t = clamp((ls - easeFrom) / (len - easeFrom - 70), 0, 1);
+        // salita con leggero "ease" all'inizio e alla fine
+        const e = t * t * (3 - 2 * t) * 0.35 + t * 0.65;
+        return { x: p.x, z: p.z, s: s0 + ls, h: startH + (h1 - startH) * e, tx: 0, tz: 1, road: roadId };
+      });
+      for (let i = 0; i < out.length; i++) {
+        const a = out[Math.max(0, i - 1)];
+        const b = out[Math.min(out.length - 1, i + 1)];
+        const l = Math.hypot(b.x - a.x, b.z - a.z) || 1;
+        out[i].tx = (b.x - a.x) / l;
+        out[i].tz = (b.z - a.z) / l;
+      }
+      return { out, len };
+    };
+    const main = sample(ROAD_POINTS, 0, null, HOTEL.plateau, 150, 0);
+    this.roadLength = main.len; // il prologo misura solo il primo tratto
+    const upper = sample(UPPER_POINTS, main.len + 40, HOTEL.plateau, VILLAGE.plateau, 30, 1);
+    this.upperLength = upper.len;
+    this.upperStart = main.out.length;
+    this.road = main.out.concat(upper.out);
   }
 
   buildHeights() {
@@ -248,7 +279,8 @@ export class Terrain {
       positions.set([p.x + sx * ROAD_HALF, y, p.z + sz * ROAD_HALF], i * 6);
       positions.set([p.x - sx * ROAD_HALF, y, p.z - sz * ROAD_HALF], i * 6 + 3);
       uvs.set([0, p.s / 14, 1, p.s / 14], i * 4);
-      if (i < n - 1) {
+      // non si collega la fine del primo tratto con l'inizio del secondo
+      if (i < n - 1 && this.road[i + 1].road === p.road) {
         const a = i * 2;
         idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
       }

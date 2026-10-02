@@ -54,6 +54,7 @@ export class GnomeFollowers {
       this.idleT[i] = Math.random() * 4;
     }
     this.placed = false;
+    this.ground = null; // all'aperto: altezza del terreno sotto ogni gnomo
   }
 
   setCount(n) {
@@ -82,7 +83,9 @@ export class GnomeFollowers {
     return [leader.pos.x - fx * back + fz * col * 0.36 + this.jx[i], leader.pos.z - fz * back - fx * col * 0.36 + this.jz[i]];
   }
 
+  // blocked: la griglia di un piano dell'hotel, oppure (all'aperto) una funzione
   blockedAt(blocked, x, z) {
+    if (typeof blocked === 'function') return blocked(x, z);
     const i = Math.floor(x - X0);
     const j = Math.floor(z - Z0);
     if (i < 0 || i >= NW || j < 0 || j >= NH) return true;
@@ -147,7 +150,7 @@ export class GnomeFollowers {
       mat[o + 10] = c;
       mat[o + 11] = 0;
       mat[o + 12] = this.x[i];
-      mat[o + 13] = this.y[i];
+      mat[o + 13] = this.y[i] + (this.ground ? this.ground(this.x[i], this.z[i]) : 0);
       mat[o + 14] = this.z[i];
       mat[o + 15] = 1;
     }

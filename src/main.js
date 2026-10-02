@@ -5,6 +5,7 @@ import { UI } from './core/ui.js';
 import { loadProgress, saveProgress } from './core/progress.js';
 import { DemonDream } from './dreams/demone/DemonDream.js';
 import { HotelDream } from './dreams/hotel/HotelDream.js';
+import { OutdoorDream } from './dreams/esterno/OutdoorDream.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -28,12 +29,21 @@ const ctx = {
     ctx.resumeHotel = false;
     goToChapter(chapterIndex + 1);
   },
+  // dal portone dell'hotel si esce all'aperto, e si rientra: niente risveglio
+  goOutside: () => goToChapter(2),
+  enterHotel: () => {
+    ctx.resumeHotel = true;
+    ctx.hotelEntry = 'door';
+    goToChapter(1);
+  },
 };
 
-// Un solo sogno che non finisce: il campo è il prologo, poi si vive nell'hotel.
+// Un solo sogno che non finisce: il campo è il prologo, poi si vive nell'hotel
+// e intorno all'hotel (la strada continua fino al borgo in vetta).
 const CHAPTERS = [
   { id: 'campo', create: (c) => new DemonDream(c), card: 'Chiudi gli occhi. Stai già guidando.', color: '#000' },
   { id: 'hotel', create: (c) => new HotelDream(c), card: null, color: '#ffe2b0' },
+  { id: 'esterno', create: (c) => new OutdoorDream(c), card: null, color: '#dfe8f4' },
 ];
 
 let current = null;
@@ -104,8 +114,8 @@ if (hasHotel) {
   document.getElementById('btn-restart').addEventListener('click', () => begin(0));
 } else {
   title.addEventListener('click', () => {
-    // scorciatoia di sviluppo: #hotel parte dall'arrivo in hotel
-    begin(location.hash === '#hotel' ? 1 : 0);
+    // scorciatoie di sviluppo: #hotel parte dall'arrivo in hotel, #esterno dal portone
+    begin({ '#hotel': 1, '#esterno': 2 }[location.hash] ?? 0);
   });
 }
 
