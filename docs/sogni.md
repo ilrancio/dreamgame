@@ -155,3 +155,20 @@ Fili che attraversano tutto:
 | Provare i giochi retro | <kbd>E</kbd> al tubo catodico ti siedi sul pouf e scegli una **cartuccia**. C'è un gioco nuovo, **Serpente** (verde fosforo, mangi cappelli da gnomo), che è il preferito del commesso. Ci sono anche Gnomi Invaders, Fuga dal Demone e Ping del Tè contro il tuo amico. I **biglietti** vinti qui valgono anche al banco premi della sala giochi, al piano 88. |
 | Un pouf dove sederti o sdraiarti | Un grande **pouf** fucsia per te e uno blu più piccolo per il tuo amico. Da seduto guardi lo schermo. Con <kbd>Spazio</kbd> **ti sdrai**: la camera ti guarda dall'alto e compare un cerchio che **respira** (*inspira... espira*). |
 | Il commesso che trasmetteva tranquillità | Ha un maglione verde salvia e parla piano, con lunghe pause: "Non c'è fretta. Qui dentro il tempo va un po' più piano." Quando sei sdraiato ti accompagna ("Respira con il ronzio. Dentro... e fuori."). Nel suo negozio la musica del centro lascia il posto a un accordo caldo e lento, e **si cammina più piano senza volerlo**. |
+
+---
+
+## I gesti: un minigioco per ogni cosa di tutti i giorni
+
+> *Vorrei aggiungere minigiochi un po' per tutto, per esempio per preparare il caffè con la moca, per lavarsi sotto la doccia, ecc.*
+
+Le attività che si "vivono" cominciano con un **gesto**: un minigioco breve e gentile su una scheda di carta, con la scena 3D che resta visibile dietro. Non si perde mai: alla fine c'è un giudizio affettuoso (da *Un disastro, ma va bene lo stesso* a *Perfetto*, con le stelline). Il gioco ricorda il tuo migliore, e il tuo amico commenta. Con <kbd>Esc</kbd> si salta il gesto e l'attività va avanti come prima. Si gioca con il mouse oppure con la tastiera.
+
+| Gesto | Dove | Come si fa |
+|-------|------|------------|
+| **La moka** | Suite 1313, la nuova credenza con il fornellino accanto al tavolino del tè | Si versa l'acqua nella caldaia tenendo premuto e ci si ferma **sotto la valvola**. Si riempie il filtro a cucchiaini, **a montagnetta, senza pressare**. Sul fornello si regola la fiamma (bassa è meglio) e si toglie dal fuoco **appena comincia a gorgogliare**: troppo presto viene mezza tazzina, troppo tardi l'odore di bruciato arriva fino alla hall. Poi si porta tutto al tavolino e si beve il caffè con il tuo amico (vale per il rituale della sera, come il tè). |
+| **La doccia** | Suite 1313, il bagno | Le tubature dell'hotel sono capricciose: con il miscelatore tieni l'acqua **tra 36 e 40 gradi**, mentre qualcuno, da qualche parte nell'hotel, tira lo sciacquone. Poi ti **insaponi** strofinando la spugna su tutto il corpo, e la schiuma scivola via con il risciacquo. |
+| **Il tè** | Suite 1313, il tavolino | Si aspetta che diventi **color ambra** e si toglie la bustina. Poi si riempiono le due tazze **fino alla riga**, senza far traboccare il piattino. |
+| **La campana** | Sant'Onirio, la corda del campanile | Si tira la corda quando la campana arriva **in cima allo slancio**: tre rintocchi puliti, che si sentono davvero rimbombare sulla valle. Gli anziani in piazza commentano. |
+
+Ogni nuova attività potrà avere il suo gesto: il sistema è pensato per aggiungerne facilmente (il bagno in vasca, il camino da accendere, il caffè al Bar Alpino...).

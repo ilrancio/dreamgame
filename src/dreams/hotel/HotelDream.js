@@ -18,6 +18,7 @@ import { ENTITIES, UNKNOWN_SLOTS, GnomeFollowers, entityLabel } from './companio
 import { glowTexture, textTexture } from '../../core/textures.js';
 import { unlockedPlaces } from '../../core/places.js';
 import { ChoicePanel } from '../../core/choice.js';
+import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 
 const FRIEND = 'Il tuo amico:';
 const CONCIERGE = 'Il concierge:';
@@ -65,6 +66,35 @@ const ROOM_LINES = {
 };
 
 // Chiacchiere davanti al tè: se ne pescano alcune ogni volta.
+const COFFEE_TALK = [
+  [FRIEND, 'Il caffè della moka ha un altro sapore. Sa di cucina, di domenica mattina.'],
+  [FRIEND, 'Mia nonna diceva che la moka non si lava col sapone. Mai.'],
+  [FRIEND, 'Quando lo bevo così piano mi sembra che il sogno rallenti.'],
+  [FRIEND, 'Un caffè alle tre di notte, in un hotel infinito. Perfettamente normale.'],
+];
+
+// Cosa si dice dopo un gesto, dal disastro (0) al perfetto (3).
+const GESTURE_REACT = {
+  te: [
+    [FRIEND, 'Uhm... lo bevo lo stesso. È il pensiero che conta.'],
+    [FRIEND, 'Va bene così, davvero.'],
+    [FRIEND, 'Buono. Grazie.'],
+    [FRIEND, 'Perfetto. Proprio come piace a me.'],
+  ],
+  moka: [
+    [FRIEND, '...è caffè, tecnicamente. Apro la finestra?'],
+    [FRIEND, 'Si beve. Su, andiamo al tavolino.'],
+    [FRIEND, 'Ah, che profumo. Porta le tazzine.'],
+    [FRIEND, 'Questo è un caffè vero. Come a casa.'],
+  ],
+  doccia: [
+    [null, 'Più bagnato che pulito. Ma l\'acqua calda alla fine arriva.'],
+    [null, 'Un brivido, poi il tepore. I pensieri scivolano via.'],
+    [null, 'L\'acqua è calda. I pensieri scivolano via.'],
+    [null, 'Acqua perfetta, vapore ovunque. Potresti restare qui per sempre.'],
+  ],
+};
+
 const TEA_TALK = [
   [FRIEND, 'Secondo me le stanze cambiano quando non le guardiamo.'],
   [FRIEND, 'Questo tè sa di... pioggia. In senso buono.'],
@@ -124,6 +154,7 @@ export class HotelDream {
     this.elevatorPanel = new ElevatorPanel();
     this.arcadeScreen = new ArcadeScreen();
     this.choice = new ChoicePanel();
+    this.gesture = new GestureScreen();
     this.events = new EventDirector(this);
     // il concierge: divisa bordeaux, berretto, sempre dietro la reception
     this.concierge = new Character(this.scene, { skin: '#d8a888', hair: '#9a9a9a', shirt: '#6a1020', pants: '#1a1a22' });
@@ -636,7 +667,7 @@ export class HotelDream {
     const { ui } = this.ctx;
     if (this.timeOfDay === 'night') {
       ui.checklist([
-        ['Un tè con il tuo amico, al tavolino', this.ritual.tea],
+        ['Un tè (o un caffè) con il tuo amico, al tavolino', this.ritual.tea],
         ['Una doccia calda, o un bagno in vasca', this.ritual.shower],
         ['A letto', false],
       ]);
@@ -841,6 +872,7 @@ export class HotelDream {
       this.friend.sitting = true;
       const pool = [...TEA_TALK].sort(() => Math.random() - 0.5).slice(0, 3);
       this.activity.lines = pool;
+      this.startGesture('te');
       this.activity.cam = k.teaCam.clone();
       this.activity.look = k.teaLook.clone();
       this.activity.duration = 16;
@@ -849,9 +881,28 @@ export class HotelDream {
       p.facing = -Math.PI / 2;
       this.activity.cam = k.showerCam.clone();
       this.activity.look = k.shower.clone().add(new THREE.Vector3(0, 1.3, 0));
-      this.activity.duration = 11;
+      this.activity.duration = 7;
       audio.loop('water', true, { freq: 2600, q: 0.5, vol: 0.09 });
-      ui.subtitle(null, 'L\'acqua è calda. I pensieri scivolano via.', 4);
+      this.startGesture('doccia');
+    } else if (kind === 'moka') {
+      p.pos.copy(k.mokaSpot);
+      p.facing = k.mokaFacing;
+      this.activity.cam = k.mokaCam.clone();
+      this.activity.look = k.mokaLook.clone();
+      this.activity.duration = 4.5;
+      this.startGesture('moka');
+    } else if (kind === 'coffee') {
+      // la moka è pronta: si beve al tavolino, insieme
+      p.pos.copy(k.chairs[0].pos);
+      p.facing = k.chairs[0].facing;
+      p.sitting = true;
+      this.friend.pos.copy(k.chairs[1].pos);
+      this.friend.facing = k.chairs[1].facing;
+      this.friend.sitting = true;
+      this.activity.lines = [...COFFEE_TALK].sort(() => Math.random() - 0.5).slice(0, 2);
+      this.activity.cam = k.teaCam.clone();
+      this.activity.look = k.teaLook.clone();
+      this.activity.duration = 11;
     } else if (kind === 'bath') {
       p.pos.copy(k.tub);
       p.pos.y = 0.18;
@@ -899,9 +950,40 @@ export class HotelDream {
     this.baseHint = '<kbd>E</kbd> alzati';
   }
 
+  // Un gesto (minigioco) all'inizio di un'attività: la scena resta dietro,
+  // il tempo dell'attività riparte quando il gesto è finito.
+  startGesture(key) {
+    const { input, audio } = this.ctx;
+    input.unlock();
+    const prev = this.ctx.progress.gesti?.[key] ?? null;
+    this.gesture.start(key, { sfx: gestureSfx(audio) }, (res) => {
+      recordGesture(this.ctx, res);
+      if (this.activity) this.activity.result = res;
+      this.reactToGesture(res);
+    }, prev);
+  }
+
+  reactToGesture(res) {
+    const { ui } = this.ctx;
+    if (res.skipped) return;
+    const lines = GESTURE_REACT[res.key];
+    if (!lines) return;
+    const [who, text] = lines[res.grade];
+    this.later(0.6, () => ui.subtitle(who, text, 3.6));
+  }
+
   updateActivity(dt) {
     const { ui, audio, input } = this.ctx;
     const a = this.activity;
+    if (this.gesture.open) {
+      this.gesture.update(dt, input);
+      this.camPos.lerp(a.cam, 1 - Math.exp(-2.5 * dt));
+      this.camLookAt.lerp(a.look, 1 - Math.exp(-3 * dt));
+      this.camera.position.copy(this.camPos);
+      this.camera.lookAt(this.camLookAt);
+      this.player.animate(dt, 0);
+      return;
+    }
     a.t += dt;
     const k = this.suiteKit;
     if (a.kind === 'tea') {
@@ -916,7 +998,7 @@ export class HotelDream {
         for (const c of k.cups) this.fx.emit(c.x, 0.9, c.z, (Math.random() - 0.5) * 0.05, 0.25, 0, { color: [0.95, 0.95, 0.95], size: 0.08, endSize: 0.3, life: 2.2, alpha: 0.25 });
       }
       a.lines.forEach(([who, text], i) => {
-        const at = 2.5 + i * 4.3;
+        const at = 4 + i * 4.3;
         if (a.t > at && !a[`l${i}`]) {
           a[`l${i}`] = true;
           ui.subtitle(who, text, 3.8);
@@ -937,6 +1019,18 @@ export class HotelDream {
       if (Math.random() < 0.2) this.fx.emit(k.tub.x + (Math.random() - 0.5) * 3, 0.7, k.tub.z, 0, 0.3, 0, { color: [0.95, 0.96, 1], size: 0.5, endSize: 1.8, life: 4, alpha: 0.15 });
       if (a.t > 3) ui.steam(true);
       if (a.t > 1) this.ritual.shower = true;
+    } else if (a.kind === 'moka') {
+      if (Math.random() < 0.35) this.fx.emit(k.mokaPot.x, k.mokaPot.y, k.mokaPot.z, (Math.random() - 0.5) * 0.05, 0.3, 0, { color: [0.95, 0.95, 0.95], size: 0.06, endSize: 0.3, life: 2, alpha: 0.3 });
+    } else if (a.kind === 'coffee') {
+      if (Math.random() < 0.25) for (const c of k.cups) this.fx.emit(c.x, 0.9, c.z, (Math.random() - 0.5) * 0.05, 0.25, 0, { color: [0.95, 0.95, 0.95], size: 0.07, endSize: 0.25, life: 2, alpha: 0.25 });
+      a.lines.forEach(([who, text], i) => {
+        const at = 1.5 + i * 4.3;
+        if (a.t > at && !a[`l${i}`]) {
+          a[`l${i}`] = true;
+          ui.subtitle(who, text, 3.8);
+        }
+      });
+      if (a.t > 1) this.ritual.tea = true;
     } else if (a.kind === 'sink') {
       if (a.t < 3 && Math.random() < 0.7) this.glints.emit(k.sink.x - 0.85, 1.02, k.sink.z, 0, -1.2, 0, { color: [0.6, 0.8, 1], size: 0.03, life: 0.2, alpha: 0.7 });
     }
@@ -947,6 +1041,12 @@ export class HotelDream {
     this.camera.lookAt(this.camLookAt);
 
     const wantsOut = a.t > 1.2 && (input.wasPressed('KeyE', 'Space') || input.down('KeyW', 'KeyS', 'KeyA', 'KeyD'));
+    if (a.kind === 'moka' && a.t > a.duration) {
+      // dalla credenza al tavolino, con le tazzine
+      this.endActivity();
+      this.startActivity('coffee');
+      return;
+    }
     if (wantsOut || a.t > a.duration) this.endActivity();
   }
 
@@ -977,7 +1077,8 @@ export class HotelDream {
       audio.loop('fire', true, { freq: 500, q: 0.4, vol: 0.025, type: 'lowpass', crackle: true });
       this.player.pos.x += 1.2;
     }
-    if (a.kind === 'tea') this.player.pos.z += 1.3;
+    if (a.kind === 'tea' || a.kind === 'coffee') this.player.pos.z += 1.3;
+    if (a.kind === 'moka') this.player.pos.x += 0.8;
     this.camYaw = this.player.facing;
     this.snapCamera();
     this.updateObjectiveInSuite();
@@ -1321,7 +1422,7 @@ export class HotelDream {
   // ---------- Ciclo ----------
   update(dt) {
     const { input, ui, audio } = this.ctx;
-    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen || this.choice.open;
+    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen || this.choice.open || this.gesture.open;
     if (!menus && input.wasPressed('KeyP', 'Escape') && this.phase !== 'sleeping' && this.phase !== 'riding') {
       this.paused = !this.paused;
       ui.center(this.paused ? '<div class="panel pause"><h2>Pausa</h2><p><kbd>P</kbd> riprendi</p><p><kbd>M</kbd> audio on/off</p><p>Il sogno si salva da solo.</p></div>' : null);
@@ -1729,6 +1830,10 @@ export class HotelDream {
     if (k.guns.visible && near(k.table, 1.9)) {
       if (E) this.takeGuns();
       return '<kbd>E</kbd> prendi le pistole';
+    }
+    if (near(k.mokaSpot, 1.1)) {
+      if (E) this.startActivity('moka');
+      return '<kbd>E</kbd> prepara il caffè con la moka';
     }
     if (near(k.table, 1.9)) {
       if (E) this.startActivity('tea');
@@ -2204,6 +2309,7 @@ export class HotelDream {
     this.closePrizes();
     this.closeBestiary();
     this.choice.dispose();
+    this.gesture.dispose();
     this.followers?.dispose();
     this.rb.dispose();
     this.floorExtra?.dispose();

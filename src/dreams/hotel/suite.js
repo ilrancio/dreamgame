@@ -64,6 +64,19 @@ export function buildSuite(a, bathApi, rb) {
   box(5.4, 0.15, 0.15, darkWood, 5, 3.95, 0.33, { collide: false });
   for (const x of [2.1, 7.9]) box(0.9, 3.6, 0.3, a.mat('#7a1a24'), x, 2.1, 0.45, { collide: false });
 
+  // ---------- L'angolo della moka: una credenza con il fornellino ----------
+  const mz = 4.6;
+  box(0.7, 0.9, 1.6, darkWood, 0.45, 0.45, mz);
+  box(0.74, 0.04, 1.64, wood, 0.45, 0.92, mz, { collide: false });
+  box(0.42, 0.07, 0.42, a.mat('#2a2a2e'), 0.45, 0.97, mz - 0.3, { collide: false });
+  cyl(0.12, 0.12, 0.015, a.mat('#4a4a50'), 0.45, 1.01, mz - 0.3, { collide: false });
+  cyl(0.065, 0.085, 0.13, chrome, 0.45, 1.08, mz - 0.3, { collide: false });
+  cyl(0.075, 0.06, 0.12, chrome, 0.45, 1.2, mz - 0.3, { collide: false });
+  box(0.03, 0.09, 0.08, a.mat('#1e1e22'), 0.45, 1.19, mz - 0.18, { collide: false });
+  cyl(0.06, 0.06, 0.13, a.mat('#a8402a'), 0.45, 1.0, mz + 0.25, { collide: false });
+  cyl(0.065, 0.065, 0.03, a.mat('#d8b040', { metal: true }), 0.45, 1.08, mz + 0.25, { collide: false });
+  for (const dz of [0.5, 0.62]) cyl(0.035, 0.03, 0.06, porcelain, 0.45, 0.97, mz + dz, { collide: false });
+
   // ---------- Camino, poltrona, mensola dei premi (parete ovest) ----------
   const fireZ = 9;
   box(0.9, 2.6, 2.8, stone, 0.7, 1.3, fireZ);
@@ -215,6 +228,11 @@ export function buildSuite(a, bathApi, rb) {
     windowLook: W(6, 0, 2.3),
     lampSpot: W(14.9, 15.5),
     fireplace: W(1.4, fireZ),
+    mokaSpot: W(1.45, mz - 0.2),
+    mokaFacing: -Math.PI / 2,
+    mokaPot: W(0.45, mz - 0.3, 1.25),
+    mokaCam: W(2.9, mz + 1.6, 1.9),
+    mokaLook: W(0.45, mz - 0.2, 1.05),
     guns,
     setLamp(on) {
       lampLight.visible = on;

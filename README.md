@@ -25,6 +25,7 @@ La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel bro
 | — | [Il borgo in vetta](docs/sogni.md#la-strada-continua-il-borgo-in-vetta) | Dal portone si esce all'aperto: la strada sale a tornanti fino a Sant'Onirio, un paesino di montagna con piazza, fontana, campanile, bar e belvedere. Caffè con l'amico, cannocchiale, campana. |
 | — | [I macroluoghi e le porte 1313](docs/sogni.md#i-macroluoghi-e-le-porte-1313) | Ogni grande zona del mondo visitata sblocca una porta verde nella suite che porta lì, e lì una porta 1313 riporta nella suite. |
 | IV | [Il Centro Commerciale Orizzonte](docs/sogni.md#il-centro-commerciale-orizzonte) | Un centro commerciale colossale su due piani, vuoto: solo i commessi. Un negozio di retrogiochi con il tubo catodico, un pouf per sdraiarsi e un commesso che mette tranquillità. |
+| — | [I gesti](docs/sogni.md#i-gesti-un-minigioco-per-ogni-cosa-di-tutti-i-giorni) | Piccoli minigiochi gentili per le cose di tutti i giorni: la moka, la doccia, il tè, la campana del borgo. |
 | III | [La Sala Giochi](docs/sogni.md#iii--la-sala-giochi-piano-88) | Il piano 88: una sala giochi infinita, cabinati giocabili, biglietti e premi per la suite. |
 
 L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/sogni.md](docs/sogni.md).
@@ -37,6 +38,7 @@ src/
   main.js            il prologo, l'hotel e l'esterno in sequenza, e la ripresa del sogno salvato
   dreams/demone/     capitolo I: il campo, la macchina, il demone, i macigni, la strada
   core/places.js     i macroluoghi e le porte-scorciatoia verso la suite
+  core/gestures.js   i gesti: minigiochi per le attività di tutti i giorni
   dreams/esterno/    fuori dall'hotel: a piedi o in macchina, il borgo in vetta
   dreams/centro/     il centro commerciale: l'edificio nella conca e la galleria su due piani
   dreams/hotel/      l'hotel: pianta a corridoi, porte, concierge, piani e architetture, ascensore,

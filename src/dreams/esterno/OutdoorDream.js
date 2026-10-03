@@ -12,6 +12,7 @@ import { GnomeFollowers } from '../hotel/companions.js';
 import { buildVillage, VILLAGE_NAME, VILLAGE_ALT } from './village.js';
 import { buildMallExterior } from '../centro/exterior.js';
 import { unlockPlace, placeById } from '../../core/places.js';
+import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 
 const FRIEND = 'Il tuo amico:';
 
@@ -127,7 +128,8 @@ export class OutdoorDream {
     this.camYaw = sp.yaw;
     this.setMode('foot', true);
 
-    this.onCanvasClick = () => ctx.input.lock();
+    this.gesture = new GestureScreen();
+    this.onCanvasClick = () => !this.gesture.open && ctx.input.lock();
     ctx.renderer.domElement.addEventListener('click', this.onCanvasClick);
 
     const { ui, audio } = ctx;
@@ -608,6 +610,28 @@ export class OutdoorDream {
       p.pos.set(V.bellRope.x - 0.8, Y, V.bellRope.z + 0.6);
       p.facing = 0;
       this.activity.rings = 0;
+      // il gesto: tirare la corda al momento giusto. Ogni rintocco suona davvero, lassù.
+      this.ctx.input.unlock();
+      const sfx = gestureSfx(audio);
+      const prev = this.ctx.progress.gesti?.campana ?? null;
+      this.gesture.start('campana', {
+        sfx: (name) => {
+          sfx(name);
+          if (name === 'bell') {
+            this.bellSwing = 0.6;
+            this.shake = 0.25;
+            p.armL.rotation.x = p.armR.rotation.x = -2.6;
+          }
+        },
+      }, (res) => {
+        recordGesture(this.ctx, res);
+        const a = this.activity;
+        if (!a || res.skipped) return;
+        // i rintocchi li hai già suonati tu: resta solo l'eco
+        a.rings = 3;
+        a.t = 3.5;
+        a.result = res;
+      }, prev);
     } else if (kind === 'drink') {
       const dx = p.pos.x - V.fountain.x;
       const dz = p.pos.z - V.fountain.z;
@@ -634,7 +658,8 @@ export class OutdoorDream {
       this.saved.scope = true;
     } else if (a.kind === 'bell') {
       this.saved.bell = true;
-      this.later(1, () => ui.subtitle('Due anziani sulla panchina:', 'Eccolo, quello dell\'hotel. Suona sempre all\'ora sbagliata.', 3.5));
+      const good = a.result && a.result.grade >= 2;
+      this.later(1, () => ui.subtitle('Due anziani sulla panchina:', good ? 'Però. Tre rintocchi puliti. Nemmeno il parroco.' : 'Eccolo, quello dell\'hotel. Suona sempre all\'ora sbagliata.', 3.5));
     } else if (a.kind === 'drink') {
       ui.popup('Acqua di montagna, gelida');
     }
@@ -647,9 +672,18 @@ export class OutdoorDream {
   updateActivity(dt) {
     const { input, ui, audio } = this.ctx;
     const a = this.activity;
-    a.t += dt;
     const p = this.player;
     const V = this.village;
+    if (this.gesture.open) {
+      this.gesture.update(dt, input);
+      p.animate(dt, 0);
+      if (a.kind === 'bell') {
+        const tower = new THREE.Vector3(V.bell.position.x, V.bell.position.y, V.bell.position.z);
+        this.cinematic(dt, new THREE.Vector3(V.bellRope.x + 3, V.center.y + 1.6, V.bellRope.z - 10), tower.lerp(p.pos, 0.55));
+      }
+      return;
+    }
+    a.t += dt;
     const exit = input.wasPressed('KeyE', 'Escape') && a.t > 0.6;
     p.animate(dt, 0);
     if (a.kind === 'coffee') {
@@ -941,6 +975,7 @@ export class OutdoorDream {
 
   dispose() {
     const { ui, audio } = this.ctx;
+    this.gesture.dispose();
     this.ctx.renderer.domElement.removeEventListener('click', this.onCanvasClick);
     audio.engineStop();
     audio.ambience(null);
