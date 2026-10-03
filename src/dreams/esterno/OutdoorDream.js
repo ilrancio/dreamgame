@@ -201,7 +201,7 @@ export class OutdoorDream {
       healthLabel: inCar ? 'Macchina' : 'Energia',
       controls: inCar
         ? '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> guida · <kbd>Spazio</kbd> freno a mano · <kbd>E</kbd> scendi (da fermo) · <kbd>R</kbd> rimetti in strada'
-        : 'Clicca per usare il mouse · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · <kbd>E</kbd> interagisci · <kbd>Spazio</kbd> salta',
+        : 'Clicca per usare il mouse · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · <kbd>E</kbd> interagisci · <kbd>C</kbd> chiama la macchina · <kbd>Spazio</kbd> salta',
     });
     if (silent) return;
     if (inCar) {
@@ -464,10 +464,51 @@ export class OutdoorDream {
       return;
     }
 
+    if (input.wasPressed('KeyC')) this.summonCar();
     const it = this.findInteraction();
     ui.hint(it ? `<kbd>E</kbd> ${it.label}` : null);
     if (it && input.wasPressed('KeyE')) it.fn();
     this.updateCamera(dt);
+  }
+
+  // Tasto C: la macchina ti raggiunge, come succede nei sogni. Compare accanto
+  // a te in un punto libero e abbastanza piano, già girata dove guardi.
+  summonCar() {
+    const { ui, audio } = this.ctx;
+    const p = this.player;
+    const c = this.car;
+    if (Math.hypot(c.pos.x - p.pos.x, c.pos.z - p.pos.z) < 6) {
+      ui.subtitle(FRIEND, 'È proprio qui, la macchina.', 1.8);
+      return;
+    }
+    const fx = Math.sin(p.facing);
+    const fz = Math.cos(p.facing);
+    const free = (x, z) => {
+      if (this.boxes.some((b) => x > b.minX - 2.8 && x < b.maxX + 2.8 && z > b.minZ - 2.8 && z < b.maxZ + 2.8)) return false;
+      if (this.scenery.colliders.near(x, z, this.near).some((o) => Math.hypot(o.x - x, o.z - z) < o.r + 2.8)) return false;
+      if (this.npcs.some((n) => Math.hypot(n.c.pos.x - x, n.c.pos.z - z) < 3)) return false;
+      const n = this.terrain.normalAt(x, z, this.tmpV, 2.5);
+      return n.y > 0.85 && Math.abs(this.groundAt(x, z) - p.pos.y) < 3;
+    };
+    // prima di lato, poi davanti, poi dietro, allargandosi un po'
+    for (const r of [4, 6, 9]) {
+      for (const [sx, sz] of [[fz, -fx], [-fz, fx], [fx, fz], [-fx, -fz]]) {
+        const x = p.pos.x + sx * r;
+        const z = p.pos.z + sz * r;
+        if (!free(x, z)) continue;
+        c.reset(x, z, p.facing, this.terrain);
+        c.vx = c.vz = 0;
+        audio.whoosh(0.3);
+        audio.chime(660, 0.08);
+        this.dust.burst(x, c.pos.y + 0.5, z, 24, 5, { color: [0.85, 0.85, 0.9], size: 1.6, endSize: 5, life: 1.1, drag: 2, alpha: 0.35 });
+        if (!this.flags.summoned) {
+          this.flags.summoned = true;
+          this.later(0.6, () => ui.subtitle(FRIEND, 'Ma... era parcheggiata dall\'altra parte della valle. Va bene, non facciamo domande.', 3.6));
+        }
+        return;
+      }
+    }
+    ui.subtitle(FRIEND, 'Qui non c\'è spazio per la macchina. Spostiamoci un po\'.', 2.4);
   }
 
   goInside() {
