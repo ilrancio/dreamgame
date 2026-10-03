@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { createSky } from '../../core/sky.js';
 import { Particles } from '../../core/particles.js';
 import { clamp, lerp, smoothstep } from '../../core/noise.js';
-import { Terrain, HOTEL, VILLAGE, DEMON_POS } from '../demone/terrain.js';
+import { Terrain, HOTEL, VILLAGE, DEMON_POS, MALL } from '../demone/terrain.js';
 import { Car } from '../demone/car.js';
 import { Demon } from '../demone/demon.js';
 import { buildHotel } from '../demone/hotel.js';
@@ -10,6 +10,8 @@ import { buildScenery } from '../demone/scenery.js';
 import { Character } from '../hotel/character.js';
 import { GnomeFollowers } from '../hotel/companions.js';
 import { buildVillage, VILLAGE_NAME, VILLAGE_ALT } from './village.js';
+import { buildMallExterior } from '../centro/exterior.js';
+import { unlockPlace, placeById } from '../../core/places.js';
 
 const FRIEND = 'Il tuo amico:';
 
@@ -68,11 +70,14 @@ export class OutdoorDream {
     // il demone è ancora là, fermo nel campo. Ti segue con lo sguardo e basta.
     this.demon = new Demon(this.scene, DEMON_POS.x, DEMON_POS.z, this.terrain.heightAt(DEMON_POS.x, DEMON_POS.z));
     this.village = buildVillage(this.scene, this.terrain);
-    this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R]);
+    this.mall = buildMallExterior(this.scene, this.terrain);
+    this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R], this.mall.colliders);
+    this.village.setShortcutOpen(!!ctx.progress.places?.borgo || !!this.saved.villageSeen);
 
-    // la macchina è parcheggiata davanti all'hotel, dove l'avevate lasciata
+    // la macchina resta dove l'avevate lasciata (la prima volta, davanti all'hotel)
     this.car = new Car(this.scene);
-    this.car.reset(HOTEL.x + 16, DOOR.z - 18, Math.PI / 2, this.terrain);
+    const pc = this.saved.car || { x: HOTEL.x + 16, z: DOOR.z - 18, h: Math.PI / 2 };
+    this.car.reset(pc.x, pc.z, pc.h, this.terrain);
     this.car.turbo = 1;
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
@@ -105,11 +110,21 @@ export class OutdoorDream {
     this.activity = null;
     this.mode = 'foot';
 
-    // si esce dal portone, in cima alla scalinata
-    this.player.pos.set(DOOR.x, this.groundAt(DOOR.x, DOOR.z - 1.5), DOOR.z - 1.5);
-    this.player.facing = Math.PI;
-    this.friend.pos.set(DOOR.x + 1.6, this.groundAt(DOOR.x + 1.6, DOOR.z - 1.2), DOOR.z - 1.2);
-    this.friend.facing = Math.PI;
+    // dove si compare: dal portone (in cima alla scalinata), dalla porta 1313
+    // del borgo, oppure uscendo dal centro commerciale
+    this.spawn = ctx.spawn || 'hotel';
+    ctx.spawn = null;
+    let sp = { x: DOOR.x, z: DOOR.z - 1.5, yaw: Math.PI };
+    if (this.spawn === 'borgo') {
+      const d = this.village.shortcut;
+      sp = { x: d.spot.x, z: d.spot.z, yaw: d.yaw };
+    } else if (this.spawn === 'centro') sp = this.mall.spawn;
+    const side = { x: Math.cos(sp.yaw) * 1.6, z: -Math.sin(sp.yaw) * 1.6 };
+    this.player.pos.set(sp.x, this.groundAt(sp.x, sp.z), sp.z);
+    this.player.facing = sp.yaw;
+    this.friend.pos.set(sp.x + side.x, this.groundAt(sp.x + side.x, sp.z + side.z), sp.z + side.z);
+    this.friend.facing = sp.yaw;
+    this.camYaw = sp.yaw;
     this.setMode('foot', true);
 
     this.onCanvasClick = () => ctx.input.lock();
@@ -130,7 +145,8 @@ export class OutdoorDream {
     this.snapCamera();
     this.script = [
       { at: 1.4, fn: () => ui.subtitle(FRIEND, this.night ? 'Che aria fresca. Guarda quante stelle.' : 'Che luce, stamattina. Si vede tutta la valle.', 3) },
-      { at: 5, fn: () => !this.saved.villageSeen && ui.subtitle(FRIEND, 'La strada non finisce all\'hotel. Continua a salire... vediamo dove porta?', 3.6) },
+      { at: 5, fn: () => this.spawn === 'hotel' && !this.saved.villageSeen && ui.subtitle(FRIEND, 'La strada non finisce all\'hotel. Continua a salire... vediamo dove porta?', 3.6) },
+      { at: 5, fn: () => this.spawn === 'hotel' && this.saved.villageSeen && !this.mallSeen && ui.subtitle(FRIEND, 'E quella strada che scende a ovest? Laggiù c\'è un edificio bianco, enorme.', 3.6) },
     ];
   }
 
@@ -233,16 +249,22 @@ export class OutdoorDream {
     this.ctx.saveProgress(this.ctx.progress);
   }
 
+  get mallSeen() {
+    return !!this.ctx.progress.places?.centro;
+  }
+
   updateObjective() {
     const { ui } = this.ctx;
     const s = this.saved;
     if (!s.villageSeen) ui.objective('La strada continua oltre l\'hotel: sale fino in vetta.');
+    else if (!this.inVillage && !this.mallSeen) ui.objective('Un\'altra strada scende a ovest, verso un edificio bianco enorme.');
+    else if (!this.inVillage) ui.objective('');
     else
       ui.checklist([
         [`Un caffè al Bar Alpino`, !!s.coffee],
         ['Il cannocchiale del belvedere', !!s.scope],
         ['La campana del campanile', !!s.bell],
-        ['L\'hotel ti aspetta, quando vuoi', false],
+        ['La porta 1313: dritti nella suite', false],
       ]);
   }
 
@@ -279,9 +301,13 @@ export class OutdoorDream {
         this.later(1.2, () => ui.subtitle(FRIEND, 'Un paesino! Lassù in cima, sopra le nuvole. Fermiamoci un po\'.', 3.6));
         this.later(5.5, () => ui.subtitle(FRIEND, this.mode === 'car' ? 'Lasciamo la macchina e facciamo due passi in piazza.' : 'Senti che silenzio. Solo la fontana.', 3.2));
       } else this.later(1, () => ui.subtitle(FRIEND, 'Di nuovo quassù. Mi piace questo posto.', 3));
+      this.discoverPlace('borgo');
       this.updateObjective();
     }
-    if (!this.inVillage && dv > VILLAGE.r + 40) this.flags.arrived = false;
+    if (!this.inVillage && dv > VILLAGE.r + 40 && this.flags.arrived) {
+      this.flags.arrived = false;
+      this.updateObjective();
+    }
     audio.loop('fontana', this.mode === 'foot' && Math.hypot(pos.x - VILLAGE.x, pos.z - VILLAGE.z) < 22, { freq: 2200, q: 0.5, vol: 0.05 });
 
     this.applyAtmosphere();
@@ -304,6 +330,18 @@ export class OutdoorDream {
     const sp = this.mode === 'car' ? this.car.speed * 3.6 : pos.y * 4.55; // altitudine "di sogno" in metri
     ui.updateHud({ speed: sp, turbo: this.mode === 'car' ? this.car.turbo : 1, health: 1, time: this.time, counter: this.inVillage ? VILLAGE_NAME : '' });
     this.updateCompass(pos);
+  }
+
+  // Un macroluogo visitato per la prima volta: nella suite compare la sua porta.
+  discoverPlace(id) {
+    if (id === 'borgo') this.village.setShortcutOpen(true);
+    if (!unlockPlace(this.ctx, id)) return;
+    const { ui, audio } = this.ctx;
+    this.later(9, () => {
+      ui.popup(`Una nuova porta: ${placeById(id).name}`);
+      audio.chime(784, 0.12);
+      ui.subtitle(FRIEND, 'Hai visto quella porta, lì da sola? C\'è scritto 1313. Il numero della nostra suite.', 4);
+    });
   }
 
   // terreno troppo ripido o ostacoli: dove gli gnomi non vanno
@@ -419,6 +457,12 @@ export class OutdoorDream {
       this.goInside();
       return;
     }
+    // e le porte di vetro del centro commerciale si aprono da sole
+    const me = this.mall.entrance;
+    if (Math.abs(p.pos.x - me.x) < 1.3 && Math.abs(p.pos.z - me.z) < me.halfW && mx < -0.5 && !this.leaving) {
+      this.leave(() => this.ctx.enterMall('entrance'));
+      return;
+    }
 
     const it = this.findInteraction();
     ui.hint(it ? `<kbd>E</kbd> ${it.label}` : null);
@@ -427,11 +471,17 @@ export class OutdoorDream {
   }
 
   goInside() {
+    this.leave(() => this.ctx.enterHotel());
+  }
+
+  leave(go) {
     if (this.leaving) return;
     this.leaving = true;
     this.ctx.ui.hint(null);
     this.ctx.audio.thud(0.2);
-    this.ctx.enterHotel();
+    this.saved.car = { x: this.car.pos.x, z: this.car.pos.z, h: this.car.heading };
+    this.save();
+    go();
   }
 
   findInteraction() {
@@ -440,7 +490,11 @@ export class OutdoorDream {
     const near = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
     if (near(DOOR.x, DOOR.z, 4.5)) return { label: 'rientra nell\'hotel', fn: () => this.goInside() };
     if (near(this.car.pos.x, this.car.pos.z, 3.6)) return { label: 'sali in macchina', fn: () => this.getIn() };
+    const me = this.mall.entrance;
+    if (near(me.x + 1.5, me.z, 5.5)) return { label: 'entra nel centro commerciale', fn: () => this.leave(() => this.ctx.enterMall('entrance')) };
     if (!this.inVillage) return null;
+    const sd = V.shortcut;
+    if (near(sd.spot.x, sd.spot.z, 1.8)) return { label: 'apri la porta 1313', fn: () => this.leave(() => this.ctx.travel('suite')) };
     for (const n of this.npcs) {
       if (n.lines && near(n.c.pos.x, n.c.pos.z, 2.4)) return { label: 'parla', fn: () => this.talk(n) };
     }
@@ -712,6 +766,11 @@ export class OutdoorDream {
       this.getOut();
       return;
     }
+    const me = this.mall.entrance;
+    if (Math.hypot(c.pos.x - me.x, c.pos.z - me.z) < 70 && !this.mallSeen && !this.flags.mallHint) {
+      this.flags.mallHint = true;
+      ui.subtitle(FRIEND, 'Un centro commerciale... quassù? E il parcheggio è vuoto.', 3.2);
+    }
     if (Math.hypot(c.pos.x - DOOR.x, c.pos.z - DOOR.z) < 22 && slow && !this.flags.parkHint) {
       this.flags.parkHint = true;
       ui.subtitle(FRIEND, 'Parcheggiamo qui e entriamo a piedi.', 2.6);
@@ -791,8 +850,14 @@ export class OutdoorDream {
       const T = this.terrain;
       const info = T.roadInfo(pos.x, pos.z);
       if (Math.hypot(pos.x - VILLAGE.x, pos.z - VILLAGE.z) < 260) target = VILLAGE;
-      else if (info.idx >= T.upperStart) target = T.road[Math.min(T.road.length - 1, info.idx + 25)];
+      else if (info.idx >= T.upperStart && info.idx < T.mallStart) target = T.road[Math.min(T.mallStart - 1, info.idx + 25)];
       else target = T.road[T.upperStart + 10];
+    } else if (this.saved.villageSeen && !this.mallSeen && !this.inVillage) {
+      const T = this.terrain;
+      const info = T.roadInfo(pos.x, pos.z);
+      if (Math.hypot(pos.x - MALL.x, pos.z - MALL.z) < 300) target = this.mall.entrance;
+      else if (info.idx >= T.mallStart) target = T.road[Math.min(T.road.length - 1, info.idx + 25)];
+      else target = T.road[T.mallStart + 10];
     }
     if (!target || this.activity) {
       ui.compass(null);
@@ -826,6 +891,7 @@ export class OutdoorDream {
     this.sun.target.position.copy(c);
     this.car.headlight.intensity = k * 900;
     this.village.setNight(k);
+    this.mall.setNight(k);
   }
 
   onResize() {
@@ -848,6 +914,7 @@ export class OutdoorDream {
     this.demon.dispose();
     this.hotel.dispose();
     this.village.dispose();
+    this.mall.dispose();
     this.scenery.dispose();
     this.terrain.dispose();
     this.dust.dispose();

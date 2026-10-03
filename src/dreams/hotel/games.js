@@ -434,11 +434,96 @@ class Artiglio {
   }
 }
 
+// ---------------- SERPENTE ----------------
+// Il gioco del negozio di retrogiochi: verde fosforo, un serpente che mangia
+// cappelli da gnomo. Lento all'inizio, come piace al commesso.
+class Serpente {
+  constructor(api) {
+    this.api = api;
+    this.cols = 20;
+    this.rows = 13;
+    this.cell = 16;
+    this.body = [[10, 6], [9, 6], [8, 6]];
+    this.dir = [1, 0];
+    this.next = [1, 0];
+    this.step = 0;
+    this.speed = 5;
+    this.eaten = 0;
+    this.placeFood();
+  }
+
+  placeFood() {
+    for (let k = 0; k < 200; k++) {
+      const f = [Math.floor(Math.random() * this.cols), Math.floor(Math.random() * this.rows)];
+      if (!this.body.some(([x, y]) => x === f[0] && y === f[1])) {
+        this.food = f;
+        return;
+      }
+    }
+  }
+
+  update(dt, k) {
+    if (this.done) return;
+    const [dx, dy] = this.dir;
+    if (k.left && dx === 0) this.next = [-1, 0];
+    else if (k.right && dx === 0) this.next = [1, 0];
+    else if (k.up && dy === 0) this.next = [0, -1];
+    else if (k.down && dy === 0) this.next = [0, 1];
+    this.step += dt * this.speed;
+    if (this.step < 1) return;
+    this.step = 0;
+    this.dir = this.next;
+    const h = this.body[0];
+    const nh = [(h[0] + this.dir[0] + this.cols) % this.cols, (h[1] + this.dir[1] + this.rows) % this.rows];
+    if (this.body.some(([x, y]) => x === nh[0] && y === nh[1])) {
+      this.done = true;
+      this.api.sfx('boom');
+      return;
+    }
+    this.body.unshift(nh);
+    if (nh[0] === this.food[0] && nh[1] === this.food[1]) {
+      this.eaten++;
+      this.speed = Math.min(12, 5 + this.eaten * 0.35);
+      this.api.sfx('blip');
+      this.placeFood();
+    } else this.body.pop();
+  }
+
+  draw(g, t) {
+    const c = this.cell;
+    const ox = (W - this.cols * c) / 2;
+    const oy = 28;
+    g.fillStyle = '#041a08';
+    g.fillRect(0, 0, W, H);
+    g.strokeStyle = '#1a6a2a';
+    g.strokeRect(ox - 1, oy - 1, this.cols * c + 2, this.rows * c + 2);
+    // il cappello da gnomo da mangiare
+    const [fx, fy] = this.food;
+    g.fillStyle = '#ff3a3a';
+    g.beginPath();
+    g.moveTo(ox + fx * c + 2, oy + fy * c + c - 2);
+    g.lineTo(ox + fx * c + c / 2, oy + fy * c + 1 + Math.sin(t * 6) * 1.5);
+    g.lineTo(ox + fx * c + c - 2, oy + fy * c + c - 2);
+    g.fill();
+    this.body.forEach(([x, y], i) => {
+      g.fillStyle = i === 0 ? '#c8ffb0' : i % 2 ? '#5aff6a' : '#3ae04a';
+      g.fillRect(ox + x * c + 1, oy + y * c + 1, c - 2, c - 2);
+    });
+    text(g, `CAPPELLI ${this.eaten}`, 10, 16, { color: '#8aff9a' });
+    text(g, 'SERPENTE', W - 10, 16, { align: 'right', color: '#8aff9a' });
+  }
+
+  tickets() {
+    return 1 + Math.floor(this.eaten / 2);
+  }
+}
+
 export const GAMES = {
   invaders: { title: 'GNOMI INVADERS', make: (api) => new GnomiInvaders(api), help: 'A/D muovi · Spazio spara' },
   demone: { title: 'FUGA DAL DEMONE', make: (api) => new FugaDemone(api), help: 'WASD guida · schiva i cerchi rossi' },
   ping: { title: 'PING DEL TÈ', make: (api) => new PingTe(api), help: 'W/S muovi · primo a 5 contro il tuo amico' },
   artiglio: { title: 'ARTIGLIO', make: (api) => new Artiglio(api), help: 'A/D muovi · Spazio cala la gru · 3 tentativi' },
+  serpente: { title: 'SERPENTE', make: (api) => new Serpente(api), help: 'WASD gira · mangia i cappelli, non morderti la coda' },
 };
 
 // Lo schermo sovrapposto: gestisce inizio, partita, fine e biglietti.

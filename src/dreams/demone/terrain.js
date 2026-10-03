@@ -16,6 +16,8 @@ export const DEMON_POS = { x: -430, z: -80 };
 export const HOTEL = { x: -80, z: 1330, plateau: 215 };
 // Il borgo in vetta: la strada, oltre l'hotel, continua a salire fin quassù.
 export const VILLAGE = { x: 380, z: 1180, plateau: 420, r: 130 };
+// Il centro commerciale: una conca piatta a ovest dell'hotel, in fondo a una strada.
+export const MALL = { x: -600, z: 1215, plateau: 200, r: 150 };
 export const ROAD_HALF = 7;
 const ROAD_FLAT = 19;
 const ROAD_BLEND = 48;
@@ -52,6 +54,16 @@ const UPPER_POINTS = [
   [520, 1300],
   [500, 1210],
   [455, 1180],
+];
+
+// Dal piazzale dell'hotel, verso ovest, giù fino al parcheggio del centro commerciale.
+const MALL_POINTS = [
+  [-115, 1255],
+  [-190, 1262],
+  [-270, 1245],
+  [-350, 1222],
+  [-420, 1215],
+  [-470, 1215],
 ];
 
 export class Terrain {
@@ -95,6 +107,12 @@ export class Terrain {
       const flat = 1 - smoothstep(VILLAGE.r - 15, VILLAGE.r + 25, dv);
       if (flat > 0) h += (VILLAGE.plateau - h) * flat;
     }
+    // la conca del centro commerciale, scavata tra le montagne
+    const dm = Math.hypot(x - MALL.x, z - MALL.z);
+    if (dm < MALL.r + 120) {
+      const flat = 1 - smoothstep(MALL.r, MALL.r + 110, dm);
+      h += (MALL.plateau - h) * flat;
+    }
     // altopiano dell'hotel
     const dh = Math.hypot(x - HOTEL.x, z - HOTEL.z);
     const p = 1 - smoothstep(120, 230, dh);
@@ -133,7 +151,9 @@ export class Terrain {
     const upper = sample(UPPER_POINTS, main.len + 40, HOTEL.plateau, VILLAGE.plateau, 30, 1);
     this.upperLength = upper.len;
     this.upperStart = main.out.length;
-    this.road = main.out.concat(upper.out);
+    const mall = sample(MALL_POINTS, main.len + 40 + upper.len + 40, HOTEL.plateau, MALL.plateau, 20, 2);
+    this.mallStart = main.out.length + upper.out.length;
+    this.road = main.out.concat(upper.out, mall.out);
   }
 
   buildHeights() {

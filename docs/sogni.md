@@ -1,6 +1,6 @@
 # Diario dei sogni
 
-Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel, che **non è uno spazio euclideo**: da fuori sembra una grande baita di tre piani, dentro è mastodontico, con **centinaia di piani** in stili diversi. I sogni possono accadere nelle stanze, in intere zone o piani dell'hotel, oppure come **eventi casuali** in qualunque momento. Dal portone dell'hotel si può anche **uscire**: la strada continua a salire fino a un borgo di montagna in vetta. Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
+Il gioco è **un sogno che non finisce**. Il campo è il prologo, cioè il modo in cui si arriva all'hotel. Poi si vive nell'hotel, che **non è uno spazio euclideo**: da fuori sembra una grande baita di tre piani, dentro è mastodontico, con **centinaia di piani** in stili diversi. I sogni possono accadere nelle stanze, in intere zone o piani dell'hotel, oppure come **eventi casuali** in qualunque momento. Dal portone dell'hotel si può anche **uscire**: il mondo intorno è aperto e fatto di **macroluoghi**, le grandi zone dove accadono i sogni (il borgo in vetta, il centro commerciale, ...). Il gioco si salva da solo e alla riapertura si può *continuare il sogno* dalla suite.
 
 Ogni sogno è riportato come è stato raccontato, seguito da come è stato trasformato in gioco.
 
@@ -127,3 +127,31 @@ Fili che attraversano tutto:
 | Sulla vetta | Dal **belvedere**, oltre la ringhiera, si vede tutta la valle. Il **cannocchiale** (<kbd>E</kbd>) inquadra l'hotel, minuscolo laggiù; muovendo il mouse si cerca il campo, dove il demone è ancora fermo. Da quassù nessuno ci vede. |
 | I luoghi si vivono | Come nella suite, qui ci si ferma: un **caffè al Bar Alpino** seduti al tavolino con il tuo amico (ogni volta parlate di cose diverse), un sorso d'acqua gelida alla **fontana**, la corda della **campana** (tre rintocchi che rimbombano per la valle, e gli anziani in piazza che brontolano). Si chiacchiera con gli abitanti: il barista, due anziani che giocano a carte sulla panchina, una signora con lo scialle al belvedere. Di giorno cantano gli uccellini, di notte i grilli. |
 | Si torna a casa | Si rientra camminando dentro il portone: si è di nuovo nella hall, senza interruzioni. Se fuori era mattina e la hall è ancora piena di gnomi, le pistole sono rimaste sul tavolino della suite. |
+
+---
+
+## I macroluoghi e le porte 1313
+
+> *In generale vorrei che gli eventi accadessero in "macroluoghi" in questo open world, e che ogni macroluogo sbloccasse una porta di shortcut verso la suite quando lo visiti. Per esempio il villaggio sulla cima della montagna è un macroluogo.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Il mondo è fatto di macroluoghi | Intorno all'hotel il mondo è aperto: strade, montagne, e alcune **grandi zone** dove accadono i sogni. Per ora sono **Sant'Onirio**, il borgo in vetta, e il **Centro Commerciale Orizzonte**, in una conca a ovest dell'hotel. L'hotel è la casa: ogni sogno nuovo diventerà un nuovo macroluogo. |
+| Ogni macroluogo sblocca una porta verso la suite | La prima volta che arrivi in un macroluogo, lì compare una **porta con il numero 1313**: nel borgo è una porta di legno in piedi da sola, in un arco di pietra ai margini della piazza; nel centro commerciale è una porta di servizio verde accanto all'ingresso. Aprendola si esce **dritti nella suite**. |
+| La scorciatoia funziona anche al contrario | Nella suite, sulla parete est dopo i letti, c'è una **porta verde che prima non c'era**. Finché non hai visto nulla è chiusa. Poi, per ogni luogo visitato, si aggiunge una **targhetta di ottone** con il nome, e da sotto la porta filtra luce. <kbd>E</kbd> apre la **porta dei luoghi**: scegli dove andare e ci arrivi uscendo dalla sua porta 1313. |
+
+---
+
+## Il Centro Commerciale Orizzonte
+
+> *Ho sognato un colossale centro commerciale su due piani, assomigliava molto a quello in foto, ma non c'era quasi nessuno in giro, solo i commessi dei negozi. Mi ricordo in particolare un negozio di retrogames, che aveva un tubo catodico dove potevi provare i giochi retro e un pouf dove sederti/sdraiarti. Il commesso era una persona che trasmetteva tranquillità.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Dove si trova | Dal piazzale dell'hotel una **terza strada** scende a ovest, attraverso le montagne, in una conca. Lì c'è un parallelepipedo bianco enorme con l'insegna **ORIZZONTE**, un ingresso di vetro a tutta altezza e un parcheggio vuoto: due carrelli abbandonati e nessuna macchina. Si entra camminando verso le porte di vetro, che si aprono da sole. |
+| Colossale, su due piani, come nella foto | Una galleria lunga **160 m**. Pavimento di marmo bianco con i bollini grigi, colonne bianche fino al tetto e un lucernario che fa da cielo (azzurro di giorno, blu notte di sera). Al centro c'è il **vuoto a tutta altezza**, con i ballatoi del primo piano dietro i **parapetti di vetro**. Tre **passerelle** lo attraversano e due **scale mobili** salgono (i gradini si muovono davvero). In fondo, un grande oblò sul cielo e il nome del centro. Ci sono fioriere con gli alberi, panchine e un chiosco chiuso con il telo. |
+| Quasi nessuno in giro | **48 negozi** su due piani, quasi tutti aperti e illuminati: Libreria Notturna, Gelateria Polare, Orologi Fermi, Dischi Lunari, Pane & Nuvole... Alcuni hanno la **serranda abbassata**. Non c'è nessun cliente: **solo i commessi**, dietro ai banchi, che ti seguono con lo sguardo e ti dicono cose strane ("Siamo aperti. Lo siamo sempre."). Ogni tanto l'**altoparlante** suona e annuncia qualcosa a nessuno. Sotto c'è sempre la stessa musichetta. |
+| Il negozio di retrogiochi | Al piano terra, a destra: **Retrogiochi**, con le pareti viola, l'insegna al neon *RETRO*, scaffali pieni di scatole di giochi colorate e poster pixelati. Su un mobiletto c'è un **tubo catodico** in modalità dimostrativa, che ronza piano. |
+| Provare i giochi retro | <kbd>E</kbd> al tubo catodico ti siedi sul pouf e scegli una **cartuccia**. C'è un gioco nuovo, **Serpente** (verde fosforo, mangi cappelli da gnomo), che è il preferito del commesso. Ci sono anche Gnomi Invaders, Fuga dal Demone e Ping del Tè contro il tuo amico. I **biglietti** vinti qui valgono anche al banco premi della sala giochi, al piano 88. |
+| Un pouf dove sederti o sdraiarti | Un grande **pouf** fucsia per te e uno blu più piccolo per il tuo amico. Da seduto guardi lo schermo. Con <kbd>Spazio</kbd> **ti sdrai**: la camera ti guarda dall'alto e compare un cerchio che **respira** (*inspira... espira*). |
+| Il commesso che trasmetteva tranquillità | Ha un maglione verde salvia e parla piano, con lunghe pause: "Non c'è fretta. Qui dentro il tempo va un po' più piano." Quando sei sdraiato ti accompagna ("Respira con il ronzio. Dentro... e fuori."). Nel suo negozio la musica del centro lascia il posto a un accordo caldo e lento, e **si cammina più piano senza volerlo**. |

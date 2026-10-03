@@ -6,6 +6,8 @@ import { loadProgress, saveProgress } from './core/progress.js';
 import { DemonDream } from './dreams/demone/DemonDream.js';
 import { HotelDream } from './dreams/hotel/HotelDream.js';
 import { OutdoorDream } from './dreams/esterno/OutdoorDream.js';
+import { MallDream } from './dreams/centro/MallDream.js';
+import { placeById } from './core/places.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -29,21 +31,43 @@ const ctx = {
     ctx.resumeHotel = false;
     goToChapter(chapterIndex + 1);
   },
-  // dal portone dell'hotel si esce all'aperto, e si rientra: niente risveglio
-  goOutside: () => goToChapter(2),
+  // dal portone dell'hotel si esce all'aperto, e si rientra: niente risveglio.
+  // spawn dice dove si compare: 'hotel' (portone), 'borgo' (porta 1313), 'centro' (uscita del centro commerciale)
+  goOutside: (spawn = 'hotel') => {
+    ctx.spawn = spawn;
+    goToChapter(2);
+  },
   enterHotel: () => {
     ctx.resumeHotel = true;
     ctx.hotelEntry = 'door';
     goToChapter(1);
   },
+  enterMall: (spawn = 'entrance') => {
+    ctx.spawn = spawn;
+    goToChapter(3);
+  },
+  // le porte-scorciatoia: dalla suite a un macroluogo, e da lì alla suite
+  travel: (dest) => {
+    if (dest === 'suite') {
+      ctx.resumeHotel = true;
+      ctx.hotelEntry = 'shortcut';
+      goToChapter(1);
+      return;
+    }
+    const place = placeById(dest);
+    if (!place) return;
+    ctx.spawn = place.spawn;
+    goToChapter(CHAPTERS.findIndex((c) => c.id === place.chapter));
+  },
 };
 
 // Un solo sogno che non finisce: il campo è il prologo, poi si vive nell'hotel
-// e intorno all'hotel (la strada continua fino al borgo in vetta).
+// e nei macroluoghi intorno all'hotel (il borgo in vetta, il centro commerciale).
 const CHAPTERS = [
   { id: 'campo', create: (c) => new DemonDream(c), card: 'Chiudi gli occhi. Stai già guidando.', color: '#000' },
   { id: 'hotel', create: (c) => new HotelDream(c), card: null, color: '#ffe2b0' },
   { id: 'esterno', create: (c) => new OutdoorDream(c), card: null, color: '#dfe8f4' },
+  { id: 'centro', create: (c) => new MallDream(c), card: null, color: '#f4f2ee' },
 ];
 
 let current = null;
@@ -114,8 +138,9 @@ if (hasHotel) {
   document.getElementById('btn-restart').addEventListener('click', () => begin(0));
 } else {
   title.addEventListener('click', () => {
-    // scorciatoie di sviluppo: #hotel parte dall'arrivo in hotel, #esterno dal portone
-    begin({ '#hotel': 1, '#esterno': 2 }[location.hash] ?? 0);
+    // scorciatoie di sviluppo: #hotel parte dall'arrivo in hotel, #esterno dal portone,
+    // #centro dall'ingresso del centro commerciale
+    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3 }[location.hash] ?? 0);
   });
 }
 

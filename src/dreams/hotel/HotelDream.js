@@ -16,6 +16,8 @@ import { PRIZES, prizeById } from './prizes.js';
 import { EventDirector } from './events.js';
 import { ENTITIES, UNKNOWN_SLOTS, GnomeFollowers, entityLabel } from './companions.js';
 import { glowTexture, textTexture } from '../../core/textures.js';
+import { unlockedPlaces } from '../../core/places.js';
+import { ChoicePanel } from '../../core/choice.js';
 
 const FRIEND = 'Il tuo amico:';
 const CONCIERGE = 'Il concierge:';
@@ -121,6 +123,7 @@ export class HotelDream {
     this.flowGoal = new FlowField(noBlock);
     this.elevatorPanel = new ElevatorPanel();
     this.arcadeScreen = new ArcadeScreen();
+    this.choice = new ChoicePanel();
     this.events = new EventDirector(this);
     // il concierge: divisa bordeaux, berretto, sempre dietro la reception
     this.concierge = new Character(this.scene, { skin: '#d8a888', hair: '#9a9a9a', shirt: '#6a1020', pants: '#1a1a22' });
@@ -143,6 +146,7 @@ export class HotelDream {
     ctx.renderer.domElement.addEventListener('click', this.onCanvasClick);
 
     if (ctx.resumeHotel && this.saved?.reached && ctx.hotelEntry === 'door') this.enterFromDoor();
+    else if (ctx.resumeHotel && this.saved?.reached && ctx.hotelEntry === 'shortcut') this.enterFromShortcut();
     else if (ctx.resumeHotel && this.saved?.reached) this.resume();
     else this.arrive();
     ctx.hotelEntry = null;
@@ -207,6 +211,7 @@ export class HotelDream {
     rb.mergeStatic();
     this.suiteKit?.setPrizes(this.prizes);
     this.suiteKit?.setEntities(this.entities, this.activeEntity);
+    this.suiteKit?.setShortcuts(unlockedPlaces(this.ctx.progress));
     this.makeBuckets();
   }
 
@@ -480,6 +485,26 @@ export class HotelDream {
     this.snapCamera();
     this.enterSuiteMood();
     this.script = [{ at: 1.5, fn: () => this.ctx.ui.subtitle(FRIEND, this.timeOfDay === 'night' ? 'Eccoti. Il tè è ancora caldo.' : 'Bentornato. La hall è tranquilla, oggi.', 3) }];
+  }
+
+  // Si torna da un luogo del sogno attraverso una porta 1313: si esce dalla
+  // porta verde della suite, come se fosse sempre stata lì.
+  enterFromShortcut() {
+    const s = this.saved;
+    const { ui } = this.ctx;
+    this.resume();
+    const k = this.suiteKit;
+    const p = this.player;
+    p.pos.set(k.shortcutSpot.x - 0.4, 0, k.shortcutSpot.z);
+    p.vel.set(0, 0, 0);
+    p.facing = -Math.PI / 2;
+    this.camYaw = -Math.PI / 2;
+    this.friend.pos.set(k.shortcutSpot.x - 1.6, 0, k.shortcutSpot.z - 1.2);
+    this.friend.sitting = false;
+    this.snapCamera();
+    this.ctx.audio.thud(0.15);
+    const day = s.timeOfDay === 'day';
+    this.script = [{ at: this.time + 1.2, fn: () => ui.subtitle(FRIEND, day && !s.hallCleared ? 'Casa. ...Le pistole sono ancora sul tavolino.' : 'Casa. Non mi abituerò mai a questa porta.', 3) }];
   }
 
   // Si rientra dal portone dopo una passeggiata fuori: si è nella hall.
@@ -1130,6 +1155,27 @@ export class HotelDream {
     if (input.wasPressed('Escape', 'KeyQ', 'KeyE')) this.closeBestiary();
   }
 
+  // La porta verde della suite: porta dritta nei luoghi del sogno già visitati.
+  openShortcuts(places) {
+    this.ctx.input.unlock();
+    this.choice.show({
+      title: 'La porta dei luoghi',
+      note: 'Ogni luogo del sogno che visitate aggiunge una targhetta. Dall\'altra parte, una porta con il numero 1313 vi riporta qui.',
+      theme: 'doors',
+      items: places.map((pl) => ({ label: pl.name, sub: pl.sub, value: pl.id, action: 'apri' })),
+      onPick: (id) => this.travelTo(id),
+    });
+  }
+
+  travelTo(id) {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.ctx.audio.whoosh(0.25);
+    this.ctx.ui.hint(null);
+    this.save();
+    this.ctx.travel(id);
+  }
+
   closeBestiary() {
     this.bestiaryOpen = false;
     document.getElementById('bestiary').classList.remove('show');
@@ -1275,7 +1321,7 @@ export class HotelDream {
   // ---------- Ciclo ----------
   update(dt) {
     const { input, ui, audio } = this.ctx;
-    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen;
+    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen || this.choice.open;
     if (!menus && input.wasPressed('KeyP', 'Escape') && this.phase !== 'sleeping' && this.phase !== 'riding') {
       this.paused = !this.paused;
       ui.center(this.paused ? '<div class="panel pause"><h2>Pausa</h2><p><kbd>P</kbd> riprendi</p><p><kbd>M</kbd> audio on/off</p><p>Il sogno si salva da solo.</p></div>' : null);
@@ -1296,6 +1342,7 @@ export class HotelDream {
     if (this.arcadeScreen.open) this.arcadeScreen.update(dt, input);
     if (this.prizeOpen) this.prizeKeys(input);
     if (this.bestiaryOpen) this.bestiaryKeys(input);
+    if (this.choice.open) this.choice.handleKeys(input);
 
     const room = roomAt(this.layout, this.player.pos.x, this.player.pos.z);
     const inSuite = this.isSuiteRoom(room);
@@ -1706,6 +1753,15 @@ export class HotelDream {
     if (near(k.armchair.pos, 1.4)) {
       if (E) this.startActivity('fire');
       return '<kbd>E</kbd> siediti davanti al fuoco';
+    }
+    if (near(k.shortcutSpot, 1.4)) {
+      const places = unlockedPlaces(this.ctx.progress);
+      if (!places.length) {
+        if (E) ui.subtitle(FRIEND, 'Questa porta prima non c\'era. È chiusa... forse si aprirà quando avremo visto qualcosa, là fuori.', 3.8);
+        return '<kbd>E</kbd> una porta verde che prima non c\'era';
+      }
+      if (E) this.openShortcuts(places);
+      return '<kbd>E</kbd> apri la porta dei luoghi del sogno';
     }
     if (near(k.vitrineSpot, 1.5)) {
       if (E) this.openBestiary();
@@ -2147,6 +2203,7 @@ export class HotelDream {
     if (this.arcadeScreen.open) this.arcadeScreen.finish();
     this.closePrizes();
     this.closeBestiary();
+    this.choice.dispose();
     this.followers?.dispose();
     this.rb.dispose();
     this.floorExtra?.dispose();

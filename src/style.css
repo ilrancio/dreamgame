@@ -550,7 +550,8 @@ kbd {
 /* ---------- Ascensore ---------- */
 #elevator,
 #prizes,
-#bestiary {
+#bestiary,
+#choice {
   position: fixed;
   inset: 0;
   display: none;
@@ -561,7 +562,8 @@ kbd {
 
 #elevator.show,
 #prizes.show,
-#bestiary.show {
+#bestiary.show,
+#choice.show {
   display: grid;
 }
 
@@ -856,4 +858,60 @@ kbd {
   position: fixed;
   inset: 0;
   background: radial-gradient(circle at 50% 50%, transparent 0 30vmin, rgba(0, 0, 0, 0.6) 31vmin, rgba(0, 0, 0, 0.97) 33vmin);
+}
+
+/* Le porte della suite verso i macroluoghi */
+.prize-panel.bestiary.doors {
+  border-color: #6ab07a;
+  background: linear-gradient(#1e2a1c, #10180e);
+}
+
+/* Il negozio di retrogiochi: le cartucce */
+.prize-panel.bestiary.retro {
+  border-color: #ff2a9a;
+  background: linear-gradient(#1c1030, #0c0818);
+}
+
+/* Sdraiati sul pouf: un cerchio che respira piano */
+.breath {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 180px;
+  height: 180px;
+  margin-top: -18vh;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 24px;
+  font-style: italic;
+  color: #fff0f8;
+  text-shadow: 0 0 10px rgba(255, 150, 220, 0.6);
+}
+.breath .ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 210, 240, 0.55);
+  box-shadow: 0 0 30px rgba(255, 140, 220, 0.25);
+  animation: breath-ring 10s ease-in-out infinite;
+}
+.breath span {
+  position: absolute;
+  animation: breath-in 10s ease-in-out infinite;
+}
+.breath .out {
+  animation-name: breath-out;
+}
+@keyframes breath-ring {
+  0%, 100% { transform: scale(0.65); opacity: 0.35; }
+  50% { transform: scale(1.1); opacity: 0.9; }
+}
+@keyframes breath-in {
+  0%, 45% { opacity: 0.9; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 0.9; }
+}
+@keyframes breath-out {
+  0%, 45% { opacity: 0; }
+  50%, 95% { opacity: 0.9; }
+  100% { opacity: 0; }
 }

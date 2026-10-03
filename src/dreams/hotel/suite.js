@@ -137,6 +137,22 @@ export function buildSuite(a, bathApi, rb) {
   // posti nella vetrina: due ripiani, due posti per ripiano
   const slots = [[-0.55, 0.84], [0.55, 0.84], [-0.55, 1.59], [0.55, 1.59]];
 
+  // ---------- La porta dei macroluoghi (parete est, dopo i letti) ----------
+  // Non c'era, quando siete arrivati. Ogni luogo del sogno che visitate le
+  // aggiunge una targhetta: aprendola si esce direttamente là.
+  const sdz = 21.8;
+  const doorGreen = a.mat('#2f5a3a');
+  const brass = a.mat('#c9a040', { metal: true });
+  box(0.12, 2.7, 1.7, darkWood, 17.78, 1.35, sdz, { collide: false });
+  box(0.08, 2.45, 1.3, doorGreen, 17.7, 1.225, sdz, { collide: false });
+  for (const dz of [-0.33, 0.33]) for (const y of [0.7, 1.75]) box(0.03, 0.75, 0.42, a.mat('#28503a'), 17.65, y, sdz + dz, { collide: false });
+  a.sphere(0.05, brass, ...spread(P(17.62, sdz - 0.48), 1.15), { collide: false });
+  const doorGlowMat = a.track(new THREE.MeshBasicMaterial({ color: '#fff0c8', transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+  box(0.02, 0.05, 1.25, doorGlowMat, 17.62, 0.03, sdz, { collide: false, dynamic: true });
+  const plaques = new THREE.Group();
+  rb.dynamic.add(plaques);
+  const plaqueTrack = [];
+
   // ---------- Il bagno: una stanza a sé, con la sua porta ----------
 
   // (il bagno: una stanza a sé, con la sua porta)
@@ -219,6 +235,23 @@ export function buildSuite(a, bathApi, rb) {
       });
     },
     vitrineSpot: W(vx, vz - 1.4),
+    shortcutSpot: W(16.6, sdz),
+    shortcutFacing: Math.PI / 2,
+    // le targhette dei luoghi raggiungibili da questa porta
+    setShortcuts(places = []) {
+      plaques.clear();
+      plaqueTrack.forEach((d) => d.dispose());
+      plaqueTrack.length = 0;
+      const tr = (o) => (plaqueTrack.push(o), o);
+      doorGlowMat.opacity = places.length ? 0.9 : 0;
+      places.slice(0, 6).forEach((pl, i) => {
+        const t = tr(textTexture(pl.name, { width: 256, height: 48, font: '600 24px Cormorant Garamond, serif', color: '#2a1a0a', bg: '#d8b860' }));
+        const m = new THREE.Mesh(tr(new THREE.PlaneGeometry(0.62, 0.12)), tr(new THREE.MeshBasicMaterial({ map: t })));
+        m.position.copy(W(17.64, sdz, 2.1 - i * 0.16));
+        m.rotation.y = -Math.PI / 2;
+        plaques.add(m);
+      });
+    },
     // statuette delle creature: quelle sbloccate, e sagome scure per le altre
     setEntities(levels = {}, active = null) {
       vitrineGroup.clear();

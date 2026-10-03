@@ -304,9 +304,35 @@ export function buildVillage(scene, terrain) {
   const candle = sprite('#ffb050', entry.x - 6, Y + 0.95, entry.z + 3.5, 0.9, 0.9);
   lamps.push({ s: candle, size: 0.9, always: true });
 
+  // ---------- La porta 1313: in piedi da sola, ai margini della piazza ----------
+  // Uno stipite di pietra con una porta di legno e il numero della suite.
+  // Aprendola si torna dritti nella suite (porta verde, parete est).
+  const sc = { x: C.x - 14, z: C.z + 19 };
+  const scYaw = Math.atan2(C.x - sc.x, C.z - sc.z);
+  const scG = new THREE.Group();
+  scG.position.set(sc.x, Y, sc.z);
+  scG.rotation.y = scYaw;
+  staticGroup.add(scG);
+  for (const sx of [-0.85, 0.85]) box(0.4, 2.7, 0.5, stone, sx, 1.35, 0, { parent: scG });
+  box(2.1, 0.45, 0.55, stone, 0, 2.9, 0, { parent: scG });
+  box(1.3, 2.45, 0.12, darkWood, 0, 1.225, 0, { parent: scG });
+  box(0.42, 0.14, 0.03, mat('#c9a040', { metalness: 0.7, roughness: 0.3 }), 0, 1.8, 0.08, { parent: scG });
+  box(0.42, 0.14, 0.03, mat('#c9a040', { metalness: 0.7, roughness: 0.3 }), 0, 1.8, -0.08, { parent: scG });
+  colliders.push({ minX: sc.x - 1.1, maxX: sc.x + 1.1, minZ: sc.z - 1.1, maxZ: sc.z + 1.1 });
+  const numTex = track(textTexture('1313', { width: 128, height: 48, font: '700 34px Cormorant Garamond, serif', color: '#2a1a0a', bg: '#d8b860' }));
+  const numMat = track(new THREE.MeshBasicMaterial({ map: numTex }));
+  for (const side of [1, -1]) {
+    const num = new THREE.Mesh(track(new THREE.PlaneGeometry(0.4, 0.13)), numMat);
+    num.position.set(sc.x + Math.sin(scYaw) * 0.1 * side, Y + 1.8, sc.z + Math.cos(scYaw) * 0.1 * side);
+    num.rotation.y = scYaw + (side < 0 ? Math.PI : 0);
+    dyn.add(num);
+  }
+  // quando la porta è "vostra", da sotto filtra la luce calda della suite
+  const scGlow = sprite('#ffd890', sc.x + Math.sin(scYaw) * 0.3, Y + 0.2, sc.z + Math.cos(scYaw) * 0.3, 2.2, 0);
+
   // ---------- Le case, lungo i vicoli intorno alla piazza ----------
   const roadSegs = [];
-  for (let i = terrain.upperStart; i < terrain.road.length; i++) roadSegs.push(terrain.road[i]);
+  for (const p of terrain.road) if (p.road === 1) roadSegs.push(p);
   const nearRoad = (x, z, r) => roadSegs.some((p) => Math.hypot(p.x - x, p.z - z) < r);
   const placed = [];
   for (let tries = 0; tries < 900 && placed.length < 30; tries++) {
@@ -323,6 +349,7 @@ export function buildVillage(scene, terrain) {
     if (Math.hypot(x - bar.x, z - (bar.z + 3)) < 12 + rad) continue;
     if (Math.hypot(x - bel.x, z - bel.z) < 16 + rad) continue;
     if (Math.hypot(x - entry.x, z - entry.z) < 12 + rad) continue;
+    if (Math.hypot(x - sc.x, z - sc.z) < 6 + rad) continue;
     if (nearRoad(x, z, 14 + rad)) continue;
     // la facciata guarda verso la piazza: angolo arrotondato a 90° per allineare i vicoli
     const face = Math.round(Math.atan2(C.x - x, C.z - z) / (Math.PI / 2)) * (Math.PI / 2);
@@ -408,6 +435,11 @@ export function buildVillage(scene, terrain) {
     scopeLook: new THREE.Vector3(HOTEL.x, terrain.heightAt(HOTEL.x, HOTEL.z) + 20, HOTEL.z),
     belYaw,
     entry,
+    // la porta 1313: davanti si sta in (spot), guardando la porta
+    shortcut: { x: sc.x, z: sc.z, yaw: scYaw, spot: { x: sc.x + Math.sin(scYaw) * 1.6, z: sc.z + Math.cos(scYaw) * 1.6 } },
+    setShortcutOpen(on) {
+      scGlow.material.opacity = on ? 0.85 : 0;
+    },
     setNight(k) {
       windowMat.emissiveIntensity = 1.6 * k;
       roseMat.emissiveIntensity = 0.3 + 1.5 * k;

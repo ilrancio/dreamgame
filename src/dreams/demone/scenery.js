@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/noise.js';
 import { glowTexture, textTexture } from '../../core/textures.js';
-import { FIELD, HOTEL, START, DEMON_POS, ROAD_HALF, VILLAGE } from './terrain.js';
+import { FIELD, HOTEL, START, DEMON_POS, ROAD_HALF, VILLAGE, MALL } from './terrain.js';
 
 // Griglia spaziale per gli ostacoli fissi (alberi, gambe del demone).
 export class ColliderGrid {
@@ -58,6 +58,7 @@ export function buildScenery(scene, terrain) {
     if (rd < ROAD_HALF + 12) continue;
     if (Math.hypot(x - HOTEL.x, z - (HOTEL.z - 20)) < 95) continue;
     if (Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r + 25) continue;
+    if (Math.hypot(x - MALL.x, z - MALL.z) < MALL.r + 20) continue;
     pines.push([x, h, z, 0.8 + rand() * 0.9]);
   }
   // un anello di pini attorno all'hotel
