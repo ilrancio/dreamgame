@@ -13,6 +13,7 @@ import { buildVillage, VILLAGE_NAME, VILLAGE_ALT } from './village.js';
 import { buildMallExterior } from '../centro/exterior.js';
 import { unlockPlace, placeById } from '../../core/places.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
+import { DigitalLayer } from '../digitale/layer.js';
 
 const FRIEND = 'Il tuo amico:';
 
@@ -72,7 +73,33 @@ export class OutdoorDream {
     this.demon = new Demon(this.scene, DEMON_POS.x, DEMON_POS.z, this.terrain.heightAt(DEMON_POS.x, DEMON_POS.z));
     this.village = buildVillage(this.scene, this.terrain);
     this.mall = buildMallExterior(this.scene, this.terrain);
-    this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R], this.mall.colliders);
+    // il mondo è stato invaso da entità digitali: terminali nei luoghi, pixel che galleggiano ovunque
+    const vt = this.village.terminal;
+    const tpos = [
+      { id: 'piazzale', x: HOTEL.x + 30, z: DOOR.z - 9, yaw: Math.PI },
+      { id: 'borgo', x: vt.x, z: vt.z, yaw: vt.yaw },
+      { id: 'parcheggio', x: MALL.x + 45 + 14, z: MALL.z + 16, yaw: Math.PI / 2 },
+    ].map((q) => ({ ...q, y: this.terrain.heightAt(q.x, q.z) }));
+    const pts = [];
+    this.terrain.road.forEach((r, i) => {
+      if (i % 22) return;
+      const side = (i / 22) % 2 ? 1 : -1;
+      const off = 14 + ((i * 7) % 18);
+      const x = r.x + r.tz * off * side;
+      const z = r.z - r.tx * off * side;
+      pts.push([x, this.terrain.heightAt(x, z) + 3 + ((i * 13) % 7), z]);
+    });
+    for (const c of [VILLAGE, MALL, { x: HOTEL.x, z: HOTEL.z - 70 }]) {
+      for (let k = 0; k < 10; k++) {
+        const a = k * 2.4;
+        const r = 25 + ((k * 17) % 50);
+        const x = c.x + Math.cos(a) * r;
+        const z = c.z + Math.sin(a) * r;
+        pts.push([x, this.terrain.heightAt(x, z) + 4 + (k % 4) * 2, z]);
+      }
+    }
+    this.digital = new DigitalLayer(this.scene, ctx, tpos, pts);
+    this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R], this.mall.colliders, this.digital.colliders);
     this.village.setShortcutOpen(!!ctx.progress.places?.borgo || !!this.saved.villageSeen);
 
     // la macchina resta dove l'avevate lasciata (la prima volta, davanti all'hotel)
@@ -278,9 +305,12 @@ export class OutdoorDream {
     if (input.wasPressed('KeyM')) audio.toggleMute();
     while (this.script.length && this.script[0].at <= this.time) this.script.shift().fn();
 
-    if (this.activity) this.updateActivity(dt);
+    this.digital.update(dt, this.time, input);
+    if (this.digital.open) this.player.animate(dt, 0);
+    else if (this.activity) this.updateActivity(dt);
     else if (this.mode === 'car') this.updateCar(dt);
     else this.updateFoot(dt);
+    this.digital.discover(this.mode === 'car' ? this.car.pos : this.player.pos, (d, f) => this.later(d, f));
 
     if (this.mode === 'foot' || this.activity) this.updateFriend(dt);
     if (this.followers && this.mode === 'foot') {
@@ -532,6 +562,8 @@ export class OutdoorDream {
     const V = this.village;
     const near = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
     if (near(DOOR.x, DOOR.z, 4.5)) return { label: 'rientra nell\'hotel', fn: () => this.goInside() };
+    const term = this.digital.near(p);
+    if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term) };
     if (near(this.car.pos.x, this.car.pos.z, 3.6)) return { label: 'sali in macchina', fn: () => this.getIn() };
     const me = this.mall.entrance;
     if (near(me.x + 1.5, me.z, 5.5)) return { label: 'entra nel centro commerciale', fn: () => this.leave(() => this.ctx.enterMall('entrance')) };
@@ -976,6 +1008,7 @@ export class OutdoorDream {
   dispose() {
     const { ui, audio } = this.ctx;
     this.gesture.dispose();
+    this.digital.dispose();
     this.ctx.renderer.domElement.removeEventListener('click', this.onCanvasClick);
     audio.engineStop();
     audio.ambience(null);

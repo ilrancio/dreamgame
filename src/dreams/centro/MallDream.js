@@ -5,6 +5,7 @@ import { GnomeFollowers } from '../hotel/companions.js';
 import { ArcadeScreen, GAMES } from '../hotel/games.js';
 import { ChoicePanel } from '../../core/choice.js';
 import { unlockPlace } from '../../core/places.js';
+import { DigitalLayer } from '../digitale/layer.js';
 import { buildMallInterior, floorHeight, rampAt, upperWalkable, underSlab, MALL_W, MALL_L, UPPER, DOOR_W } from './mall.js';
 
 const FRIEND = 'Il tuo amico:';
@@ -62,7 +63,11 @@ export class MallDream {
     this.scene.add(sun);
 
     this.mall = buildMallInterior(this.scene, { day: this.day });
-    this.colliders = this.mall.colliders;
+    // anche qui dentro sono arrivate le entità: un terminale al centro della galleria
+    const pts = [];
+    for (let i = 0; i < 26; i++) pts.push([((i * 37) % 12) - 6, 3 + ((i * 13) % 9), 8 + i * 5.6]);
+    this.digital = new DigitalLayer(this.scene, ctx, [{ id: 'galleria', x: 0, y: 0, z: 88, yaw: Math.PI }], pts);
+    this.colliders = this.mall.colliders.concat(this.digital.colliders.map((c) => ({ ...c, lv: 0 })));
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
@@ -186,7 +191,9 @@ export class MallDream {
   update(dt) {
     const { input, ui, audio } = this.ctx;
     // pannelli aperti: i tasti vanno a loro, e in questo fotogramma solo a loro
-    const busy = this.arcadeScreen.open || this.choice.open;
+    const busy = this.arcadeScreen.open || this.choice.open || this.digital.open;
+    this.digital.update(dt, this.time, input);
+    if (!busy) this.digital.discover(this.player.pos, (d, f) => this.later(d, f));
     this.time += dt;
     this.lineTimer -= dt;
     if (input.wasPressed('KeyM')) audio.toggleMute();
@@ -366,6 +373,8 @@ export class MallDream {
     const M = this.mall;
     if (this.level === 0 && near(M.door13.spot.x, M.door13.spot.z, 1.6)) return { label: 'apri la porta 1313', fn: () => this.leave(() => this.ctx.travel('suite')) };
     if (this.level === 0 && p.z < 4 && Math.abs(p.x) < DOOR_W) return { label: 'esci: le porte si aprono da sole', fn: () => this.leave(() => this.ctx.goOutside('centro')) };
+    const term = this.level === 0 && this.digital.near(p);
+    if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term) };
     const R = M.retro;
     if (this.inRetro()) {
       if (near(R.crt.x, R.crt.z, 1.9)) return { label: 'prova un gioco al tubo catodico', fn: () => this.startPouf(true) };
@@ -609,6 +618,7 @@ export class MallDream {
     this.ctx.renderer.domElement.removeEventListener('click', this.onCanvasClick);
     if (this.arcadeScreen.open) this.arcadeScreen.finish();
     this.choice.dispose();
+    this.digital.dispose();
     input.unlock();
     audio.stopLoops();
     audio.stopAllPads(1);

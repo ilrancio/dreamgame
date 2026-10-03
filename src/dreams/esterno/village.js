@@ -330,6 +330,9 @@ export function buildVillage(scene, terrain) {
   // quando la porta è "vostra", da sotto filtra la luce calda della suite
   const scGlow = sprite('#ffd890', sc.x + Math.sin(scYaw) * 0.3, Y + 0.2, sc.z + Math.cos(scYaw) * 0.3, 2.2, 0);
 
+  // il terminale delle entità digitali, ai margini della piazza
+  const term = { x: C.x + 21, z: C.z - 4 };
+
   // ---------- Le case, lungo i vicoli intorno alla piazza ----------
   const roadSegs = [];
   for (const p of terrain.road) if (p.road === 1) roadSegs.push(p);
@@ -350,6 +353,7 @@ export function buildVillage(scene, terrain) {
     if (Math.hypot(x - bel.x, z - bel.z) < 16 + rad) continue;
     if (Math.hypot(x - entry.x, z - entry.z) < 12 + rad) continue;
     if (Math.hypot(x - sc.x, z - sc.z) < 6 + rad) continue;
+    if (Math.hypot(x - term.x, z - term.z) < 8 + rad) continue;
     if (nearRoad(x, z, 14 + rad)) continue;
     // la facciata guarda verso la piazza: angolo arrotondato a 90° per allineare i vicoli
     const face = Math.round(Math.atan2(C.x - x, C.z - z) / (Math.PI / 2)) * (Math.PI / 2);
@@ -435,6 +439,7 @@ export function buildVillage(scene, terrain) {
     scopeLook: new THREE.Vector3(HOTEL.x, terrain.heightAt(HOTEL.x, HOTEL.z) + 20, HOTEL.z),
     belYaw,
     entry,
+    terminal: { x: term.x, z: term.z, yaw: Math.atan2(C.x - term.x, C.z - term.z) },
     // la porta 1313: davanti si sta in (spot), guardando la porta
     shortcut: { x: sc.x, z: sc.z, yaw: scYaw, spot: { x: sc.x + Math.sin(scYaw) * 1.6, z: sc.z + Math.cos(scYaw) * 1.6 } },
     setShortcutOpen(on) {
