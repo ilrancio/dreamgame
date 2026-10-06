@@ -21,11 +21,13 @@ class ModelLibrary {
   // modello che non si carica resta semplicemente assente (si usa il ripiego).
   load(urls) {
     const loader = new GLTFLoader();
+    // i modelli incorporati (data:) si decodificano qui: alcune pagine vietano
+    // di "scaricarli" con fetch, anche se sono già dentro il gioco
+    const get = (url) => (url.startsWith('data:') ? loader.parseAsync(decodeDataUrl(url), '') : loader.loadAsync(url));
     const jobs = Object.entries(urls).map(([name, url]) =>
-      loader
-        .loadAsync(url)
+      get(url)
         // un secondo tentativo, se la rete ha avuto un singhiozzo
-        .catch(() => new Promise((r) => setTimeout(r, 600)).then(() => loader.loadAsync(url)))
+        .catch(() => new Promise((r) => setTimeout(r, 600)).then(() => get(url)))
         .then((gltf) => this.templates.set(name, prepare(gltf.scene)))
         .catch((e) => console.warn(`modello ${name} non caricato:`, e?.message || e)),
     );
@@ -67,6 +69,13 @@ class ModelLibrary {
   size(name) {
     return this.templates.get(name)?.userData.size ?? null;
   }
+}
+
+function decodeDataUrl(url) {
+  const bin = atob(url.slice(url.indexOf(',') + 1));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
 }
 
 function prepare(scene) {
