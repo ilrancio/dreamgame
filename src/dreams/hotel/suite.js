@@ -54,8 +54,10 @@ export function buildSuite(a, bathApi, rb) {
 
   // ---------- Angolo del tè, davanti alla grande finestra (parete sud) ----------
   const table = { x: 3.8, z: 2.4 };
-  cyl(0.75, 0.75, 0.06, darkWood, table.x, 0.76, table.z);
-  cyl(0.07, 0.1, 0.74, darkWood, table.x, 0.37, table.z, { collide: false });
+  if (!put('tableRound', table.x, table.z, { fit: [1.5, 0.79, 1.5], colors: DARK, col: [1.5, 1.5] })) {
+    cyl(0.75, 0.75, 0.06, darkWood, table.x, 0.76, table.z);
+    cyl(0.07, 0.1, 0.74, darkWood, table.x, 0.37, table.z, { collide: false });
+  }
   const chairs = [];
   for (const [dx, facing] of [[-1.3, Math.PI / 2], [1.3, -Math.PI / 2]]) {
     const cx = table.x + dx;
@@ -167,12 +169,13 @@ export function buildSuite(a, bathApi, rb) {
   rb.dynamic.add(lampLight);
 
   // salotto, armadio, valigie
-  box(5, 0.03, 3.6, a.mat('#8a2a2a'), 8, 0.02, 15, { collide: false });
+  if (!put('rugRectangle', 8, 15, { fit: [5, 0.03, 3.6], colors: { carpet: '#8a2a2a', carpetDarker: '#6a1a1e' } })) box(5, 0.03, 3.6, a.mat('#8a2a2a'), 8, 0.02, 15, { collide: false });
   if (!put('loungeSofa', 8, 12.55, { fit: [3.2, 1.05, 1.1], colors: { carpet: '#4a5a7a', wood: '#3a2416' }, col: [3.2, 1.1] })) {
     box(3.2, 0.8, 1, a.mat('#4a5a7a'), 8, 0.4, 12.6);
     box(3.2, 0.7, 0.25, a.mat('#4a5a7a'), 8, 1, 12.1, { collide: false });
   }
-  box(1.2, 0.45, 0.7, darkWood, 8, 0.23, 15.5);
+  if (!put('tableCoffee', 8, 15.5, { fit: [1.3, 0.45, 0.8], colors: DARK, col: [1.3, 0.8] })) box(1.2, 0.45, 0.7, darkWood, 8, 0.23, 15.5);
+  put('radio', 8.4, 15.4, { y: 0.45, rot: 0.2, scale: 1.6, colors: { wood: '#7a4a2a' } });
   put('books', 7.8, 15.5, { y: 0.455, rot: 0.3, scale: 2 });
   // l'armadio: due ante alte di legno
   const wardrobe = [-0.6, 0.6].map((dx) => put('bookcaseClosedDoors', 10 + dx, 23.3, { rot: Math.PI, fit: [1.2, 2.6, 0.7], colors: { wood: '#6a4028', metal: '#c9a040' } }));
@@ -224,8 +227,10 @@ export function buildSuite(a, bathApi, rb) {
   // (il bagno: una stanza a sé, con la sua porta)
   const tiles = bathApi.mat('#f2f4f4');
   // doccia nell'angolo nord-est
-  bbox(1.85, 0.08, 1.85, bathApi.mat('#9aa4a8'), 16.85, 0.04, 6.85, { collide: false });
-  bbox(0.06, 2.3, 1.85, bathApi.mat('#cfe8f0', { transparent: 0.3 }), 15.9, 1.15, 6.85);
+  if (!put('shower', 16.85, 6.85, { rot: -Math.PI / 2, fit: [1.9, 2.4, 1.9] })) {
+    bbox(1.85, 0.08, 1.85, bathApi.mat('#9aa4a8'), 16.85, 0.04, 6.85, { collide: false });
+    bbox(0.06, 2.3, 1.85, bathApi.mat('#cfe8f0', { transparent: 0.3 }), 15.9, 1.15, 6.85);
+  }
   bcyl(0.03, 0.03, 0.4, chrome, 16.8, 2.45, 7.65, { collide: false });
   bcyl(0.18, 0.12, 0.06, chrome, 16.8, 2.2, 7.45, { collide: false });
   // vasca lungo la parete sud
@@ -235,7 +240,9 @@ export function buildSuite(a, bathApi, rb) {
   bcyl(0.03, 0.03, 0.35, chrome, 10.6, 0.8, 1.1, { collide: false });
   bbox(0.9, 0.02, 0.6, bathApi.mat('#6a9ab0'), 12.3, 0.012, 2.4, { collide: false });
   // water e bidet, parete est
+  const wc = put('toilet', 17.25, 3.2, { rot: -Math.PI / 2, scale: 2.1, col: [0.9, 0.7], bath: true });
   for (const [z, tank] of [[3.2, true], [4.6, false]]) {
+    if (tank && wc) continue;
     bcyl(0.2, 0.16, 0.4, porcelain, 17.35, 0.2, z);
     bbox(0.5, 0.08, 0.45, porcelain, 17.3, 0.42, z, { collide: false });
     if (tank) bbox(0.2, 0.45, 0.5, porcelain, 17.65, 0.7, z, { collide: false });

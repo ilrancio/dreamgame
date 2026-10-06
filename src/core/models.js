@@ -24,6 +24,8 @@ class ModelLibrary {
     const jobs = Object.entries(urls).map(([name, url]) =>
       loader
         .loadAsync(url)
+        // un secondo tentativo, se la rete ha avuto un singhiozzo
+        .catch(() => new Promise((r) => setTimeout(r, 600)).then(() => loader.loadAsync(url)))
         .then((gltf) => this.templates.set(name, prepare(gltf.scene)))
         .catch((e) => console.warn(`modello ${name} non caricato:`, e?.message || e)),
     );

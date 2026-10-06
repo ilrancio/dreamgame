@@ -18,6 +18,12 @@ import bathtub from './bathtub.glb?url';
 import bathroomSink from './bathroomSink.glb?url';
 import bathroomMirror from './bathroomMirror.glb?url';
 import trashcan from './trashcan.glb?url';
+import tableRound from './tableRound.glb?url';
+import rugRectangle from './rugRectangle.glb?url';
+import tableCoffee from './tableCoffee.glb?url';
+import radio from './radio.glb?url';
+import shower from './shower.glb?url';
+import toilet from './toilet.glb?url';
 
 export const HOTEL_MODELS = {
   bedDouble,
@@ -38,4 +44,10 @@ export const HOTEL_MODELS = {
   bathroomSink,
   bathroomMirror,
   trashcan,
+  tableRound,
+  rugRectangle,
+  tableCoffee,
+  radio,
+  shower,
+  toilet,
 };
