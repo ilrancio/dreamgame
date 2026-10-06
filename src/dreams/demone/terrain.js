@@ -18,6 +18,8 @@ export const HOTEL = { x: -80, z: 1330, plateau: 215 };
 export const VILLAGE = { x: 380, z: 1180, plateau: 420, r: 130 };
 // Il centro commerciale: una conca piatta a ovest dell'hotel, in fondo a una strada.
 export const MALL = { x: -600, z: 1215, plateau: 200, r: 150 };
+// L'aeroporto: una spianata giù nel campo, verso est, con la pista.
+export const AIRPORT = { x: 520, z: -420, rx: 240, rz: 150 };
 export const ROAD_HALF = 7;
 const ROAD_FLAT = 19;
 const ROAD_BLEND = 48;
@@ -74,6 +76,8 @@ export class Terrain {
     this.roadDist = new Float32Array(N * N).fill(1e9);
     this.roadIdx = new Int32Array(N * N).fill(-1);
     this.roadH = new Float32Array(N * N);
+    this.airH = null;
+    this.airH = this.natural(AIRPORT.x, AIRPORT.z);
 
     this.buildRoadCurve();
     this.buildHeights();
@@ -112,6 +116,11 @@ export class Terrain {
     if (dm < MALL.r + 120) {
       const flat = 1 - smoothstep(MALL.r, MALL.r + 110, dm);
       h += (MALL.plateau - h) * flat;
+    }
+    // la spianata dell'aeroporto
+    if (this.airH !== null) {
+      const ea = ((x - AIRPORT.x) / AIRPORT.rx) ** 2 + ((z - AIRPORT.z) / AIRPORT.rz) ** 2;
+      if (ea < 1.8) h += (this.airH - h) * (1 - smoothstep(0.9, 1.8, ea));
     }
     // altopiano dell'hotel
     const dh = Math.hypot(x - HOTEL.x, z - HOTEL.z);

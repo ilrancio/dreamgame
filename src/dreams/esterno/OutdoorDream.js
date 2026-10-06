@@ -11,6 +11,7 @@ import { Character } from '../hotel/character.js';
 import { GnomeFollowers } from '../hotel/companions.js';
 import { buildVillage, VILLAGE_NAME, VILLAGE_ALT } from './village.js';
 import { buildMallExterior } from '../centro/exterior.js';
+import { buildAirportExterior } from '../aeroporto/exterior.js';
 import { unlockPlace, placeById } from '../../core/places.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 import { DigitalLayer } from '../digitale/layer.js';
@@ -74,6 +75,8 @@ export class OutdoorDream {
     this.demon = new Demon(this.scene, DEMON_POS.x, DEMON_POS.z, this.terrain.heightAt(DEMON_POS.x, DEMON_POS.z));
     this.village = buildVillage(this.scene, this.terrain);
     this.mall = buildMallExterior(this.scene, this.terrain);
+    // l'aeroporto, giù nel campo
+    this.airport = buildAirportExterior(this.scene, this.terrain);
     // il mondo è stato invaso da entità digitali: terminali nei luoghi, pixel che galleggiano ovunque
     const vt = this.village.terminal;
     const tpos = [
@@ -108,7 +111,7 @@ export class OutdoorDream {
     const me0 = this.mall.entrance;
     this.doorBarrier = buildCorruptPlane(this.scene, { x: me0.x + 0.3, y: this.terrain.heightAt(me0.x, me0.z), z: me0.z, w: 9.6, h: 4.8, yaw: Math.PI / 2 });
     this.refreshGates(true);
-    this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R], this.mall.colliders, this.digital.colliders);
+    this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R], this.mall.colliders, this.digital.colliders, this.airport.colliders);
     this.village.setShortcutOpen(!!ctx.progress.places?.borgo || !!this.saved.villageSeen);
 
     // la macchina resta dove l'avevate lasciata (la prima volta, davanti all'hotel)
@@ -156,6 +159,7 @@ export class OutdoorDream {
       const d = this.village.shortcut;
       sp = { x: d.spot.x, z: d.spot.z, yaw: d.yaw };
     } else if (this.spawn === 'centro') sp = this.mall.spawn;
+    else if (this.spawn === 'aeroporto') sp = this.airport.spawn;
     const side = { x: Math.cos(sp.yaw) * 1.6, z: -Math.sin(sp.yaw) * 1.6 };
     this.player.pos.set(sp.x, this.groundAt(sp.x, sp.z), sp.z);
     this.player.facing = sp.yaw;
@@ -184,6 +188,7 @@ export class OutdoorDream {
     this.script = [
       { at: 1.4, fn: () => ui.subtitle(FRIEND, this.night ? 'Che aria fresca. Guarda quante stelle.' : 'Che luce, stamattina. Si vede tutta la valle.', 3) },
       { at: 5, fn: () => this.spawn === 'hotel' && !this.saved.villageSeen && ui.subtitle(FRIEND, 'La strada non finisce all\'hotel. Continua a salire... vediamo dove porta?', 3.6) },
+      { at: 9, fn: () => this.spawn === 'hotel' && !this.ctx.progress.places?.aeroporto && !this.flags.airLine && (this.flags.airLine = true) && ui.subtitle(FRIEND, 'Hai visto giù nel campo? Una pista, delle luci che lampeggiano... un aeroporto. Prima non c\'era.', 4) },
       { at: 5, fn: () => this.spawn === 'hotel' && this.saved.villageSeen && !this.mallSeen && ui.subtitle(FRIEND, 'E quella strada che scende a ovest? Laggiù c\'è un edificio bianco, enorme.', 3.6) },
     ];
   }
@@ -443,6 +448,7 @@ export class OutdoorDream {
     this.scenery.update(this.time, this.night, 9999);
     this.hotel.update(this.time);
     this.village.update(this.time);
+    this.airport.update(this.time);
     this.demon.update(dt, pos, false, 0);
     this.dust.update(dt);
     this.sky.update(this.camera, dt);
@@ -586,6 +592,12 @@ export class OutdoorDream {
       this.goInside();
       return;
     }
+    // le porte dell'aeroporto: sempre aperte
+    const ae = this.airport.entrance;
+    if (Math.abs(p.pos.x - ae.x) < ae.halfW && p.pos.z < ae.z + 1.4 && p.pos.z > ae.z - 1 && mz < -0.5 && !this.leaving) {
+      this.leave(() => this.ctx.goto('aeroporto', 'entrata'));
+      return;
+    }
     // e le porte di vetro del centro commerciale si aprono da sole (se non sono corrotte)
     const me = this.mall.entrance;
     if (Math.abs(p.pos.x - me.x) < 1.3 && Math.abs(p.pos.z - me.z) < me.halfW && mx < -0.5 && !this.leaving) {
@@ -667,6 +679,8 @@ export class OutdoorDream {
     if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term, () => this.onTerminalDone()) };
     if (near(this.car.pos.x, this.car.pos.z, 3.6)) return { label: 'sali in macchina', fn: () => this.getIn() };
     const me = this.mall.entrance;
+    const ae = this.airport.entrance;
+    if (near(ae.x, ae.z + 2, 5)) return { label: 'entra nell\'aeroporto', fn: () => this.leave(() => this.ctx.goto('aeroporto', 'entrata')) };
     if (near(me.x + 1.5, me.z, 5.5)) {
       if (!this.doorOpen) return { label: 'le porte sono corrotte', fn: () => this.gateMessage('ingresso', true) };
       return { label: 'entra nel centro commerciale', fn: () => this.leave(() => this.ctx.enterMall('entrance')) };
@@ -1075,6 +1089,8 @@ export class OutdoorDream {
       else if (info.idx >= T.mallStart) target = T.road[Math.min(T.road.length - 1, info.idx + 25)];
       else target = T.road[T.mallStart + 10];
     }
+    // se non c'è altro da fare, la bussola indica l'aeroporto non ancora visitato
+    if (!target && !this.ctx.progress.places?.aeroporto && !this.inVillage && Math.hypot(pos.x - this.airport.center.x, pos.z - this.airport.center.z) > 30) target = this.airport.center;
     if (!target || this.activity) {
       ui.compass(null);
       return;
@@ -1108,6 +1124,7 @@ export class OutdoorDream {
     this.car.headlight.intensity = k * 900;
     this.village.setNight(k);
     this.mall.setNight(k);
+    this.airport.setNight(k);
   }
 
   onResize() {
@@ -1136,6 +1153,7 @@ export class OutdoorDream {
     this.hotel.dispose();
     this.village.dispose();
     this.mall.dispose();
+    this.airport.dispose();
     this.scenery.dispose();
     this.terrain.dispose();
     this.dust.dispose();

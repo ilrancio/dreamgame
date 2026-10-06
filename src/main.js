@@ -7,6 +7,8 @@ import { DemonDream } from './dreams/demone/DemonDream.js';
 import { HotelDream } from './dreams/hotel/HotelDream.js';
 import { OutdoorDream } from './dreams/esterno/OutdoorDream.js';
 import { MallDream } from './dreams/centro/MallDream.js';
+import { AirportDream } from './dreams/aeroporto/AirportDream.js';
+import { BeachDream } from './dreams/spiaggia/BeachDream.js';
 import { placeById } from './core/places.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -46,6 +48,11 @@ const ctx = {
     ctx.spawn = spawn;
     goToChapter(3);
   },
+  // un capitolo qualunque, con il punto in cui si compare (l'aereo, la navetta...)
+  goto: (id, spawn) => {
+    ctx.spawn = spawn;
+    goToChapter(CHAPTERS.findIndex((c) => c.id === id));
+  },
   // le porte-scorciatoia: dalla suite a un macroluogo, e da lì alla suite
   travel: (dest) => {
     if (dest === 'suite') {
@@ -68,6 +75,8 @@ const CHAPTERS = [
   { id: 'hotel', create: (c) => new HotelDream(c), card: null, color: '#ffe2b0' },
   { id: 'esterno', create: (c) => new OutdoorDream(c), card: null, color: '#dfe8f4' },
   { id: 'centro', create: (c) => new MallDream(c), card: null, color: '#f4f2ee' },
+  { id: 'aeroporto', create: (c) => new AirportDream(c), card: null, color: '#d8dce2' },
+  { id: 'spiaggia', create: (c) => new BeachDream(c), card: null, color: '#c8ccd0' },
 ];
 
 let current = null;
@@ -140,7 +149,7 @@ if (hasHotel) {
   title.addEventListener('click', () => {
     // scorciatoie di sviluppo: #hotel parte dall'arrivo in hotel, #esterno dal portone,
     // #centro dall'ingresso del centro commerciale
-    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3 }[location.hash] ?? 0);
+    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3, '#aeroporto': 4, '#spiaggia': 5 }[location.hash] ?? 0);
   });
 }
 

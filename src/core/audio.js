@@ -473,6 +473,26 @@ export class AudioEngine {
     }
   }
 
+  // Un gabbiano lontano: un grido che scende
+  gull(vol = 0.03) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) {
+      const t = c.currentTime + k * 0.32;
+      const o = c.createOscillator();
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(1500 + Math.random() * 300, t);
+      o.frequency.exponentialRampToValueAtTime(700, t + 0.28);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.3);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      o.stop(t + 0.32);
+    }
+  }
+
   cricket(vol = 0.01) {
     const c = this.ctx;
     const t0 = c.currentTime;

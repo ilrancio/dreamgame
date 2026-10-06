@@ -12,7 +12,7 @@ npm run dev        # apri l'indirizzo che compare (di solito http://localhost:51
 npm run build      # versione statica in dist/
 ```
 
-La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel browser: le volte successive la schermata iniziale propone **Continua il sogno** (si riprende dalla suite) oppure **Ricomincia dal campo**. Scorciatoie per lo sviluppo: `#hotel` in fondo all'indirizzo parte dall'arrivo in hotel, `#esterno` dal portone dell'hotel, all'aperto, `#centro` dall'ingresso del centro commerciale.
+La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel browser: le volte successive la schermata iniziale propone **Continua il sogno** (si riprende dalla suite) oppure **Ricomincia dal campo**. Scorciatoie per lo sviluppo: `#hotel` in fondo all'indirizzo parte dall'arrivo in hotel, `#esterno` dal portone dell'hotel, all'aperto, `#centro` dall'ingresso del centro commerciale, `#aeroporto` dall'atrio dell'aeroporto e `#spiaggia` dalla Spiaggia d'Inverno.
 
 ## Sogni raccontati finora
 
@@ -29,6 +29,8 @@ La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel bro
 | V | [L'Invasione Digitale](docs/sogni.md#v--linvasione-digitale) | Entità digitali ovunque e terminali nei macroluoghi: colleghi la chiavetta con dentro Scintilla e combatti in un picchiaduro/shooter laterale 2D. Livelli e punti abilità. |
 | — | [Il Murale delle Entità](docs/sogni.md#il-murale-delle-entità) | Un murale gigante in fondo al centro commerciale con tutte le entità: infili la chiavetta e scegli quale trasferire e usare in combattimento. |
 | — | [La corruzione](docs/sogni.md#la-corruzione-i-posti-chiusi-dallinvasione) | Muri di texture corrotte chiudono il borgo, la conca del centro commerciale, le sue porte e il primo piano: si aprono liberando i terminali, uno dopo l'altro. |
+| VI | [L'Aeroporto](docs/sogni.md#laeroporto) | Un aeroporto vuoto giù nel campo: tabellone con destinazioni che non esistono, tapis roulant, sale d'attesa nella nebbia. Un solo volo in imbarco. |
+| — | [La Spiaggia d'Inverno](docs/sogni.md#la-spiaggia-dinverno) | Dove porta il volo: uno stabilimento fuori stagione, ombrelloni chiusi, piscina vuota, una navetta che riporta all'aeroporto. |
 | III | [La Sala Giochi](docs/sogni.md#iii--la-sala-giochi-piano-88) | Il piano 88: una sala giochi infinita, cabinati giocabili, biglietti e premi per la suite. |
 
 L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/sogni.md](docs/sogni.md).
@@ -44,6 +46,9 @@ src/
   core/gestures.js   i gesti: minigiochi per le attività di tutti i giorni
   dreams/esterno/    fuori dall'hotel: a piedi o in macchina, il borgo in vetta
   dreams/centro/     il centro commerciale: l'edificio nella conca e la galleria su due piani
+  dreams/aeroporto/  l'aeroporto: il terminal nel campo, l'atrio, il corridoio dei gate, la cabina del volo
+  dreams/spiaggia/   la Spiaggia d'Inverno, prima destinazione dell'aeroporto
+  core/walkscene.js  la base comune delle scene a piedi (camminata, amico, camera, piccole scene)
   dreams/digitale/   l'invasione digitale: terminali, entità, la chiavetta e il combattimento 2D
   dreams/hotel/      l'hotel: pianta a corridoi, porte, concierge, piani e architetture, ascensore,
                      stili delle stanze, suite con bagno e attività,

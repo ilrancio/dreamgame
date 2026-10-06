@@ -219,3 +219,33 @@ La catena segue la difficoltà dei terminali:
 | **Galleria Orizzonte** | Le **scale mobili**, e quindi il primo piano (i gradini si sfaldano in pixel). |
 
 Le porte 1313 non aggirano la corruzione: nella porta verde della suite i luoghi ancora chiusi compaiono come *corrotti*, con il nome del terminale da liberare. L'obiettivo e la bussola ti indicano sempre il prossimo terminale.
+
+---
+
+## L'Aeroporto
+
+> *Aggiungiamo un aeroporto che porti in altre zone? Lo vorrei liminale come gli altri posti che abbiamo.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Dove si trova | Giù nel campo, a sud-est dell'hotel, dove la pianura si appiattisce. Un terminal lungo e basso con la facciata di vetro accesa e l'insegna **AEROPORTO**. C'è una torre di controllo con la luce verde che gira, una pista con le luci che si accendono in sequenza verso nessuno, due aerei fermi sul piazzale e una manica a vento. Finché non ci sei stato, la bussola ti porta lì. Si entra camminando verso le porte di vetro. |
+| Liminale | Un atrio enorme di terrazzo lucido con i banchi del check-in **AEROLINEE ONIRICHE**, file di sedili blu e nessun passeggero. Poi un corridoio di **200 m** con la moquette a motivi, i **tapis roulant** (che ti portano davvero), i negozi chiusi con la serranda, le pubblicità sbiadite. A destra, le sale d'attesa dei gate, con le vetrate sulla nebbia e la sagoma degli aerei. Un robot lava-pavimenti percorre il corridoio da solo. L'altoparlante fa annunci gentili e senza senso, a nessuno. |
+| Che porti in altre zone | Il **tabellone delle partenze** fa *clack-clack* come quelli vecchi. Una sola destinazione è in **imbarco**, la **Spiaggia d'Inverno** (gate 4). Le altre sono *Altrove*, *Il fondo del mare* e *La città senza nome* (**in attesa di un sogno**: ogni sogno nuovo potrà diventare un volo), *Casa* (ritardo ∞), *Ieri* (cancellato) e *Sant'Onirio* (atterrato). <kbd>E</kbd> sul tabellone lo apri come una lista. |
+| Le piccole cose | Ti siedi in sala d'attesa a guardare la vetrata; il tuo amico dice cose da aeroporto. C'è un distributore automatico in fondo al corridoio. Al gate 4 un'**addetta** in divisa aspetta solo voi. |
+| Il volo | Al banco del gate 4, <kbd>E</kbd>: camminate nel finger e vi ritrovate seduti in una **cabina vuota**, con le nuvole che scorrono negli oblò. "Allacciate le cinture. Stiamo per atterrare. Siamo appena partiti." Il volo dura il tempo di un respiro. |
+| Porta 1313 | Nell'atrio, a sinistra dell'ingresso, c'è una porta verde con il **1313**: l'aeroporto è un macroluogo, e dalla suite ci si arriva dalla porta dei luoghi. |
+
+---
+
+## La Spiaggia d'Inverno
+
+La prima destinazione dell'aeroporto: uno stabilimento balneare fuori stagione, sotto un cielo grigio, dove non c'è nessuno.
+
+| Nel gioco | |
+|-----------|---|
+| La spiaggia | Una **passerella di legno** scende verso il mare tra file di **ombrelloni chiusi** e lettini vuoti. Il mare è grigio e calmo, con la schiuma che va e viene. I gabbiani girano in tondo. La torretta del bagnino è vuota, con la **bandiera rossa** che sventola. |
+| Il bar chiuso | Il **BAR SOLE** ha il cartello *CHIUSO*. Se bussi l'insegna sfarfalla, ma non apre nessuno. |
+| La piscina vuota | Una piscina senza acqua, con le piastrelle azzurre, le foglie sul fondo, la scaletta e la scritta **PROFONDITÀ 1,80**. Ci si scende dalla rampa. Se urli, l'eco gira tra le piastrelle e non vuole uscire. |
+| Guardare il mare | Ci si sdraia su un lettino davanti al mare, con il tuo amico accanto ("Il mare d'inverno è più bello. Non deve fingere niente."). Arrivando sulla riva ti bagni i piedi. |
+| Le cabine | Una fila di cabine colorate. Una ha il numero **1313**: è la porta per la suite, e la spiaggia diventa un luogo della porta verde. |
+| Il ritorno | Alla **fermata della navetta** ("prossima corsa: adesso") ti siedi sotto la pensilina. Dalla nebbia arrivano due fari e vi riporta agli **arrivi dell'aeroporto**. |

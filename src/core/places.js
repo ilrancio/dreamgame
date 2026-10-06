@@ -5,6 +5,8 @@
 export const PLACES = [
   { id: 'borgo', name: 'Sant\'Onirio', sub: 'il borgo in vetta, 1913 m', chapter: 'esterno', spawn: 'borgo', color: '#7a3a2a' },
   { id: 'centro', name: 'Centro Commerciale Orizzonte', sub: 'due piani, quasi nessuno in giro', chapter: 'centro', spawn: 'shortcut', color: '#2a5a8a' },
+  { id: 'aeroporto', name: 'Aeroporto', sub: 'giù nel campo, le partenze verso i sogni', chapter: 'aeroporto', spawn: 'shortcut', color: '#3a4a6a' },
+  { id: 'spiaggia', name: 'Spiaggia d\'Inverno', sub: 'uno stabilimento fuori stagione', chapter: 'spiaggia', spawn: 'shortcut', color: '#6a8a8a' },
 ];
 
 export function placeById(id) {
