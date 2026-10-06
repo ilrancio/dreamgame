@@ -493,6 +493,64 @@ export class AudioEngine {
     }
   }
 
+  // il volume di un suono continuo già acceso (la folla che si avvicina)
+  loopVolume(name, vol) {
+    const cur = this.loops?.get(name);
+    if (!cur || !this.ctx) return;
+    cur.g.gain.setTargetAtTime(Math.max(0.0001, vol), this.ctx.currentTime, 0.3);
+  }
+
+  // una voce lontana nella folla: una vocale che non si capisce
+  babble(vol = 0.012, kid = false) {
+    if (!this.ctx || this.muted) return;
+    const c = this.ctx;
+    const t = c.currentTime;
+    const dur = 0.12 + Math.random() * 0.35;
+    const o = c.createOscillator();
+    o.type = 'sawtooth';
+    const f0 = (kid ? 280 : 110) + Math.random() * (kid ? 160 : 120);
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.linearRampToValueAtTime(f0 * (0.85 + Math.random() * 0.4), t + dur);
+    const f = c.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 500 + Math.random() * 1300;
+    f.Q.value = 4;
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(f).connect(g).connect(this.master);
+    o.start(t);
+    o.stop(t + dur + 0.02);
+  }
+
+  // il fischietto del bagnino
+  whistle(vol = 0.05) {
+    if (!this.ctx) return;
+    const c = this.ctx;
+    for (let k = 0; k < 2; k++) {
+      const t = c.currentTime + k * 0.42;
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(2900, t);
+      const lfo = c.createOscillator();
+      lfo.frequency.value = 38;
+      const lg = c.createGain();
+      lg.gain.value = 120;
+      lfo.connect(lg).connect(o.frequency);
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+      g.gain.setValueAtTime(vol, t + 0.28);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+      o.connect(g).connect(this.master);
+      o.start(t);
+      lfo.start(t);
+      o.stop(t + 0.36);
+      lfo.stop(t + 0.36);
+    }
+  }
+
   cricket(vol = 0.01) {
     const c = this.ctx;
     const t0 = c.currentTime;

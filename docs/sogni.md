@@ -230,16 +230,32 @@ Le porte 1313 non aggirano la corruzione: nella porta verde della suite i luoghi
 |-----------|-----------|
 | Dove si trova | Giù nel campo, a sud-est dell'hotel, dove la pianura si appiattisce. Un terminal lungo e basso con la facciata di vetro accesa e l'insegna **AEROPORTO**. C'è una torre di controllo con la luce verde che gira, una pista con le luci che si accendono in sequenza verso nessuno, due aerei fermi sul piazzale e una manica a vento. Finché non ci sei stato, la bussola ti porta lì. Si entra camminando verso le porte di vetro. |
 | Liminale | Un atrio enorme di terrazzo lucido con i banchi del check-in **AEROLINEE ONIRICHE**, file di sedili blu e nessun passeggero. Poi un corridoio di **200 m** con la moquette a motivi, i **tapis roulant** (che ti portano davvero), i negozi chiusi con la serranda, le pubblicità sbiadite. A destra, le sale d'attesa dei gate, con le vetrate sulla nebbia e la sagoma degli aerei. Un robot lava-pavimenti percorre il corridoio da solo. L'altoparlante fa annunci gentili e senza senso, a nessuno. |
-| Che porti in altre zone | Il **tabellone delle partenze** fa *clack-clack* come quelli vecchi. Una sola destinazione è in **imbarco**, la **Spiaggia d'Inverno** (gate 4). Le altre sono *Altrove*, *Il fondo del mare* e *La città senza nome* (**in attesa di un sogno**: ogni sogno nuovo potrà diventare un volo), *Casa* (ritardo ∞), *Ieri* (cancellato) e *Sant'Onirio* (atterrato). <kbd>E</kbd> sul tabellone lo apri come una lista. |
+| Che porti in altre zone | Il **tabellone delle partenze** fa *clack-clack* come quelli vecchi. Due voli sono in **imbarco**: la **Spiaggia Grande** (gate 4) e la **Spiaggia d'Inverno** (gate 2). Le altre destinazioni sono *Altrove*, *Il fondo del mare* e *La città senza nome* (**in attesa di un sogno**: ogni sogno nuovo potrà diventare un volo), *Casa* (ritardo ∞), *Ieri* (cancellato) e *Sant'Onirio* (atterrato). <kbd>E</kbd> sul tabellone lo apri come una lista. |
 | Le piccole cose | Ti siedi in sala d'attesa a guardare la vetrata; il tuo amico dice cose da aeroporto. C'è un distributore automatico in fondo al corridoio. Al gate 4 un'**addetta** in divisa aspetta solo voi. |
-| Il volo | Al banco del gate 4, <kbd>E</kbd>: camminate nel finger e vi ritrovate seduti in una **cabina vuota**, con le nuvole che scorrono negli oblò. "Allacciate le cinture. Stiamo per atterrare. Siamo appena partiti." Il volo dura il tempo di un respiro. |
+| Il volo | Al banco di un gate in imbarco, <kbd>E</kbd>: camminate nel finger e vi ritrovate seduti in una **cabina vuota**, con le nuvole che scorrono negli oblò. "Allacciate le cinture. Stiamo per atterrare. Siamo appena partiti." Il volo dura il tempo di un respiro. |
 | Porta 1313 | Nell'atrio, a sinistra dell'ingresso, c'è una porta verde con il **1313**: l'aeroporto è un macroluogo, e dalla suite ci si arriva dalla porta dei luoghi. |
+
+---
+
+## La Spiaggia Grande
+
+> *In realtà ho sognato una spiaggia. Era molto affollata. Ho dovuto prendere una jeep e viaggiare per una strada sterrata costiera per raggiungerla.*
+
+| Nel sogno | Nel gioco |
+|-----------|-----------|
+| Arrivarci | Dall'aeroporto, **gate 4**. Il bimotore atterra in un polverone su una **pista di terra battuta** in cima a una scogliera. C'è una casetta bianca con la scritta **AVIOSUPERFICIE**, una manica a vento, e sotto un ombrellone arancione un signore del **noleggio jeep** ("Le chiavi sono nel quadro. Seguite la sterrata lungo il mare"). |
+| La jeep | Scoperta, color sabbia, con il roll-bar e la ruota di scorta dietro. Si guida come la macchina del campo, ma è più lenta e più alta: la strada è piena di **buche e ondulazioni** e dietro si alza la polvere bianca. <kbd>Shift</kbd> mette la marcia ridotta, <kbd>R</kbd> ti rimette in strada. A piedi, <kbd>C</kbd> chiama la jeep. Se finisci in mare, si ricomincia dalla strada. |
+| La strada sterrata costiera | **1,4 km** di strada bianca in cima alla scogliera, con il mare turchese a destra e trenta metri più sotto. Ci sono i paletti bianchi e rossi sul ciglio, i pini marittimi, la macchia e gli scogli giù in fondo. Alla fine scende in una **baia**. La bussola indica la strada finché non arrivi. |
+| Molto affollata | Ci sono già le macchine **parcheggiate sul ciglio** per centinaia di metri, e il parcheggio è pieno. Sotto, quasi **duemila persone** e **cinquecento ombrelloni** in file, con i colori degli stabilimenti (blu, arancio, verde) e quelli della spiaggia libera. Gente sdraiata sui lettini e sugli asciugamani, chi prende il sole a pancia in giù, chi chiacchiera in piedi sulla battigia. Bambini che fanno i castelli o si rincorrono, chi passeggia avanti e indietro, chi nuota con la ciambella. In fondo c'è una partita di pallavolo. Si sente il **brusio** di mille voci, più forte quando sei in mezzo, e tra la gente ci si deve fare largo. In jeep tra gli ombrelloni non si entra. |
+| Le cose della spiaggia | Il **Bagno 13**, con il bar a righe blu ("È l'ultimo. È sempre l'ultimo"), le cabine e la passerella di legno fino al mare. Il **bagnino** sulla torretta, con la bandiera verde: se vai oltre le boe, fischia. Il **venditore di cocco** che va su e giù gridando *"Cocco bello! Cocco fresco!"*. In acqua si cammina finché si tocca, e lì si può **fare il morto a galla**. |
+| Un posto libero | La spiaggia è piena, ma **sotto un solo ombrellone blu, vicino alla passerella, due lettini sono vuoti**. Il tuo amico lo vede quando ci passi vicino. Sdraiandoti, la camera sale piano finché vedi tutta la spiaggia piena e voi due in mezzo, e il brusio si abbassa. |
+| Tornare | Con la jeep di nuovo alla pista, poi sull'aereo: decolla nella polvere e si atterra agli **arrivi** dell'aeroporto. Oppure dalla cabina **1313** dietro il bar, che porta nella suite. Dalla suite, la porta verde ha anche la **Spiaggia Grande**. |
 
 ---
 
 ## La Spiaggia d'Inverno
 
-La prima destinazione dell'aeroporto: uno stabilimento balneare fuori stagione, sotto un cielo grigio, dove non c'è nessuno.
+L'altra destinazione dell'aeroporto (gate 2): uno stabilimento balneare fuori stagione, sotto un cielo grigio, dove non c'è nessuno. È il rovescio della Spiaggia Grande.
 
 | Nel gioco | |
 |-----------|---|

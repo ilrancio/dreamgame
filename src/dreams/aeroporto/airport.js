@@ -10,7 +10,12 @@ import { textTexture, glowTexture } from '../../core/textures.js';
 export const HALL_Z = 40;
 export const END_Z = 240;
 export const GATES = [65, 100, 135, 170, 205]; // centro (z) di ogni gate
-export const ACTIVE_GATE = 4; // il gate della Spiaggia d'Inverno
+// i voli in imbarco: gate -> dove si atterra
+export const FLIGHTS = {
+  4: { dest: 'Spiaggia Grande', chapter: 'costa', sea: 'Sotto le nuvole c\'è il mare. Azzurro, pieno di puntini: barche, gente.' },
+  2: { dest: 'Spiaggia d\'Inverno', chapter: 'spiaggia', sea: 'Sotto le nuvole c\'è il mare. Grigio, calmissimo.' },
+};
+export const ACTIVE_GATE = 4; // il gate dove aspetta l'addetta
 export const BELTS = [
   { x0: -5, x1: -2, z0: 50, z1: 115, dir: 1 },
   { x0: 2, x1: 5, z0: 50, z1: 115, dir: -1 },
@@ -20,9 +25,10 @@ export const BELTS = [
 
 // Il tabellone: partenze verso posti che esistono, e posti che non ancora.
 export const DEPARTURES = [
-  { time: '07:13', dest: 'SPIAGGIA D\'INVERNO', gate: '4', status: 'IMBARCO', open: true },
+  { time: '13:13', dest: 'SPIAGGIA GRANDE', gate: '4', status: 'IMBARCO', open: true },
+  { time: '07:13', dest: 'SPIAGGIA D\'INVERNO', gate: '2', status: 'IMBARCO', open: true },
   { time: '--:--', dest: 'ALTROVE', gate: '—', status: 'IN ATTESA DI UN SOGNO' },
-  { time: '13:13', dest: 'CASA', gate: '2', status: 'RITARDO ∞' },
+  { time: '--:--', dest: 'CASA', gate: '—', status: 'RITARDO ∞' },
   { time: '00:00', dest: 'IERI', gate: '1', status: 'CANCELLATO' },
   { time: '--:--', dest: 'IL FONDO DEL MARE', gate: '—', status: 'IN ATTESA DI UN SOGNO' },
   { time: '03:33', dest: 'SANT\'ONIRIO', gate: '5', status: 'ATTERRATO' },
@@ -180,7 +186,7 @@ export function buildAirport(scene) {
     gateSigns.push(plane(2.4, 0.9, sm, 10.05, 4.2, gz, Math.PI / 2));
     plane(2.4, 0.9, sm, 9.95, 4.2, gz, -Math.PI / 2);
     // la porta del finger, chiusa (o aperta, al gate attivo)
-    const active = n === ACTIVE_GATE;
+    const active = !!FLIGHTS[n];
     box(0.2, 2.6, 2.2, active ? mat('#fff0c8', { emissive: 1 }) : mat('#5a6070'), 25.85, 1.3, gz + 8);
     // l'aereo fermo nella nebbia, oltre la vetrata
     const plane3 = new THREE.Group();
@@ -200,7 +206,7 @@ export function buildAirport(scene) {
     fin.position.set(0, 8.5, 13);
     plane3.add(fus, nose, wing, fin);
     dyn.add(plane3);
-    return { n, z: gz, desk: new THREE.Vector3(21.3, 0, gz + 5), door: new THREE.Vector3(25, 0, gz + 8), seats: new THREE.Vector3(16.5, 0, gz - 6), active };
+    return { n, z: gz, desk: new THREE.Vector3(21.3, 0, gz + 5), door: new THREE.Vector3(25, 0, gz + 8), seats: new THREE.Vector3(16.5, 0, gz - 6), active, flight: FLIGHTS[n] };
   });
 
   // ---------- Il lato ovest: negozi chiusi, pubblicità, il distributore ----------

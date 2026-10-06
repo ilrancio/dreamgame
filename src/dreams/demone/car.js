@@ -7,8 +7,10 @@ const TURBO_SPEED = 80; // ~290 km/h
 
 // Decappottabile: così il tuo amico è sempre visibile accanto a te.
 export class Car {
-  constructor(scene) {
+  constructor(scene, { maxSpeed = MAX_SPEED, turboSpeed = TURBO_SPEED } = {}) {
     this.radius = 2.4;
+    this.maxSpeed = maxSpeed;
+    this.turboSpeed = turboSpeed;
     this.group = new THREE.Group();
     this.body = new THREE.Group();
     this.group.add(this.body);
@@ -155,7 +157,7 @@ export class Car {
     else this.turbo = Math.min(1, this.turbo + dt * 0.09);
 
     if (touching) {
-      const maxF = turboOn ? TURBO_SPEED : MAX_SPEED;
+      const maxF = turboOn ? this.turboSpeed : this.maxSpeed;
       const acc = turboOn ? 34 : 21;
       if (ctl.throttle > 0 && vf < maxF) vf += acc * dt * (1 - (Math.max(0, vf) / maxF) * 0.55);
       if (ctl.brake > 0) {
