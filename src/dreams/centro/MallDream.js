@@ -209,7 +209,7 @@ export class MallDream {
     if (!busy) this.digital.discover(this.player.pos, (d, f) => this.later(d, f));
     this.time += dt;
     this.lineTimer -= dt;
-    if (input.wasPressed('KeyM')) audio.toggleMute();
+    if (input.wasPressed('KeyN')) audio.toggleMute();
     while (this.script.length && this.script[0].at <= this.time) this.script.shift().fn();
     if (this.arcadeScreen.open) this.arcadeScreen.update(dt, input);
     if (this.choice.open) this.choice.handleKeys(input);

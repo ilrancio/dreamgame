@@ -401,7 +401,7 @@ export class OutdoorDream {
     const { input, ui, audio } = this.ctx;
     this.time += dt;
     this.lineTimer -= dt;
-    if (input.wasPressed('KeyM')) audio.toggleMute();
+    if (input.wasPressed('KeyN')) audio.toggleMute();
     while (this.script.length && this.script[0].at <= this.time) this.script.shift().fn();
 
     this.digital.update(dt, this.time, input);

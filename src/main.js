@@ -12,6 +12,7 @@ import { BeachDream } from './dreams/spiaggia/BeachDream.js';
 import { CoastDream } from './dreams/costa/CoastDream.js';
 import { IslandDream } from './dreams/isola/IslandDream.js';
 import { placeById } from './core/places.js';
+import { WorldMap } from './core/worldmap.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -23,6 +24,7 @@ renderer.toneMappingExposure = 1.05;
 document.getElementById('app').appendChild(renderer.domElement);
 
 const ui = new UI();
+const worldMap = new WorldMap();
 const ctx = {
   renderer,
   input: new Input(renderer.domElement),
@@ -91,6 +93,7 @@ async function goToChapter(i, first = false) {
   const ch = CHAPTERS[i];
   if (!ch) return;
   running = false;
+  worldMap.close();
   chapterIndex = i;
   if (!first) await ui.fade(1, 1400, ch.color);
   current?.dispose();
@@ -115,6 +118,9 @@ function onResize() {
 }
 window.addEventListener('resize', onResize);
 
+// i pannelli che hanno già i loro tasti: lì la mappa non si apre
+const MODALS = '#choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
+
 const timer = new THREE.Timer();
 timer.connect(document);
 function frame(t) {
@@ -122,8 +128,16 @@ function frame(t) {
   timer.update(t);
   const dt = Math.min(timer.getDelta(), 1 / 20);
   if (current) {
-    if (running) current.update(dt);
+    // M: la mappa del sogno. Mentre è aperta il sogno si ferma.
+    const input = ctx.input;
+    let closed = false;
+    if (worldMap.open && input.wasPressed('KeyM', 'Escape')) {
+      worldMap.close();
+      closed = true; // il tasto che chiude la mappa non arriva al sogno
+    } else if (!worldMap.open && running && input.wasPressed('KeyM') && !document.querySelector(MODALS)) worldMap.toggle(ctx, CHAPTERS[chapterIndex].id, current);
+    if (running && !worldMap.open && !closed) current.update(dt);
     renderer.render(current.scene, current.camera);
+    if (worldMap.open) worldMap.draw();
   }
   ctx.input.endFrame();
 }

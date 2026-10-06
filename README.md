@@ -12,6 +12,8 @@ npm run dev        # apri l'indirizzo che compare (di solito http://localhost:51
 npm run build      # versione statica in dist/
 ```
 
+In qualunque momento <kbd>M</kbd> apre la **mappa del sogno**: il mondo intorno all'hotel disegnato dal terreno vero (strade, borgo, centro commerciale, aeroporto, i recinti di corruzione e i terminali) e, a lato, i posti dove si arriva in aereo. Un segno rosso indica dove sei e dove guardi; i posti non ancora visti restano un punto di domanda. Mentre la mappa è aperta il sogno si ferma. L'audio si accende e si spegne con <kbd>N</kbd>.
+
 La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel browser: le volte successive la schermata iniziale propone **Continua il sogno** (si riprende dalla suite) oppure **Ricomincia dal campo**. Scorciatoie per lo sviluppo: `#hotel` in fondo all'indirizzo parte dall'arrivo in hotel, `#esterno` dal portone dell'hotel, all'aperto, `#centro` dall'ingresso del centro commerciale, `#aeroporto` dall'atrio dell'aeroporto, `#costa` dall'atterraggio sulla pista della Spiaggia Grande, `#isola` dal pontile dell'Isola e `#spiaggia` dalla Spiaggia d'Inverno.
 
 ## Sogni raccontati finora

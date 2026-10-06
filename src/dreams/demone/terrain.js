@@ -69,7 +69,8 @@ const MALL_POINTS = [
 ];
 
 export class Terrain {
-  constructor(seed = 7) {
+  // meshes: false per avere solo le altezze e la strada (per la mappa)
+  constructor(seed = 7, { meshes = true } = {}) {
     this.noise = createNoise2D(seed);
     this.noise2 = createNoise2D(seed + 101);
     this.heights = new Float32Array(N * N);
@@ -81,8 +82,14 @@ export class Terrain {
 
     this.buildRoadCurve();
     this.buildHeights();
+    if (!meshes) return;
     this.mesh = this.buildMesh();
     this.roadMesh = this.buildRoadMesh();
+  }
+
+  // le altezze sulla griglia (RES+1)², per disegnare la mappa
+  gridHeight(i, j) {
+    return this.heights[j * N + i];
   }
 
   // ---------- Altezze ----------

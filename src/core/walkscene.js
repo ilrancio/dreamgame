@@ -112,7 +112,7 @@ export class WalkScene {
     const { input, audio } = this.ctx;
     this.time += dt;
     this.lineTimer -= dt;
-    if (input.wasPressed('KeyM')) audio.toggleMute();
+    if (input.wasPressed('KeyN')) audio.toggleMute();
     while (this.script.length && this.script[0].at <= this.time) this.script.shift().fn();
     const busy = this.busy();
     if (this.cine) this.updateCine(dt);

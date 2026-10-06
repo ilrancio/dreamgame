@@ -36,7 +36,7 @@ Fili che attraversano tutto:
 
 ### Comandi
 
-<kbd>W</kbd>/<kbd>↑</kbd> accelera · <kbd>S</kbd>/<kbd>↓</kbd> frena/retro · <kbd>A</kbd><kbd>D</kbd> sterza · <kbd>Shift</kbd> turbo · <kbd>Spazio</kbd> freno a mano (derapata) · <kbd>R</kbd> rimetti in strada · <kbd>P</kbd> pausa · <kbd>M</kbd> audio
+<kbd>W</kbd>/<kbd>↑</kbd> accelera · <kbd>S</kbd>/<kbd>↓</kbd> frena/retro · <kbd>A</kbd><kbd>D</kbd> sterza · <kbd>Shift</kbd> turbo · <kbd>Spazio</kbd> freno a mano (derapata) · <kbd>R</kbd> rimetti in strada · <kbd>P</kbd> pausa · <kbd>N</kbd> audio · <kbd>M</kbd> mappa
 
 ---
 
@@ -67,7 +67,7 @@ Fili che attraversano tutto:
 
 ### Comandi a piedi
 
-<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · mouse (clic per catturarlo) o <kbd>←</kbd><kbd>→</kbd> per guardarti intorno · <kbd>Shift</kbd> corri · <kbd>Spazio</kbd> salta · <kbd>E</kbd> interagisci · clic/<kbd>F</kbd> spara · <kbd>R</kbd> ricarica · <kbd>P</kbd> pausa · <kbd>M</kbd> audio
+<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> cammina · mouse (clic per catturarlo) o <kbd>←</kbd><kbd>→</kbd> per guardarti intorno · <kbd>Shift</kbd> corri · <kbd>Spazio</kbd> salta · <kbd>E</kbd> interagisci · clic/<kbd>F</kbd> spara · <kbd>R</kbd> ricarica · <kbd>P</kbd> pausa · <kbd>N</kbd> audio · <kbd>M</kbd> mappa
 
 ---
 

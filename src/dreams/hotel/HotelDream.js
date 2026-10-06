@@ -1431,9 +1431,9 @@ export class HotelDream {
     const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen || this.choice.open || this.gesture.open;
     if (!menus && input.wasPressed('KeyP', 'Escape') && this.phase !== 'sleeping' && this.phase !== 'riding') {
       this.paused = !this.paused;
-      ui.center(this.paused ? '<div class="panel pause"><h2>Pausa</h2><p><kbd>P</kbd> riprendi</p><p><kbd>M</kbd> audio on/off</p><p>Il sogno si salva da solo.</p></div>' : null);
+      ui.center(this.paused ? '<div class="panel pause"><h2>Pausa</h2><p><kbd>P</kbd> riprendi</p><p><kbd>N</kbd> audio on/off · <kbd>M</kbd> mappa</p><p>Il sogno si salva da solo.</p></div>' : null);
     }
-    if (input.wasPressed('KeyM')) audio.toggleMute();
+    if (input.wasPressed('KeyN')) audio.toggleMute();
     if (this.paused) return;
 
     this.time += dt;

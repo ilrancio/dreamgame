@@ -270,10 +270,10 @@ export class DemonDream {
     if (input.wasPressed('Escape', 'KeyP') && (this.state === 'play' || this.paused)) {
       this.paused = !this.paused;
       ui.center(this.paused ? `<div class="panel pause"><h2>Pausa</h2>
-        <p><kbd>Esc</kbd> riprendi</p><p><kbd>R</kbd> ricomincia il sogno</p><p><kbd>M</kbd> audio on/off</p></div>` : null);
+        <p><kbd>Esc</kbd> riprendi</p><p><kbd>R</kbd> ricomincia il sogno</p><p><kbd>N</kbd> audio on/off · <kbd>M</kbd> mappa</p></div>` : null);
       if (this.paused) audio.engineUpdate(0, 0, false);
     }
-    if (input.wasPressed('KeyM')) audio.toggleMute();
+    if (input.wasPressed('KeyN')) audio.toggleMute();
     if (this.paused) {
       if (input.wasPressed('KeyR')) this.resetRun();
       this.sky.update(this.camera, 0);

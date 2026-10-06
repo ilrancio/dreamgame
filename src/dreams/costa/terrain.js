@@ -35,6 +35,16 @@ export function coastZ(x) {
   return 20 * Math.sin(x * 0.0045) + 12 * Math.sin(x * 0.013 + 1.3) - BAY.depth * coveAt(x);
 }
 
+// i punti di controllo della sterrata (anche per la mappa)
+export function roadControl() {
+  const ctrl = [
+    [-660, -150], [-640, -128], [-622, -98], [-604, -70],
+  ];
+  for (let x = -580; x <= 440; x += 30) ctrl.push([x, coastZ(x) - 34 - 9 * Math.sin(x * 0.017)]);
+  ctrl.push([478, -64], [510, -86], [545, -108], [580, -126], [620, coastZ(620) - LOT.d0 - 14]);
+  return ctrl;
+}
+
 export class CoastTerrain {
   constructor(seed = 77) {
     this.noise = createNoise2D(seed);
@@ -74,11 +84,7 @@ export class CoastTerrain {
     const cx = (STRIP.minX + STRIP.maxX) / 2;
     const d = coastZ(cx) - STRIP.z;
     this.stripH = (26 + 8 * n(cx * 0.004, 3.7)) + Math.max(0, d - 70) * 0.1 * 0.7;
-    const ctrl = [
-      [-660, -150], [-640, -128], [-622, -98], [-604, -70],
-    ];
-    for (let x = -580; x <= 440; x += 30) ctrl.push([x, coastZ(x) - 34 - 9 * Math.sin(x * 0.017)]);
-    ctrl.push([478, -64], [510, -86], [545, -108], [580, -126], [620, coastZ(620) - LOT.d0 - 14]);
+    const ctrl = roadControl();
     this.lotEnd = ctrl.length - 1;
     // Catmull-Rom, un punto ogni 3 m
     const pts = [];

@@ -1008,3 +1008,20 @@ kbd {
   60% { background-position: 80px 160px; transform: translateX(0); }
   80% { background-position: -30px -200px; transform: translateX(8px); }
 }
+
+/* la mappa del sogno (M) */
+#worldmap {
+  position: fixed;
+  inset: 0;
+  z-index: 36;
+  display: none;
+  background: radial-gradient(ellipse at 50% 40%, rgba(30, 24, 40, 0.88), rgba(5, 5, 12, 0.96));
+}
+#worldmap.show {
+  display: block;
+}
+#worldmap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
