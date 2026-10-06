@@ -8,7 +8,7 @@ import { X0, X1, Z0, Z1, BAY, STRIP, LOT, ROAD_HW, coastZ, coveAt } from './terr
 // la strada sterrata, i pini, la pista con l'aereo, il parcheggio pieno,
 // il Bagno 13 con le sue cabine, la torretta del bagnino, la passerella.
 
-function canvasTex(w, h, draw, repeat = [1, 1]) {
+export function canvasTex(w, h, draw, repeat = [1, 1]) {
   const c = document.createElement('canvas');
   c.width = w;
   c.height = h;
@@ -22,7 +22,7 @@ function canvasTex(w, h, draw, repeat = [1, 1]) {
 }
 
 // geometrie statiche fuse per materiale: poche chiamate di disegno
-class Batch {
+export class Batch {
   constructor() {
     this.parts = new Map();
   }
@@ -52,7 +52,7 @@ const Q = new THREE.Quaternion();
 const E = new THREE.Euler();
 const V = new THREE.Vector3();
 const S = new THREE.Vector3();
-function mtx(x, y, z, ry = 0, sx = 1, sy = 1, sz = 1, rx = 0, rz = 0) {
+export function mtx(x, y, z, ry = 0, sx = 1, sy = 1, sz = 1, rx = 0, rz = 0) {
   E.set(rx, ry, rz, 'YXZ');
   Q.setFromEuler(E);
   return M4.compose(V.set(x, y, z), Q, S.set(sx, sy, sz)).clone();

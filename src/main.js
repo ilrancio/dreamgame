@@ -10,6 +10,7 @@ import { MallDream } from './dreams/centro/MallDream.js';
 import { AirportDream } from './dreams/aeroporto/AirportDream.js';
 import { BeachDream } from './dreams/spiaggia/BeachDream.js';
 import { CoastDream } from './dreams/costa/CoastDream.js';
+import { IslandDream } from './dreams/isola/IslandDream.js';
 import { placeById } from './core/places.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
@@ -79,6 +80,7 @@ const CHAPTERS = [
   { id: 'aeroporto', create: (c) => new AirportDream(c), card: null, color: '#d8dce2' },
   { id: 'spiaggia', create: (c) => new BeachDream(c), card: null, color: '#c8ccd0' },
   { id: 'costa', create: (c) => new CoastDream(c), card: null, color: '#e8f2f8' },
+  { id: 'isola', create: (c) => new IslandDream(c), card: null, color: '#e8f8ff' },
 ];
 
 let current = null;
@@ -151,7 +153,7 @@ if (hasHotel) {
   title.addEventListener('click', () => {
     // scorciatoie di sviluppo: #hotel parte dall'arrivo in hotel, #esterno dal portone,
     // #centro dall'ingresso del centro commerciale
-    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3, '#aeroporto': 4, '#spiaggia': 5, '#costa': 6 }[location.hash] ?? 0);
+    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3, '#aeroporto': 4, '#spiaggia': 5, '#costa': 6, '#isola': 7 }[location.hash] ?? 0);
   });
 }
 

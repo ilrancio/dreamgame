@@ -7,6 +7,7 @@ export const PLACES = [
   { id: 'centro', name: 'Centro Commerciale Orizzonte', sub: 'due piani, quasi nessuno in giro', chapter: 'centro', spawn: 'shortcut', color: '#2a5a8a' },
   { id: 'aeroporto', name: 'Aeroporto', sub: 'giù nel campo, le partenze verso i sogni', chapter: 'aeroporto', spawn: 'shortcut', color: '#3a4a6a' },
   { id: 'costa', name: 'Spiaggia Grande', sub: 'in jeep lungo la costa, piena di gente', chapter: 'costa', spawn: 'shortcut', color: '#2a8ab0' },
+  { id: 'isola', name: 'L\'Isola', sub: 'monete, pagine, un aereo e un gabbiano di ferro', chapter: 'isola', spawn: 'shortcut', color: '#2aa86a' },
   { id: 'spiaggia', name: 'Spiaggia d\'Inverno', sub: 'uno stabilimento fuori stagione', chapter: 'spiaggia', spawn: 'shortcut', color: '#6a8a8a' },
 ];
 

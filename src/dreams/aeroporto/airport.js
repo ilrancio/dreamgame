@@ -13,6 +13,7 @@ export const GATES = [65, 100, 135, 170, 205]; // centro (z) di ogni gate
 // i voli in imbarco: gate -> dove si atterra
 export const FLIGHTS = {
   4: { dest: 'Spiaggia Grande', chapter: 'costa', sea: 'Sotto le nuvole c\'è il mare. Azzurro, pieno di puntini: barche, gente.' },
+  3: { dest: 'Isola', chapter: 'isola', sea: 'Sotto le nuvole c\'è un\'isola verde, con una montagna a gradini. E qualcosa di grosso che ci gira intorno.' },
   2: { dest: 'Spiaggia d\'Inverno', chapter: 'spiaggia', sea: 'Sotto le nuvole c\'è il mare. Grigio, calmissimo.' },
 };
 export const ACTIVE_GATE = 4; // il gate dove aspetta l'addetta
@@ -27,6 +28,7 @@ export const BELTS = [
 export const DEPARTURES = [
   { time: '13:13', dest: 'SPIAGGIA GRANDE', gate: '4', status: 'IMBARCO', open: true },
   { time: '07:13', dest: 'SPIAGGIA D\'INVERNO', gate: '2', status: 'IMBARCO', open: true },
+  { time: '09:09', dest: 'L\'ISOLA', gate: '3', status: 'IMBARCO', open: true },
   { time: '--:--', dest: 'ALTROVE', gate: '—', status: 'IN ATTESA DI UN SOGNO' },
   { time: '--:--', dest: 'CASA', gate: '—', status: 'RITARDO ∞' },
   { time: '00:00', dest: 'IERI', gate: '1', status: 'CANCELLATO' },

@@ -80,7 +80,7 @@ export class AirportDream extends WalkScene {
     if (this.spawn === 'arrivi') this.later(1.2, () => ui.subtitle(FRIEND, 'La navetta ci ha lasciati agli arrivi. Non c\'è nessuno nemmeno qui.', 3.4));
     else if (this.firstVisit) {
       this.later(1.4, () => ui.subtitle(FRIEND, 'Un aeroporto. Vuoto. Le luci accese per nessuno.', 3.2));
-      this.later(5.5, () => ui.subtitle(FRIEND, 'Guarda il tabellone: ci sono posti che non esistono. E due voli stanno imbarcando.', 3.8));
+      this.later(5.5, () => ui.subtitle(FRIEND, 'Guarda il tabellone: ci sono posti che non esistono. E tre voli stanno imbarcando.', 3.8));
       this.later(13, () => {
         ui.popup('Una nuova porta: Aeroporto');
         audio.chime(784, 0.12);
@@ -95,7 +95,7 @@ export class AirportDream extends WalkScene {
   }
 
   updateObjective() {
-    this.ctx.ui.objective(this.saved.flown ? 'Il tabellone aspetta i prossimi sogni.' : 'Gate 4: imbarco per la Spiaggia Grande. Gate 2: Spiaggia d\'Inverno.');
+    this.ctx.ui.objective(this.saved.flown ? 'Il tabellone aspetta i prossimi sogni.' : 'Voli in imbarco: gate 4 Spiaggia Grande, gate 3 Isola, gate 2 Spiaggia d\'Inverno.');
   }
 
   ceilingAt(x, z) {
@@ -130,7 +130,7 @@ export class AirportDream extends WalkScene {
     if (p.z < HALL_Z && near(P.board, 8)) return { label: 'leggi il tabellone delle partenze', fn: () => this.openBoard() };
     for (const g of P.gates) {
       if (near(g.desk, 2.2)) {
-        if (g.active) return { label: `imbarcati per la ${g.flight.dest}`, fn: () => this.board(g) };
+        if (g.active) return { label: `imbarcati: ${g.flight.dest}`, fn: () => this.board(g) };
         return { label: `il banco del gate ${g.n}`, fn: () => this.ctx.ui.subtitle(null, `Sul monitor del gate ${g.n}: IMBARCO CHIUSO. Da quanto, non si sa.`, 3.4) };
       }
       if (near(g.seats, 3.2)) return { label: 'siediti ad aspettare', fn: () => this.sitDown(g) };

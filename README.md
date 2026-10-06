@@ -12,7 +12,7 @@ npm run dev        # apri l'indirizzo che compare (di solito http://localhost:51
 npm run build      # versione statica in dist/
 ```
 
-La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel browser: le volte successive la schermata iniziale propone **Continua il sogno** (si riprende dalla suite) oppure **Ricomincia dal campo**. Scorciatoie per lo sviluppo: `#hotel` in fondo all'indirizzo parte dall'arrivo in hotel, `#esterno` dal portone dell'hotel, all'aperto, `#centro` dall'ingresso del centro commerciale, `#aeroporto` dall'atrio dell'aeroporto, `#costa` dall'atterraggio sulla pista della Spiaggia Grande e `#spiaggia` dalla Spiaggia d'Inverno.
+La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel browser: le volte successive la schermata iniziale propone **Continua il sogno** (si riprende dalla suite) oppure **Ricomincia dal campo**. Scorciatoie per lo sviluppo: `#hotel` in fondo all'indirizzo parte dall'arrivo in hotel, `#esterno` dal portone dell'hotel, all'aperto, `#centro` dall'ingresso del centro commerciale, `#aeroporto` dall'atrio dell'aeroporto, `#costa` dall'atterraggio sulla pista della Spiaggia Grande, `#isola` dal pontile dell'Isola e `#spiaggia` dalla Spiaggia d'Inverno.
 
 ## Sogni raccontati finora
 
@@ -29,8 +29,9 @@ La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel bro
 | V | [L'Invasione Digitale](docs/sogni.md#v--linvasione-digitale) | Entità digitali ovunque e terminali nei macroluoghi: colleghi la chiavetta con dentro Scintilla e combatti in un picchiaduro/shooter laterale 2D. Livelli e punti abilità. |
 | — | [Il Murale delle Entità](docs/sogni.md#il-murale-delle-entità) | Un murale gigante in fondo al centro commerciale con tutte le entità: infili la chiavetta e scegli quale trasferire e usare in combattimento. |
 | — | [La corruzione](docs/sogni.md#la-corruzione-i-posti-chiusi-dallinvasione) | Muri di texture corrotte chiudono il borgo, la conca del centro commerciale, le sue porte e il primo piano: si aprono liberando i terminali, uno dopo l'altro. |
-| VI | [L'Aeroporto](docs/sogni.md#laeroporto) | Un aeroporto vuoto giù nel campo: tabellone con destinazioni che non esistono, tapis roulant, sale d'attesa nella nebbia. Due voli in imbarco. |
+| VI | [L'Aeroporto](docs/sogni.md#laeroporto) | Un aeroporto vuoto giù nel campo: tabellone con destinazioni che non esistono, tapis roulant, sale d'attesa nella nebbia. Tre voli in imbarco. |
 | VII | [La Spiaggia Grande](docs/sogni.md#la-spiaggia-grande) | Si atterra su una pista sterrata, si prende una jeep e si segue una strada bianca lungo la scogliera fino a una baia piena di gente: cinquecento ombrelloni, e un solo posto libero. |
+| VIII | [L'Isola](docs/sogni.md#viii--lisola) | Un collectathon: le cinque pagine della patente di volo sparse per un'isola tropicale, 139 monete, doppio salto e funghi che rimbalzano. Poi si compra un biplano e si abbatte il Gabbiano di Ferro in cielo. |
 | — | [La Spiaggia d'Inverno](docs/sogni.md#la-spiaggia-dinverno) | L'altro volo: uno stabilimento fuori stagione, ombrelloni chiusi, piscina vuota, una navetta che riporta all'aeroporto. |
 | III | [La Sala Giochi](docs/sogni.md#iii--la-sala-giochi-piano-88) | Il piano 88: una sala giochi infinita, cabinati giocabili, biglietti e premi per la suite. |
 
@@ -49,6 +50,7 @@ src/
   dreams/centro/     il centro commerciale: l'edificio nella conca e la galleria su due piani
   dreams/aeroporto/  l'aeroporto: il terminal nel campo, l'atrio, il corridoio dei gate, la cabina del volo
   dreams/costa/      la Spiaggia Grande: la scogliera, la sterrata, la jeep e la spiaggia affollata
+  dreams/isola/      l'Isola: terreno a gradoni e piattaforme, monete e pagine, il biplano, il Gabbiano di Ferro
   dreams/spiaggia/   la Spiaggia d'Inverno, l'altro volo dell'aeroporto
   core/walkscene.js  la base comune delle scene a piedi (camminata, amico, camera, piccole scene)
   dreams/digitale/   l'invasione digitale: terminali, entità, la chiavetta e il combattimento 2D
