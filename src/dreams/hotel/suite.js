@@ -125,6 +125,8 @@ export function buildSuite(a, bathApi, rb) {
     box(0.25, 0.9, 1.1, a.mat('#5a2a1a'), 3.4, 0.9, fireZ, { collide: false });
   }
   const armchair = { pos: W(2.9, fireZ), facing: -Math.PI / 2 };
+  // sopra il camino, appeso al muro: un trofeo con la testa d'orso (di legno e pelliccia finta)
+  put('bear', 0.42, fireZ, { y: 3.05, rot: Math.PI / 2, scale: 2.4, colors: { wood: '#3a2416' } });
 
   const shelfZ = 12.6;
   box(0.08, 2.2, 1.5, darkWood, 0.29, 1.1, shelfZ);
@@ -161,9 +163,6 @@ export function buildSuite(a, bathApi, rb) {
     box(0.6, 0.7, 0.8, darkWood, 17.35, 0.35, 15.5);
     cyl(0.18, 0.26, 0.3, lampShadeMat, 17.35, 1.05, 15.5, { collide: false, dynamic: true });
   }
-  // un orsacchiotto sul letto giallo, e un cuscino in più su quello blu
-  put('bear', 16.7, 18.0, { y: 0.66, rot: -Math.PI / 2 - 0.5, scale: 1.4 });
-  put('pillow', 17.0, 12.1, { y: 0.66, rot: -Math.PI / 2, scale: 2, colors: { carpet: '#e8e0cc' } });
   const lampLight = new THREE.PointLight('#ffc27a', 14, 12, 1.6);
   lampLight.position.copy(W(17, 15.5, 1.4));
   rb.dynamic.add(lampLight);

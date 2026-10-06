@@ -13,7 +13,6 @@ import ceilingFan from './ceilingFan.glb?url';
 import coatRackStanding from './coatRackStanding.glb?url';
 import bear from './bear.glb?url';
 import books from './books.glb?url';
-import pillow from './pillow.glb?url';
 import bathtub from './bathtub.glb?url';
 import bathroomSink from './bathroomSink.glb?url';
 import bathroomMirror from './bathroomMirror.glb?url';
@@ -39,7 +38,6 @@ export const HOTEL_MODELS = {
   coatRackStanding,
   bear,
   books,
-  pillow,
   bathtub,
   bathroomSink,
   bathroomMirror,
