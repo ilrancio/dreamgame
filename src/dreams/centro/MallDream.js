@@ -7,8 +7,9 @@ import { ChoicePanel } from '../../core/choice.js';
 import { unlockPlace } from '../../core/places.js';
 import { DigitalLayer } from '../digitale/layer.js';
 import { buildMural } from '../digitale/mural.js';
+import { GATES, gateOpen, buildCorruptPlane, glitchOverlay } from '../digitale/corruption.js';
 import { loadChiavetta, formById } from '../digitale/chiavetta.js';
-import { buildMallInterior, floorHeight, rampAt, upperWalkable, underSlab, MALL_W, MALL_L, UPPER, DOOR_W } from './mall.js';
+import { buildMallInterior, floorHeight, rampAt, upperWalkable, underSlab, MALL_W, MALL_L, UPPER, DOOR_W, RAMPS } from './mall.js';
 
 const FRIEND = 'Il tuo amico:';
 const CLERK = 'Il commesso:';
@@ -72,7 +73,14 @@ export class MallDream {
     // il murale gigantesco sulla parete di fondo: tutte le entità, e la fessura per la chiavetta
     this.mural = buildMural(this.scene, { x: 0, z: MALL_L, w: 13.4, h: 12.6 });
     this.mural.refresh(loadChiavetta(ctx.progress));
-    this.colliders = this.mall.colliders.concat(this.digital.colliders.map((c) => ({ ...c, lv: 0 })), [{ ...this.mural.collider, lv: 0 }]);
+    // le scale mobili sono corrotte finché non liberi il terminale della galleria
+    this.rampGates = RAMPS.map((r) => ({
+      wall: buildCorruptPlane(this.scene, { x: 0, y: 0, z: r.z0 - 0.3, w: 6.4, h: 3.4 }),
+      col: { minX: -3.2, maxX: 3.2, minZ: r.z0 - 0.7, maxZ: r.z0 + 0.2, lv: 2 },
+      z: r.z0,
+    }));
+    this.colliders = this.mall.colliders.concat(this.digital.colliders.map((c) => ({ ...c, lv: 0 })), [{ ...this.mural.collider, lv: 0 }], this.rampGates.map((g) => g.col));
+    this.refreshGates(true);
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
@@ -225,6 +233,7 @@ export class MallDream {
       k.c.body.position.y = Math.sin(this.time * (k.calm ? 0.9 : 1.4) + k.phase) * 0.012;
     }
     this.mall.update(this.time, dt);
+    this.updateGates(dt);
     this.mural.update(this.time);
 
     // l'altoparlante, ogni tanto, a nessuno
@@ -241,6 +250,52 @@ export class MallDream {
   inRetro(p = this.player.pos) {
     const R = this.mall.retro.shop;
     return p.y < 3 && p.x * R.side > 12.1 && p.z > R.zA && p.z < R.zB;
+  }
+
+  // ---------- La corruzione sulle scale mobili ----------
+  refreshGates(instant = false) {
+    this.upstairsOpen = gateOpen(this.ctx.progress, 'primopiano');
+    for (const g of this.rampGates) {
+      g.wall.setActive(!this.upstairsOpen, instant);
+      // aperto: il recinto invisibile se ne va lontano
+      if (this.upstairsOpen) g.col.minX = g.col.maxX = 1e6;
+    }
+  }
+
+  onTerminalDone() {
+    const was = this.upstairsOpen;
+    this.refreshGates();
+    if (!was && this.upstairsOpen) {
+      const { ui, audio } = this.ctx;
+      this.later(1.2, () => {
+        ui.popup(`Sbloccato: ${GATES.primopiano.name}`);
+        audio.chime(523, 0.12);
+        ui.subtitle(FRIEND, 'Le scale mobili ripartono. Si sale!', 3);
+      });
+    }
+  }
+
+  gateMessage(force = false) {
+    if (!force && (this.flags.gateMsgT || 0) > this.time) return;
+    this.flags.gateMsgT = this.time + 4;
+    this.ctx.audio.thud(0.15);
+    this.ctx.ui.subtitle(null, `I gradini si sfaldano in pixel, la scala sale verso il nulla. ${GATES.primopiano.hint}`, 4.5);
+  }
+
+  updateGates(dt) {
+    let k = 0;
+    const p = this.player.pos;
+    for (const g of this.rampGates) {
+      g.wall.update(this.time, dt);
+      if (!this.upstairsOpen) {
+        const d = Math.hypot(p.x * 0.6, p.z - g.z);
+        k = Math.max(k, 1 - d / 9);
+        if (d < 1.6) this.gateMessage();
+      }
+    }
+    const busy = this.digital.open || this.choice.open || this.arcadeScreen.open;
+    glitchOverlay(busy ? 0 : k);
+    this.ctx.audio.loop('glitch', k > 0.2 && !busy, { freq: 3200, q: 6, vol: 0.03 });
   }
 
   // Il murale: si sceglie quale entità trasferire nella chiavetta
@@ -406,7 +461,8 @@ export class MallDream {
     if (this.level === 0 && p.z < 4 && Math.abs(p.x) < DOOR_W) return { label: 'esci: le porte si aprono da sole', fn: () => this.leave(() => this.ctx.goOutside('centro')) };
     if (this.level === 0 && near(this.mural.spot.x, this.mural.spot.z, 1.8)) return { label: 'infila la chiavetta nel murale', fn: () => this.openMural() };
     const term = this.level === 0 && this.digital.near(p);
-    if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term) };
+    if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term, () => this.onTerminalDone()) };
+    if (!this.upstairsOpen && this.level === 0 && this.rampGates.some((g) => Math.abs(p.x) < 3.5 && Math.abs(p.z - g.z) < 2.2)) return { label: 'la scala mobile è corrotta', fn: () => this.gateMessage(true) };
     const R = M.retro;
     if (this.inRetro()) {
       if (near(R.crt.x, R.crt.z, 1.9)) return { label: 'prova un gioco al tubo catodico', fn: () => this.startPouf(true) };
@@ -652,6 +708,8 @@ export class MallDream {
     this.choice.dispose();
     this.digital.dispose();
     this.mural.dispose();
+    this.rampGates.forEach((g) => g.wall.dispose());
+    glitchOverlay(0);
     input.unlock();
     audio.stopLoops();
     audio.stopAllPads(1);

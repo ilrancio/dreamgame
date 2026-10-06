@@ -18,6 +18,7 @@ import { ENTITIES, UNKNOWN_SLOTS, GnomeFollowers, entityLabel } from './companio
 import { glowTexture, textTexture } from '../../core/textures.js';
 import { unlockedPlaces } from '../../core/places.js';
 import { ChoicePanel } from '../../core/choice.js';
+import { GATES, gateOpen } from '../digitale/corruption.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 
 const FRIEND = 'Il tuo amico:';
@@ -1263,7 +1264,12 @@ export class HotelDream {
       title: 'La porta dei luoghi',
       note: 'Ogni luogo del sogno che visitate aggiunge una targhetta. Dall\'altra parte, una porta con il numero 1313 vi riporta qui.',
       theme: 'doors',
-      items: places.map((pl) => ({ label: pl.name, sub: pl.sub, value: pl.id, action: 'apri' })),
+      // un luogo ancora corrotto non si raggiunge nemmeno da qui
+      items: places.map((pl) => {
+        const gate = { borgo: 'borgo', centro: 'ingresso' }[pl.id];
+        if (gate && !gateOpen(this.ctx.progress, gate)) return { label: `${pl.name} · corrotto`, sub: GATES[gate].hint, locked: true };
+        return { label: pl.name, sub: pl.sub, value: pl.id, action: 'apri' };
+      }),
       onPick: (id) => this.travelTo(id),
     });
   }

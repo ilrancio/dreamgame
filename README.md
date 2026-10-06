@@ -28,6 +28,7 @@ La prima volta si parte al volante, nel campo. Il sogno si salva da solo nel bro
 | — | [I gesti](docs/sogni.md#i-gesti-un-minigioco-per-ogni-cosa-di-tutti-i-giorni) | Piccoli minigiochi gentili per le cose di tutti i giorni: la moka, la doccia, il tè, la campana del borgo. |
 | V | [L'Invasione Digitale](docs/sogni.md#v--linvasione-digitale) | Entità digitali ovunque e terminali nei macroluoghi: colleghi la chiavetta con dentro Scintilla e combatti in un picchiaduro/shooter laterale 2D. Livelli e punti abilità. |
 | — | [Il Murale delle Entità](docs/sogni.md#il-murale-delle-entità) | Un murale gigante in fondo al centro commerciale con tutte le entità: infili la chiavetta e scegli quale trasferire e usare in combattimento. |
+| — | [La corruzione](docs/sogni.md#la-corruzione-i-posti-chiusi-dallinvasione) | Muri di texture corrotte chiudono il borgo, la conca del centro commerciale, le sue porte e il primo piano: si aprono liberando i terminali, uno dopo l'altro. |
 | III | [La Sala Giochi](docs/sogni.md#iii--la-sala-giochi-piano-88) | Il piano 88: una sala giochi infinita, cabinati giocabili, biglietti e premi per la suite. |
 
 L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/sogni.md](docs/sogni.md).

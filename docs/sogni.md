@@ -200,3 +200,22 @@ Ogni nuova attività potrà avere il suo gesto: il sistema è pensato per aggiun
 | Nel murale ci sono tutte le entità | Sono sette: **Scintilla**, **Glitch**, **Drone**, **Firewall**, **BUG**, **SPAM** e **KERNEL PANIC**. Quelle di cui non hai ancora abbastanza dati sono **sagome scure** con "???" e il conteggio (*dati 7/15*). I dati si raccolgono battendo le entità nei terminali: 15 Glitch, 10 Droni, 5 Firewall (o il boss del parcheggio); per i boss basta batterli una volta. Quella che abita la chiavetta ha una **cornice dorata**, *NELLA CHIAVETTA*. Quando ne sblocchi una nuova, il terminale te lo dice. |
 | Infilavo la chiavetta in uno spazio apposito | Ai piedi del murale c'è un piedistallo con una **fessura verde che pulsa** (*▼ INFILA QUI ▼*). Con <kbd>E</kbd> ci infili la chiavetta e il murale si accende sullo schermo: scorri le entità, ne leggi la descrizione e le caratteristiche (vita, corpo a corpo, tiro, velocità). |
 | Sceglievo l'entità da trasferire e usare | <kbd>Invio</kbd> e parte il **trasferimento**: i pixel scendono dal murale nella chiavetta. Il livello e i punti abilità restano della chiavetta; l'entità le dà un **corpo nuovo**, con un modo diverso di combattere. **Glitch** è velocissimo, con lo scatto sempre attivo. **Drone** plana, fa il doppio salto e spara forte, ma è fragile. **Firewall** è lento ed enorme, corazzato davanti. **BUG** salta altissimo. **SPAM** spara buste a ventaglio. **KERNEL PANIC** con lo scatto si teletrasporta alle spalle del nemico. In combattimento un alone ciano e un segno sopra la testa ti distinguono dalle entità con la stessa forma. Puoi sempre tornare a **Scintilla**. |
+
+---
+
+## La corruzione: i posti chiusi dall'invasione
+
+> *Potremmo aggiungere degli effetti glitchati e texture corrotte per bloccare alcuni posti che possono essere sbloccati solo battendo i rispettivi terminali.*
+
+Dove l'invasione è più forte, la realtà si sfalda. Alcuni posti sono chiusi da **muri di texture corrotte**: blocchi di pixel di grandezze diverse che cambiano a scatti (magenta, ciano, giallo, molto nero), righe che si strappano di lato, chiazze di "texture mancante" a scacchi viola e neri, colonne di dati verdi che cadono, scanline. I muri si vedono da lontano e salgono ben oltre le colline. Avvicinandoti, lo schermo si sporca di **rumore digitale** e senti un ronzio che entra nei denti. Non si passa, né a piedi né in macchina; se però ci sei già dentro, puoi sempre uscire. Quando liberi il terminale giusto, la corruzione **si dissolve** piano e il tuo amico te lo fa notare.
+
+La catena segue la difficoltà dei terminali:
+
+| Terminale da liberare | Che cosa sblocca |
+|-----------------------|------------------|
+| **Piazzale dell'hotel** (sempre raggiungibile) | Il recinto intorno a **Sant'Onirio**: la strada per il borgo. |
+| **Piazza di Sant'Onirio** | Il recinto intorno alla **conca del centro commerciale**, con il parcheggio. |
+| **Parcheggio Orizzonte** | Le **porte d'ingresso** del centro commerciale, coperte da una lastra corrotta. |
+| **Galleria Orizzonte** | Le **scale mobili**, e quindi il primo piano (i gradini si sfaldano in pixel). |
+
+Le porte 1313 non aggirano la corruzione: nella porta verde della suite i luoghi ancora chiusi compaiono come *corrotti*, con il nome del terminale da liberare. L'obiettivo e la bussola ti indicano sempre il prossimo terminale.

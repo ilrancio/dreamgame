@@ -14,6 +14,7 @@ import { buildMallExterior } from '../centro/exterior.js';
 import { unlockPlace, placeById } from '../../core/places.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 import { DigitalLayer } from '../digitale/layer.js';
+import { GATES, gateOpen, buildCorruptRing, buildCorruptPlane, glitchOverlay } from '../digitale/corruption.js';
 
 const FRIEND = 'Il tuo amico:';
 
@@ -99,6 +100,14 @@ export class OutdoorDream {
       }
     }
     this.digital = new DigitalLayer(this.scene, ctx, tpos, pts);
+    // la corruzione: recinti di pixel intorno ai posti che si sbloccano solo liberando i terminali
+    this.gates = [
+      { id: 'borgo', x: VILLAGE.x, z: VILLAGE.z, r: VILLAGE.r + 30 },
+      { id: 'conca', x: MALL.x, z: MALL.z, r: MALL.r + 50 },
+    ].map((g) => ({ ...g, wall: buildCorruptRing(this.scene, { x: g.x, z: g.z, r: g.r, terrain: this.terrain }) }));
+    const me0 = this.mall.entrance;
+    this.doorBarrier = buildCorruptPlane(this.scene, { x: me0.x + 0.3, y: this.terrain.heightAt(me0.x, me0.z), z: me0.z, w: 9.6, h: 4.8, yaw: Math.PI / 2 });
+    this.refreshGates(true);
     this.boxes = this.village.colliders.concat([this.hotel.box, STEPS_SIDE_L, STEPS_SIDE_R], this.mall.colliders, this.digital.colliders);
     this.village.setShortcutOpen(!!ctx.progress.places?.borgo || !!this.saved.villageSeen);
 
@@ -282,10 +291,95 @@ export class OutdoorDream {
     return !!this.ctx.progress.places?.centro;
   }
 
+  // ---------- La corruzione ----------
+  refreshGates(instant = false) {
+    const p = this.ctx.progress;
+    for (const g of this.gates) {
+      g.open = gateOpen(p, g.id);
+      g.wall.setActive(!g.open, instant);
+    }
+    this.doorOpen = gateOpen(p, 'ingresso');
+    this.doorBarrier.setActive(!this.doorOpen, instant);
+  }
+
+  // dopo un combattimento: se un terminale ha liberato un posto, la corruzione si dissolve
+  onTerminalDone() {
+    const { ui, audio } = this.ctx;
+    const before = this.gates.map((g) => g.open).concat(this.doorOpen);
+    this.refreshGates();
+    const after = this.gates.map((g) => g.open).concat(this.doorOpen);
+    const ids = this.gates.map((g) => g.id).concat('ingresso');
+    ids.forEach((id, i) => {
+      if (before[i] || !after[i]) return;
+      this.later(1.2, () => {
+        ui.popup(`Sbloccato: ${GATES[id].name}`);
+        audio.chime(523, 0.12);
+        setTimeout(() => audio.chime(784, 0.12), 180);
+        ui.subtitle(FRIEND, `Guarda laggiù: la corruzione intorno a ${GATES[id].name} si sta sciogliendo.`, 3.8);
+      });
+    });
+    this.updateObjective();
+  }
+
+  gateMessage(id, force = false) {
+    if (!force && (this.flags.gateMsgT || 0) > this.time) return;
+    this.flags.gateMsgT = this.time + 4;
+    this.ctx.audio.thud(0.2);
+    this.ctx.ui.subtitle(null, `La realtà qui è corrotta: pixel che non stanno fermi, un ronzio che entra nei denti. Non si passa. ${GATES[id].hint}`, 4.5);
+  }
+
+  updateGates(dt, prevP, prevC) {
+    for (const g of this.gates) g.wall.update(this.time, dt);
+    this.doorBarrier.update(this.time, dt);
+    let k = 0;
+    const blockers = [
+      [this.player.pos, prevP, null],
+      [this.car.pos, prevC, this.car],
+    ];
+    for (const g of this.gates) {
+      if (g.open) continue;
+      for (const [pos, prev, car] of blockers) {
+        const d0 = Math.hypot(prev.x - g.x, prev.z - g.z);
+        const d1 = Math.hypot(pos.x - g.x, pos.z - g.z);
+        // non si entra, né a piedi né in macchina (ma se sei già dentro puoi uscire)
+        if (d0 >= g.r && d1 < g.r) {
+          pos.x = prev.x;
+          pos.z = prev.z;
+          if (car) {
+            car.vx *= -0.2;
+            car.vz *= -0.2;
+            this.shake = Math.max(this.shake, 0.6);
+          }
+          this.gateMessage(g.id);
+        }
+      }
+      const me = this.mode === 'car' ? this.car.pos : this.player.pos;
+      const d = Math.hypot(me.x - g.x, me.z - g.z) - g.r;
+      k = Math.max(k, d >= 0 ? 1 - d / 45 : 0.25);
+    }
+    if (!this.doorOpen) {
+      const me = this.mall.entrance;
+      const pp = this.player.pos;
+      k = Math.max(k, 1 - Math.hypot(pp.x - me.x, pp.z - me.z) / 14);
+    }
+    k = Math.max(0, Math.min(1, k));
+    glitchOverlay(this.digital.open ? 0 : k);
+    this.objT = (this.objT ?? 2) - dt;
+    if (this.objT <= 0 && !this.activity) {
+      this.objT = 2;
+      this.updateObjective();
+    }
+    this.ctx.audio.loop('glitch', k > 0.15 && !this.digital.open, { freq: 3200, q: 6, vol: 0.035 });
+  }
+
   updateObjective() {
     const { ui } = this.ctx;
     const s = this.saved;
-    if (!s.villageSeen) ui.objective('La strada continua oltre l\'hotel: sale fino in vetta.');
+    const P = this.ctx.progress;
+    if (!this.inVillage && !gateOpen(P, 'borgo')) ui.objective('La strada per il borgo è corrotta. Libera il terminale del piazzale, accanto all\'hotel.');
+    else if (!this.inVillage && s.villageSeen && !gateOpen(P, 'conca')) ui.objective('A ovest, la conca del centro commerciale è corrotta. Libera il terminale della piazza del borgo.');
+    else if (!this.inVillage && s.villageSeen && !gateOpen(P, 'ingresso') && Math.hypot(this.player.pos.x - MALL.x, this.player.pos.z - MALL.z) < 260) ui.objective('Le porte del centro commerciale sono corrotte. Libera il terminale del parcheggio.');
+    else if (!s.villageSeen) ui.objective('La strada continua oltre l\'hotel: sale fino in vetta.');
     else if (!this.inVillage && !this.mallSeen) ui.objective('Un\'altra strada scende a ovest, verso un edificio bianco enorme.');
     else if (!this.inVillage) ui.objective('');
     else
@@ -306,11 +400,14 @@ export class OutdoorDream {
     while (this.script.length && this.script[0].at <= this.time) this.script.shift().fn();
 
     this.digital.update(dt, this.time, input);
+    const prevP = { x: this.player.pos.x, z: this.player.pos.z };
+    const prevC = { x: this.car.pos.x, z: this.car.pos.z };
     if (this.digital.open) this.player.animate(dt, 0);
     else if (this.activity) this.updateActivity(dt);
     else if (this.mode === 'car') this.updateCar(dt);
     else this.updateFoot(dt);
     this.digital.discover(this.mode === 'car' ? this.car.pos : this.player.pos, (d, f) => this.later(d, f));
+    this.updateGates(dt, prevP, prevC);
 
     if (this.mode === 'foot' || this.activity) this.updateFriend(dt);
     if (this.followers && this.mode === 'foot') {
@@ -489,11 +586,15 @@ export class OutdoorDream {
       this.goInside();
       return;
     }
-    // e le porte di vetro del centro commerciale si aprono da sole
+    // e le porte di vetro del centro commerciale si aprono da sole (se non sono corrotte)
     const me = this.mall.entrance;
     if (Math.abs(p.pos.x - me.x) < 1.3 && Math.abs(p.pos.z - me.z) < me.halfW && mx < -0.5 && !this.leaving) {
-      this.leave(() => this.ctx.enterMall('entrance'));
-      return;
+      if (this.doorOpen) {
+        this.leave(() => this.ctx.enterMall('entrance'));
+        return;
+      }
+      p.pos.x = me.x + 1.4;
+      this.gateMessage('ingresso');
     }
 
     if (input.wasPressed('KeyC')) this.summonCar();
@@ -563,10 +664,13 @@ export class OutdoorDream {
     const near = (x, z, r) => Math.hypot(p.x - x, p.z - z) < r;
     if (near(DOOR.x, DOOR.z, 4.5)) return { label: 'rientra nell\'hotel', fn: () => this.goInside() };
     const term = this.digital.near(p);
-    if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term) };
+    if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term, () => this.onTerminalDone()) };
     if (near(this.car.pos.x, this.car.pos.z, 3.6)) return { label: 'sali in macchina', fn: () => this.getIn() };
     const me = this.mall.entrance;
-    if (near(me.x + 1.5, me.z, 5.5)) return { label: 'entra nel centro commerciale', fn: () => this.leave(() => this.ctx.enterMall('entrance')) };
+    if (near(me.x + 1.5, me.z, 5.5)) {
+      if (!this.doorOpen) return { label: 'le porte sono corrotte', fn: () => this.gateMessage('ingresso', true) };
+      return { label: 'entra nel centro commerciale', fn: () => this.leave(() => this.ctx.enterMall('entrance')) };
+    }
     if (!this.inVillage) return null;
     const sd = V.shortcut;
     if (near(sd.spot.x, sd.spot.z, 1.8)) return { label: 'apri la porta 1313', fn: () => this.leave(() => this.ctx.travel('suite')) };
@@ -953,7 +1057,12 @@ export class OutdoorDream {
   updateCompass(pos) {
     const { ui } = this.ctx;
     let target = null;
-    if (!this.saved.villageSeen && !this.inVillage) {
+    const P = this.ctx.progress;
+    const piaz = this.digital.terms.find((t) => t.id === 'piazzale');
+    if (!gateOpen(P, 'borgo') && !this.inVillage) {
+      // prima di tutto, il terminale accanto all'hotel
+      if (Math.hypot(pos.x - piaz.x, pos.z - piaz.z) > 12) target = piaz;
+    } else if (!this.saved.villageSeen && !this.inVillage) {
       const T = this.terrain;
       const info = T.roadInfo(pos.x, pos.z);
       if (Math.hypot(pos.x - VILLAGE.x, pos.z - VILLAGE.z) < 260) target = VILLAGE;
@@ -1009,6 +1118,9 @@ export class OutdoorDream {
     const { ui, audio } = this.ctx;
     this.gesture.dispose();
     this.digital.dispose();
+    this.gates.forEach((g) => g.wall.dispose());
+    this.doorBarrier.dispose();
+    glitchOverlay(0);
     this.ctx.renderer.domElement.removeEventListener('click', this.onCanvasClick);
     audio.engineStop();
     audio.ambience(null);

@@ -980,3 +980,31 @@ kbd {
   color: #bfe;
   opacity: 0.85;
 }
+
+/* Il rumore digitale vicino alla corruzione */
+#glitch {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  opacity: 0;
+  background-size: 288px 288px;
+  image-rendering: pixelated;
+  transition: opacity 0.3s;
+}
+#glitch.on {
+  animation: glitch-jump 0.42s steps(1) infinite;
+}
+#glitch::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.35) 0 2px, transparent 2px 5px);
+}
+@keyframes glitch-jump {
+  0% { background-position: 0 0; transform: translateX(0); }
+  20% { background-position: 37px -91px; transform: translateX(-6px); }
+  40% { background-position: -120px 44px; transform: translateX(3px); }
+  60% { background-position: 80px 160px; transform: translateX(0); }
+  80% { background-position: -30px -200px; transform: translateX(8px); }
+}
