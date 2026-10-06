@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { prizeModel } from './prizes.js';
 import { ENTITIES, UNKNOWN_SLOTS, entityLabel } from './companions.js';
 import { textTexture } from '../../core/textures.js';
+import { models, KENNEY } from '../../core/models.js';
 
 // La suite 1313: una stanza da vivere, e un posto sicuro.
 // Coordinate in metri dall'angolo sud-ovest della suite (x verso est, z verso
@@ -25,6 +26,26 @@ export function buildSuite(a, bathApi, rb) {
   const chrome = a.mat('#c8ccd0', { metal: true });
   const paper = a.texMat('stripes', ['#e8d8b8', '#dcc8a4'], [2, 1]);
 
+  // I mobili del Furniture Kit (Kenney, CC0), ricolorati con i colori della suite.
+  // put() restituisce null se il modello manca: allora resta il mobile disegnato.
+  // rot: dove guarda il davanti del mobile (0 = nord, π/2 = est...).
+  // fit: [larghezza, altezza, profondità] in metri al posto della scala del kit.
+  // col: [larghezza x, profondità z] dell'ostacolo; bath: true se sta nel bagno.
+  const put = (name, x, z, { y = 0, rot = 0, scale = KENNEY, fit = null, colors = null, col = null, bath = false } = {}) => {
+    const o = models.make(name, { colors });
+    if (!o) return null;
+    if (fit) {
+      const [sw, sh, sd] = models.size(name);
+      o.scale.set(fit[0] / sw, fit[1] / sh, fit[2] / sd);
+    } else o.scale.setScalar(scale);
+    o.position.copy(W(x, z, y));
+    o.rotation.y = rot;
+    rb.dynamic.add(o);
+    if (col) (bath ? bathApi : a).collider(...(bath ? Q(x, z) : P(x, z)), col[0], col[1]);
+    return o;
+  };
+  const DARK = { wood: '#5a3420', woodDark: '#3a2416' };
+
   // ---------- Il lato-suite delle pareti del bagno (carta da parati) ----------
   box(0.25, 5.5, 7.75, paper, 9.875, 2.75, 4.125, { collide: false });
   box(2.5, 5.5, 0.25, paper, 11.25, 2.75, 8.125, { collide: false });
@@ -38,9 +59,11 @@ export function buildSuite(a, bathApi, rb) {
   const chairs = [];
   for (const [dx, facing] of [[-1.3, Math.PI / 2], [1.3, -Math.PI / 2]]) {
     const cx = table.x + dx;
-    box(0.6, 0.08, 0.6, a.mat('#8a2a2a'), cx, 0.46, table.z, { collide: false });
-    for (const [lx, lz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) box(0.05, 0.44, 0.05, darkWood, cx + lx, 0.22, table.z + lz, { collide: false });
-    box(0.06, 0.7, 0.6, darkWood, cx + Math.sign(dx) * 0.28, 0.85, table.z, { collide: false });
+    if (!put('chairCushion', cx, table.z, { rot: facing, colors: { ...DARK, carpet: '#8a2a2a' } })) {
+      box(0.6, 0.08, 0.6, a.mat('#8a2a2a'), cx, 0.46, table.z, { collide: false });
+      for (const [lx, lz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) box(0.05, 0.44, 0.05, darkWood, cx + lx, 0.22, table.z + lz, { collide: false });
+      box(0.06, 0.7, 0.6, darkWood, cx + Math.sign(dx) * 0.28, 0.85, table.z, { collide: false });
+    }
     chairs.push({ pos: W(cx, table.z), facing });
   }
   a.sphere(0.13, porcelain, ...spread(P(table.x, table.z + 0.15), 0.9), { collide: false }).scale.set(1, 0.85, 1);
@@ -66,8 +89,10 @@ export function buildSuite(a, bathApi, rb) {
 
   // ---------- L'angolo della moka: una credenza con il fornellino ----------
   const mz = 4.6;
-  box(0.7, 0.9, 1.6, darkWood, 0.45, 0.45, mz);
-  box(0.74, 0.04, 1.64, wood, 0.45, 0.92, mz, { collide: false });
+  const credenza = [-0.45, 0.45].map((dz) => put('kitchenCabinetDrawer', 0.48, mz + dz, { rot: Math.PI / 2, fit: [0.9, 0.9, 0.9], colors: DARK }));
+  if (credenza.every(Boolean)) a.collider(...P(0.48, mz), 0.9, 1.8);
+  else box(0.7, 0.9, 1.6, darkWood, 0.45, 0.45, mz);
+  box(0.94, 0.04, 1.84, wood, 0.48, 0.92, mz, { collide: false });
   box(0.42, 0.07, 0.42, a.mat('#2a2a2e'), 0.45, 0.97, mz - 0.3, { collide: false });
   cyl(0.12, 0.12, 0.015, a.mat('#4a4a50'), 0.45, 1.01, mz - 0.3, { collide: false });
   cyl(0.065, 0.085, 0.13, chrome, 0.45, 1.08, mz - 0.3, { collide: false });
@@ -91,8 +116,12 @@ export function buildSuite(a, bathApi, rb) {
     fireGlow.scale.setScalar(2.2 * f);
     fireLight.intensity = 10 * f;
   });
-  box(1.1, 0.5, 1.1, a.mat('#5a2a1a'), 2.9, 0.25, fireZ);
-  box(0.25, 0.9, 1.1, a.mat('#5a2a1a'), 3.4, 0.9, fireZ, { collide: false });
+  if (put('loungeChair', 2.9, fireZ, { rot: -Math.PI / 2, colors: { carpet: '#7a2a1a', wood: '#3a2416' }, col: [1, 1.1] })) {
+    put('lampSquareFloor', 2.9, fireZ + 1.25, { colors: { metal: '#3a2a1a', lamp: '#ffe2b0' } });
+  } else {
+    box(1.1, 0.5, 1.1, a.mat('#5a2a1a'), 2.9, 0.25, fireZ);
+    box(0.25, 0.9, 1.1, a.mat('#5a2a1a'), 3.4, 0.9, fireZ, { collide: false });
+  }
   const armchair = { pos: W(2.9, fireZ), facing: -Math.PI / 2 };
 
   const shelfZ = 12.6;
@@ -108,27 +137,51 @@ export function buildSuite(a, bathApi, rb) {
   const beds = [];
   for (const [z, cover] of [[12.5, '#2f4f8f'], [18.5, '#b8862a']]) {
     const x = 16.05;
-    box(3.4, 0.5, 2.2, wood, x, 0.25, z);
-    box(3.2, 0.3, 2.1, sheet, x, 0.62, z, { collide: false });
-    box(2.1, 0.12, 2.15, a.mat(cover), x - 0.5, 0.8, z, { collide: false });
-    box(0.6, 0.25, 1.2, sheet, x + 1.2, 0.85, z, { collide: false });
-    box(0.15, 1.5, 2.2, darkWood, 17.67, 0.95, z, { collide: false });
+    // il letto del kit, allungato fino alla misura di questi letti (3,4 × 2,2 m)
+    if (put('bedDouble', x, z, { rot: -Math.PI / 2, fit: [2.2, 0.95, 3.4], colors: { carpet: cover, wood: '#6a4028' }, col: [3.4, 2.2] })) {
+      box(0.15, 1.5, 2.2, darkWood, 17.67, 0.95, z, { collide: false });
+    } else {
+      box(3.4, 0.5, 2.2, wood, x, 0.25, z);
+      box(3.2, 0.3, 2.1, sheet, x, 0.62, z, { collide: false });
+      box(2.1, 0.12, 2.15, a.mat(cover), x - 0.5, 0.8, z, { collide: false });
+      box(0.6, 0.25, 1.2, sheet, x + 1.2, 0.85, z, { collide: false });
+      box(0.15, 1.5, 2.2, darkWood, 17.67, 0.95, z, { collide: false });
+    }
     beds.push(W(13.6, z));
   }
-  box(0.6, 0.7, 0.8, darkWood, 17.35, 0.35, 15.5);
   const lampShadeMat = new THREE.MeshStandardMaterial({ color: '#ffe2b0', emissive: '#ffb860', emissiveIntensity: 1.6 });
   a.track(lampShadeMat);
-  cyl(0.18, 0.26, 0.3, lampShadeMat, 17.35, 1.05, 15.5, { collide: false, dynamic: true });
+  // il comodino tra i letti, con la lampada (il paralume si accende e si spegne)
+  if (put('cabinetBedDrawerTable', 17.2, 15.5, { rot: -Math.PI / 2, fit: [0.9, 0.7, 0.75], colors: DARK, col: [0.8, 0.9] })) {
+    put('lampRoundTable', 17.25, 15.5, { y: 0.7, rot: -Math.PI / 2, scale: 2.2, colors: { lamp: lampShadeMat, metal: '#c9a040' } });
+    put('books', 17.25, 15.85, { y: 0.7, rot: -Math.PI / 2, scale: 1.8 });
+  } else {
+    box(0.6, 0.7, 0.8, darkWood, 17.35, 0.35, 15.5);
+    cyl(0.18, 0.26, 0.3, lampShadeMat, 17.35, 1.05, 15.5, { collide: false, dynamic: true });
+  }
+  // un orsacchiotto sul letto giallo, e un cuscino in più su quello blu
+  put('bear', 16.7, 18.0, { y: 0.66, rot: -Math.PI / 2 - 0.5, scale: 1.4 });
+  put('pillow', 17.0, 12.1, { y: 0.66, rot: -Math.PI / 2, scale: 2, colors: { carpet: '#e8e0cc' } });
   const lampLight = new THREE.PointLight('#ffc27a', 14, 12, 1.6);
   lampLight.position.copy(W(17, 15.5, 1.4));
   rb.dynamic.add(lampLight);
 
   // salotto, armadio, valigie
   box(5, 0.03, 3.6, a.mat('#8a2a2a'), 8, 0.02, 15, { collide: false });
-  box(3.2, 0.8, 1, a.mat('#4a5a7a'), 8, 0.4, 12.6);
-  box(3.2, 0.7, 0.25, a.mat('#4a5a7a'), 8, 1, 12.1, { collide: false });
+  if (!put('loungeSofa', 8, 12.55, { fit: [3.2, 1.05, 1.1], colors: { carpet: '#4a5a7a', wood: '#3a2416' }, col: [3.2, 1.1] })) {
+    box(3.2, 0.8, 1, a.mat('#4a5a7a'), 8, 0.4, 12.6);
+    box(3.2, 0.7, 0.25, a.mat('#4a5a7a'), 8, 1, 12.1, { collide: false });
+  }
   box(1.2, 0.45, 0.7, darkWood, 8, 0.23, 15.5);
-  box(2.4, 2.6, 0.7, wood, 10, 1.3, 23.3);
+  put('books', 7.8, 15.5, { y: 0.455, rot: 0.3, scale: 2 });
+  // l'armadio: due ante alte di legno
+  const wardrobe = [-0.6, 0.6].map((dx) => put('bookcaseClosedDoors', 10 + dx, 23.3, { rot: Math.PI, fit: [1.2, 2.6, 0.7], colors: { wood: '#6a4028', metal: '#c9a040' } }));
+  if (wardrobe.every(Boolean)) a.collider(...P(10, 23.3), 2.4, 0.7);
+  else box(2.4, 2.6, 0.7, wood, 10, 1.3, 23.3);
+  // il ventilatore sul soffitto del salotto, che gira piano
+  const fan = put('ceilingFan', 8, 15, { y: 5.5 - 0.13 * 3.2, scale: 3.2, colors: { wood: '#5a3420', metalLight: '#c9a040' } });
+  if (fan) a.anim((t) => (fan.rotation.y = t * 1.6));
+  put('coatRackStanding', 1.2, 22.8, { colors: { wood: '#3a2416' }, col: [0.6, 0.6] });
   box(0.8, 0.6, 0.35, a.mat('#2a4a3a'), 6.4, 0.3, 23.3);
   box(0.6, 0.5, 0.35, a.mat('#6a2a1a'), 7.3, 0.25, 23.3);
   a.glowSprite('#ffe2b0', ...spread(P(9, 16), 5.1), 6, 0.3);
@@ -176,7 +229,7 @@ export function buildSuite(a, bathApi, rb) {
   bcyl(0.03, 0.03, 0.4, chrome, 16.8, 2.45, 7.65, { collide: false });
   bcyl(0.18, 0.12, 0.06, chrome, 16.8, 2.2, 7.45, { collide: false });
   // vasca lungo la parete sud
-  bbox(3.6, 0.6, 1.6, porcelain, 12.3, 0.3, 1.1);
+  if (!put('bathtub', 12.3, 1.1, { rot: Math.PI, fit: [3.6, 0.62, 1.6], col: [3.6, 1.6], bath: true })) bbox(3.6, 0.6, 1.6, porcelain, 12.3, 0.3, 1.1);
   const waterMat = bathApi.track(new THREE.MeshStandardMaterial({ color: '#8ad0e8', transparent: true, opacity: 0.75, roughness: 0.1 }));
   bbox(3.3, 0.02, 1.3, waterMat, 12.3, 0.52, 1.1, { collide: false, dynamic: true });
   bcyl(0.03, 0.03, 0.35, chrome, 10.6, 0.8, 1.1, { collide: false });
@@ -189,10 +242,16 @@ export function buildSuite(a, bathApi, rb) {
     else bcyl(0.015, 0.015, 0.12, chrome, 17.55, 0.5, z, { collide: false });
   }
   // lavandino e specchio, parete ovest
-  bbox(0.6, 0.9, 1.2, bathApi.mat('#d8d0c4'), 10.55, 0.45, 5.2);
-  bbox(0.45, 0.06, 0.6, porcelain, 10.6, 0.93, 5.2, { collide: false });
-  bcyl(0.015, 0.015, 0.2, chrome, 10.35, 1.05, 5.2, { collide: false });
-  bbox(0.04, 1, 1.1, bathApi.mat('#e0e8f8', { metal: true, emissive: 0.1 }), 10.28, 1.8, 5.2, { collide: false });
+  if (put('bathroomSink', 10.62, 5.2, { rot: Math.PI / 2, scale: 2.1, col: [0.7, 0.9], bath: true })) {
+    const mirrorGlass = bathApi.track(new THREE.MeshStandardMaterial({ color: '#d4e6f2', metalness: 0.7, roughness: 0.08 }));
+    put('bathroomMirror', 10.55, 5.2, { y: 1.35, rot: Math.PI / 2, scale: 3.2, colors: { wood: '#5a3420', glass: mirrorGlass, metal: '#c9a040' } });
+    put('trashcan', 10.55, 6.6, { rot: Math.PI / 2, scale: 1.4 });
+  } else {
+    bbox(0.6, 0.9, 1.2, bathApi.mat('#d8d0c4'), 10.55, 0.45, 5.2);
+    bbox(0.45, 0.06, 0.6, porcelain, 10.6, 0.93, 5.2, { collide: false });
+    bcyl(0.015, 0.015, 0.2, chrome, 10.35, 1.05, 5.2, { collide: false });
+    bbox(0.04, 1, 1.1, bathApi.mat('#e0e8f8', { metal: true, emissive: 0.1 }), 10.28, 1.8, 5.2, { collide: false });
+  }
   // portasciugamani
   bbox(0.05, 0.05, 1, chrome, 10.3, 1.4, 3, { collide: false });
   bbox(0.1, 0.7, 0.45, bathApi.mat('#f0e8d8'), 10.33, 1.1, 2.75, { collide: false });

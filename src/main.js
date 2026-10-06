@@ -13,6 +13,8 @@ import { CoastDream } from './dreams/costa/CoastDream.js';
 import { IslandDream } from './dreams/isola/IslandDream.js';
 import { placeById } from './core/places.js';
 import { WorldMap } from './core/worldmap.js';
+import { models } from './core/models.js';
+import { HOTEL_MODELS } from './models/hotel/index.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -25,6 +27,8 @@ document.getElementById('app').appendChild(renderer.domElement);
 
 const ui = new UI();
 const worldMap = new WorldMap();
+// i mobili 3D si caricano subito, mentre c'è ancora la schermata iniziale
+models.load(HOTEL_MODELS);
 const ctx = {
   renderer,
   input: new Input(renderer.domElement),
@@ -100,6 +104,8 @@ async function goToChapter(i, first = false) {
   current = null;
   if (ch.card) ui.center(`<div class="dream-title"><h2>Dreamgame</h2><p>${ch.card}</p></div>`);
   await new Promise((r) => setTimeout(r, ch.card ? 1200 : 100));
+  // aspetta i modelli (ma non per sempre: senza, si usano i mobili disegnati)
+  await Promise.race([models.ready, new Promise((r) => setTimeout(r, 5000))]);
   current = ch.create(ctx);
   onResize();
   await new Promise((r) => setTimeout(r, ch.card ? 1500 : 400));

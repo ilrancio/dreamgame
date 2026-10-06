@@ -43,6 +43,8 @@ L'interpretazione di ogni sogno (cosa è diventato cosa, e perché) è in [docs/
 
 ```
 src/
+  core/models.js     i modelli 3D (.glb): caricati all'avvio, ricentrati, clonati e ricolorati dove servono
+  models/hotel/      il Furniture Kit di Kenney (CC0); index.js elenca quelli usati (crediti in CREDITS.md)
   core/              input, audio sintetizzato, UI/HUD, cielo, particelle, texture procedurali
   main.js            il prologo, l'hotel e l'esterno in sequenza, e la ripresa del sogno salvato
   dreams/demone/     capitolo I: il campo, la macchina, il demone, i macigni, la strada
