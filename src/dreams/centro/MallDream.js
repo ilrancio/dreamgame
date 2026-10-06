@@ -6,6 +6,8 @@ import { ArcadeScreen, GAMES } from '../hotel/games.js';
 import { ChoicePanel } from '../../core/choice.js';
 import { unlockPlace } from '../../core/places.js';
 import { DigitalLayer } from '../digitale/layer.js';
+import { buildMural } from '../digitale/mural.js';
+import { loadChiavetta, formById } from '../digitale/chiavetta.js';
 import { buildMallInterior, floorHeight, rampAt, upperWalkable, underSlab, MALL_W, MALL_L, UPPER, DOOR_W } from './mall.js';
 
 const FRIEND = 'Il tuo amico:';
@@ -67,7 +69,10 @@ export class MallDream {
     const pts = [];
     for (let i = 0; i < 26; i++) pts.push([((i * 37) % 12) - 6, 3 + ((i * 13) % 9), 8 + i * 5.6]);
     this.digital = new DigitalLayer(this.scene, ctx, [{ id: 'galleria', x: 0, y: 0, z: 88, yaw: Math.PI }], pts);
-    this.colliders = this.mall.colliders.concat(this.digital.colliders.map((c) => ({ ...c, lv: 0 })));
+    // il murale gigantesco sulla parete di fondo: tutte le entità, e la fessura per la chiavetta
+    this.mural = buildMural(this.scene, { x: 0, z: MALL_L, w: 13.4, h: 12.6 });
+    this.mural.refresh(loadChiavetta(ctx.progress));
+    this.colliders = this.mall.colliders.concat(this.digital.colliders.map((c) => ({ ...c, lv: 0 })), [{ ...this.mural.collider, lv: 0 }]);
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
@@ -220,6 +225,7 @@ export class MallDream {
       k.c.body.position.y = Math.sin(this.time * (k.calm ? 0.9 : 1.4) + k.phase) * 0.012;
     }
     this.mall.update(this.time, dt);
+    this.mural.update(this.time);
 
     // l'altoparlante, ogni tanto, a nessuno
     this.paT -= dt;
@@ -235,6 +241,26 @@ export class MallDream {
   inRetro(p = this.player.pos) {
     const R = this.mall.retro.shop;
     return p.y < 3 && p.x * R.side > 12.1 && p.z > R.zA && p.z < R.zB;
+  }
+
+  // Il murale: si sceglie quale entità trasferire nella chiavetta
+  openMural() {
+    const { ui } = this.ctx;
+    ui.hint(null);
+    const d = loadChiavetta(this.ctx.progress);
+    if (!d.found) {
+      d.found = true;
+      this.ctx.saveProgress(this.ctx.progress);
+      ui.subtitle(null, 'Infili la mano in tasca: c\'è una chiavetta USB. Combacia con la fessura, come se fosse fatta apposta.', 4.5);
+    }
+    this.digital.screen.startMural(this.ctx, (sum) => {
+      this.mural.refresh(d);
+      if (sum.transferred) {
+        const name = formById(sum.transferred).name;
+        ui.popup(`Nella chiavetta: ${name}`);
+        this.later(0.8, () => ui.subtitle(FRIEND, sum.transferred === 'scintilla' ? 'Bentornata, Scintilla. Ci eri mancata.' : `Adesso nella tua chiavetta c'è... ${name}? E ti ubbidisce?`, 3.6));
+      }
+    });
   }
 
   updatePlaces() {
@@ -255,6 +281,11 @@ export class MallDream {
     if (!inRetro && this.flags.retroGreet && !this.activity) {
       const R = this.mall.retro.shop;
       if (Math.abs(this.player.pos.x) < 10 || this.player.pos.z < R.zA - 8 || this.player.pos.z > R.zB + 8) this.flags.retroGreet = false;
+    }
+    if (this.player.pos.z > 112 && !this.saved.mural) {
+      this.saved.mural = true;
+      this.save();
+      ui.subtitle(FRIEND, 'Guarda in fondo. Un murale gigantesco... ci sono dipinte tutte quelle entità.', 4);
     }
     if (this.level === 1 && !this.saved.upstairs) {
       this.saved.upstairs = true;
@@ -373,6 +404,7 @@ export class MallDream {
     const M = this.mall;
     if (this.level === 0 && near(M.door13.spot.x, M.door13.spot.z, 1.6)) return { label: 'apri la porta 1313', fn: () => this.leave(() => this.ctx.travel('suite')) };
     if (this.level === 0 && p.z < 4 && Math.abs(p.x) < DOOR_W) return { label: 'esci: le porte si aprono da sole', fn: () => this.leave(() => this.ctx.goOutside('centro')) };
+    if (this.level === 0 && near(this.mural.spot.x, this.mural.spot.z, 1.8)) return { label: 'infila la chiavetta nel murale', fn: () => this.openMural() };
     const term = this.level === 0 && this.digital.near(p);
     if (term) return { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term) };
     const R = M.retro;
@@ -619,6 +651,7 @@ export class MallDream {
     if (this.arcadeScreen.open) this.arcadeScreen.finish();
     this.choice.dispose();
     this.digital.dispose();
+    this.mural.dispose();
     input.unlock();
     audio.stopLoops();
     audio.stopAllPads(1);

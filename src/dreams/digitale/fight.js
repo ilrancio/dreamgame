@@ -1,4 +1,4 @@
-import { heroStats, HERO_NAME } from './chiavetta.js';
+import { heroStats, formById } from './chiavetta.js';
 
 // Il combattimento dentro il terminale: un po' picchiaduro, un po' shooter
 // laterale. Si avanza verso destra in una copia digitale del luogo, le entità
@@ -29,15 +29,17 @@ const BOSS = {
 
 export class Fight {
   // def: { name, diff, boss, theme }; hero: dati della chiavetta; sfx(nome)
-  constructor(def, hero, sfx) {
+  constructor(def, hero, sfx, formId = 'scintilla') {
     this.def = def;
     this.sfx = sfx;
     this.diff = def.diff;
-    this.st = heroStats(hero);
+    this.form = formById(formId);
+    this.st = heroStats(hero, this.form);
+    this.killsBy = {};
     this.level = hero.level;
     this.len = 1300 + def.diff * 220;
     const st = this.st;
-    this.p = { x: 60, y: GY, vx: 0, vy: 0, w: 14, h: 28, facing: 1, hp: st.hp, maxHp: st.hp, energy: 100, ground: true, state: 'idle', t: 0, combo: 0, comboT: 0, inv: 0, flash: 0, shotCd: 0, dashCd: 0, hitId: 0 };
+    this.p = { x: 60, y: GY, vx: 0, vy: 0, w: this.form.w, h: this.form.h, floaty: !!this.form.float, facing: 1, hp: st.hp, maxHp: st.hp, energy: 100, ground: true, state: 'idle', t: 0, combo: 0, comboT: 0, inv: 0, flash: 0, shotCd: 0, dashCd: 0, hitId: 0 };
     this.enemies = [];
     this.shots = [];
     this.parts = [];
@@ -121,6 +123,9 @@ export class Fight {
       if (e.hp <= 0 && !e.dead) {
         e.dead = true;
         this.xp += e.xp;
+        // i dati dell'entità finiscono nella chiavetta (per il murale)
+        const key = e.type === 'boss' ? e.kind : e.type;
+        this.killsBy[key] = (this.killsBy[key] || 0) + (e.type === 'boss' && e.kind === 'firewall' ? 5 : 1);
         this.kills++;
         this.burst(e.x, e.y - e.h / 2, e.color, e.type === 'boss' ? 60 : 18);
         this.sfx(e.type === 'boss' ? 'bossdown' : 'delete');
@@ -172,11 +177,14 @@ export class Fight {
     } else if (p.state === 'block') p.state = 'idle';
     if (!busy && p.state !== 'block') {
       const dir = (k.right ? 1 : 0) - (k.left ? 1 : 0);
-      p.vx = dir * 115;
+      const F = this.form;
+      p.vx = dir * 115 * F.speed;
       if (dir) p.facing = dir;
       p.state = !p.ground ? 'jump' : dir ? 'run' : 'idle';
-      if (k.jump && p.ground) {
-        p.vy = -390;
+      if (p.ground) p.jumps = 0;
+      if (k.jump && (p.ground || (F.doubleJump && p.jumps < 2))) {
+        p.vy = -390 * F.jump * (p.ground ? 1 : 0.85);
+        p.jumps = (p.jumps || 0) + (p.ground ? 1 : 2);
         p.ground = false;
         this.sfx('jump');
       }
@@ -189,15 +197,35 @@ export class Fight {
         p.inv = st.dashTime + 0.05;
         p.dashCd = st.dashCd;
         this.sfx('dash');
+        // KERNEL PANIC: lo scatto è un teletrasporto alle spalle del nemico più vicino
+        const near = this.form.teleport && this.enemies.filter((e) => e.state !== 'enter' && Math.abs(e.x - p.x) < 260).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
+        if (near) {
+          this.burst(p.x, p.y - p.h / 2, '#f4f4f4', 10);
+          const side = near.facing || 1;
+          p.x = near.x - side * (near.w / 2 + 14);
+          p.facing = side;
+          p.vx = 0;
+          this.burst(p.x, p.y - p.h / 2, '#ff3a3a', 10);
+          this.sfx('glitch');
+        }
       }
     }
     // colpo di energia (anche mentre ti muovi)
     if (k.shoot && p.shotCd <= 0 && p.energy >= st.shotCost && p.state !== 'hurt' && p.state !== 'block') {
       p.shotCd = st.shotCd;
       p.energy -= st.shotCost;
-      const y = p.y - 17;
-      this.shots.push({ x: p.x + p.facing * 10, y, vx: p.facing * 330, vy: 0, from: 'hero', dmg: st.shot, r: 3, life: 1.4, color: '#7af8ff' });
-      if (st.doubleShot) this.shots.push({ x: p.x + p.facing * 4, y: y + 6, vx: p.facing * 310, vy: 0, from: 'hero', dmg: st.shot * 0.7, r: 2, life: 1.4, color: '#7af8ff' });
+      const y = p.y - Math.min(17, p.h * 0.6);
+      const col = { glitch: '#ff3ad8', drone: '#3af0ff', firewall: '#ff8a2a', bug: '#6aff4a', spam: '#ffe42a', kernel: '#ff3a3a' }[this.form.id] || '#7af8ff';
+      // il colpo si orienta da solo verso l'entità più vicina davanti a te (anche i droni in volo)
+      let aim = 0;
+      const ahead = this.enemies.filter((e) => e.state !== 'enter' && Math.sign(e.x - p.x) === p.facing && Math.abs(e.x - p.x) < 320).sort((q, r) => Math.abs(q.x - p.x) - Math.abs(r.x - p.x))[0];
+      if (ahead) aim = Math.max(-0.7, Math.min(0.7, Math.atan2(ahead.y - ahead.h / 2 - y, Math.abs(ahead.x - p.x))));
+      const angles = this.form.spread ? [-0.2, 0, 0.2] : [0];
+      for (const a0 of angles) {
+        const a = a0 + aim;
+        this.shots.push({ x: p.x + p.facing * (p.w / 2 + 3), y, vx: Math.cos(a) * p.facing * 330, vy: Math.sin(a) * 330, from: 'hero', dmg: st.shot * (this.form.spread ? 0.75 : 1), r: this.form.id === 'drone' ? 4 : 3, life: 1.4, color: col, env: this.form.id === 'spam' });
+      }
+      if (st.doubleShot) this.shots.push({ x: p.x + p.facing * 4, y: y + 6, vx: p.facing * 310, vy: 0, from: 'hero', dmg: st.shot * 0.7, r: 2, life: 1.4, color: col });
       this.sfx('shot');
     }
     // stato degli attacchi
@@ -208,7 +236,7 @@ export class Fight {
       const total = kick ? 0.38 : 0.22;
       if (p.t >= startup && p.t < startup + active) {
         const air = !p.ground && kick;
-        const box = { x: p.x + p.facing * (kick ? 17 : 13), y: p.y - (air ? 2 : 10), w: kick ? 22 : 16, h: 14 };
+        const box = { x: p.x + p.facing * (p.w / 2 + (kick ? 10 : 6)), y: p.y - (air ? 2 : Math.min(10, p.h * 0.3)), w: kick ? 22 : 16, h: 14 };
         for (const e of this.enemies) {
           if (e.hitBy === p.hitId || e.state === 'enter' || e.alpha < 0.5) continue;
           if (overlap(box, e)) {
@@ -250,7 +278,8 @@ export class Fight {
 
   integrate(o, dt) {
     if (!o.fly) {
-      o.vy += G * dt;
+      // il DRONE plana quando scende
+      o.vy += (o.floaty && o.vy > 0 ? G * 0.3 : G) * dt;
       o.y += o.vy * dt;
       if (o.y >= GY) {
         if (!o.ground && o.vy > 200 && o.onLand) o.onLand();
@@ -331,6 +360,8 @@ export class Fight {
     const p = this.p;
     dmg *= 0.75;
     if (p.inv > 0 || this.endT !== undefined) return;
+    // il FIREWALL è corazzato davanti
+    if (this.form.armor && Math.sign(dir) === -p.facing) dmg *= 1 - this.form.armor;
     if (p.state === 'block' && Math.sign(dir) === -p.facing) {
       dmg *= 1 - this.st.guard;
       this.sfx('block');
@@ -710,6 +741,36 @@ export class Fight {
   drawHero(g, t) {
     const p = this.p;
     if (p.inv > 0 && p.state !== 'dash' && Math.floor(t * 20) % 2) return;
+    if (this.form && this.form.id !== 'scintilla') {
+      // sei tu: alone ciano ai piedi e un segno sopra la testa (le entità hanno la tua stessa forma)
+      g.fillStyle = 'rgba(122,248,255,0.35)';
+      g.beginPath();
+      g.ellipse(p.x, p.y + 1, p.w / 2 + 5, 3, 0, 0, Math.PI * 2);
+      g.fill();
+      const top = p.y - p.h - (this.form.id === 'spam' ? 12 : 6) + Math.round(Math.sin(t * 5));
+      g.fillStyle = '#7af8ff';
+      g.beginPath();
+      g.moveTo(p.x - 4, top - 6);
+      g.lineTo(p.x + 4, top - 6);
+      g.lineTo(p.x, top);
+      g.closePath();
+      g.fill();
+      drawForm(g, this.form.id, p.x, p.y, p.facing, t, { flash: p.flash > 0, state: p.state });
+      // l'attacco: uno sbaffo bianco davanti
+      const kick = p.state === 'kick';
+      if ((p.state === 'punch' || kick) && p.t > (kick ? 0.1 : 0.04) && p.t < (kick ? 0.26 : 0.15)) {
+        g.strokeStyle = kick ? '#ffe42a' : '#ffffff';
+        g.lineWidth = 2;
+        g.beginPath();
+        g.arc(p.x + p.facing * (p.w / 2), p.y - Math.min(12, p.h * 0.4), kick ? 16 : 11, p.facing > 0 ? -1.1 : Math.PI - 0.6, p.facing > 0 ? 0.6 : Math.PI + 1.1);
+        g.stroke();
+      }
+      if (p.state === 'block') {
+        g.fillStyle = 'rgba(122,248,255,0.6)';
+        g.fillRect(p.x + p.facing * (p.w / 2 + 2) - 1, p.y - p.h - 2, 3, p.h + 2);
+      }
+      return;
+    }
     const f = p.facing;
     const x = Math.round(p.x);
     const y = Math.round(p.y);
@@ -903,7 +964,7 @@ export class Fight {
     g.font = 'bold 9px monospace';
     g.textAlign = 'left';
     g.fillStyle = '#7af8ff';
-    g.fillText(`${HERO_NAME}  LV ${this.level}`, 10, 14);
+    g.fillText(`${this.form.name}  LV ${this.level}`, 10, 14);
     g.fillStyle = '#1a2a3a';
     g.fillRect(10, 18, 110, 6);
     g.fillStyle = p.hp / p.maxHp > 0.3 ? '#4aff8a' : '#ff5a5a';
@@ -943,4 +1004,38 @@ export class Fight {
       g.fillText(this.banner.sub.toUpperCase(), FW / 2, 140);
     }
   }
+}
+
+// Disegna una forma (Scintilla o un'entità) con i piedi in (x, y): per il
+// personaggio in combattimento, per il murale e per lo schermo del terminale.
+export function drawForm(g, id, x, y, facing, t, { flash = false, state = 'idle' } = {}) {
+  const proto = Fight.prototype;
+  if (id === 'scintilla') {
+    proto.drawHero.call({ form: null, p: { x, y, facing, state, inv: 0, flash: flash ? 1 : 0, t: 0.2, combo: 1, ground: true } }, g, t);
+  } else if (ENEMY[id]) {
+    const e = ENEMY[id];
+    proto.drawEnemy.call({}, g, { type: id, x, y: id === 'drone' ? y - 9 : y, facing, flash: flash ? 1 : 0, state: state === 'punch' || state === 'kick' ? 'windup' : 'walk', hp: 1, maxHp: 1, h: e.h, color: e.color, shield: id === 'firewall' ? 1 : 0 }, t);
+  } else {
+    const b = BOSS[id];
+    proto.drawBoss.call({}, g, { kind: id, x, y, facing, flash: flash ? 1 : 0, state: 'idle', color: b.color, def: b, alpha: 1, shield: b.shield ? 1 : 0 }, t);
+  }
+}
+
+// La stessa forma, ma come sagoma scura: un'entità di cui non hai ancora abbastanza dati.
+let off = null;
+export function drawSilhouette(g, id, x, y, facing, t) {
+  if (!off) {
+    off = document.createElement('canvas');
+    off.width = 100;
+    off.height = 100;
+  }
+  const o = off.getContext('2d');
+  o.setTransform(1, 0, 0, 1, 0, 0);
+  o.globalCompositeOperation = 'source-over';
+  o.clearRect(0, 0, 100, 100);
+  drawForm(o, id, 50, 88, facing, t);
+  o.globalCompositeOperation = 'source-atop';
+  o.fillStyle = '#1a1428';
+  o.fillRect(0, 0, 100, 100);
+  g.drawImage(off, x - 50, y - 88);
 }

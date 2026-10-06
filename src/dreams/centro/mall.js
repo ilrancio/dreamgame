@@ -23,7 +23,7 @@ export const RAMPS = [
   { z0: 24, z1: 40 },
   { z0: 104, z1: 120 },
 ]; // scale mobili, x da -3 a 3, salgono verso la passerella
-const END_SLAB = 152; // il fondo del primo piano, da parete a parete
+const END_SLAB = MALL_L; // niente ballatoio in fondo: la parete è tutta del murale delle entità
 export const DOOR_W = 4.5; // metà larghezza delle porte d'ingresso
 export const RETRO = { side: 1, floor: 0, k: 3 };
 
@@ -206,8 +206,10 @@ export function buildMallInterior(scene, { day }) {
     box(VOID_X * 2, 0.4, 4, white, 0, UPPER - 0.2, b + 2);
     for (const e of [b, b + 4]) box(VOID_X * 2, 1.1, 0.3, fascia, 0, UPPER - 0.55, e);
   }
-  box(VOID_X * 2, 0.4, MALL_L - END_SLAB, white, 0, UPPER - 0.2, (END_SLAB + MALL_L) / 2);
-  box(VOID_X * 2, 1.1, 0.3, fascia, 0, UPPER - 0.55, END_SLAB);
+  if (END_SLAB < MALL_L) {
+    box(VOID_X * 2, 0.4, MALL_L - END_SLAB, white, 0, UPPER - 0.2, (END_SLAB + MALL_L) / 2);
+    box(VOID_X * 2, 1.1, 0.3, fascia, 0, UPPER - 0.55, END_SLAB);
+  }
 
   // parapetti di vetro (e corrimano): lungo il vuoto, i bordi delle passerelle, il fondo
   const rail = (x0, x1, z0, z1) => {
@@ -237,7 +239,7 @@ export function buildMallInterior(scene, { day }) {
     } else rail(-VOID_X, VOID_X, b, b);
     rail(-VOID_X, VOID_X, b + 4, b + 4);
   }
-  rail(-VOID_X, VOID_X, END_SLAB, END_SLAB);
+  if (END_SLAB < MALL_L) rail(-VOID_X, VOID_X, END_SLAB, END_SLAB);
 
   // colonne bianche dal pavimento al tetto
   for (const s of [-1, 1]) {
@@ -353,13 +355,7 @@ export function buildMallInterior(scene, { day }) {
   box(2.2, 0.6, 1.2, mat('#7a9ab8'), 4.2, 1.3, 72);
   // panchine lungo il vuoto
   for (const z of [16, 50, 90, 136]) for (const s of [-1, 1]) box(2.2, 0.45, 0.6, mat('#8a6a4a'), s * 4.5, 0.23, z, { lv: 0 });
-  // il fondo della galleria: un grande oblò sul cielo, con il nome del centro
-  const moonMat = track(new THREE.MeshBasicMaterial({ color: day ? '#bfe0ff' : '#1c2a5a' }));
-  const moon = mesh(new THREE.CircleGeometry(6, 48), moonMat, 0, 8.5, MALL_L - 0.05, dyn);
-  moon.rotation.y = Math.PI;
-  const logoTex = track(textTexture('ORIZZONTE', { width: 512, height: 96, font: '800 72px Inter, sans-serif', color: '#1a3a6a', bg: '#f2f0ec' }));
-  const logo = mesh(new THREE.PlaneGeometry(9, 1.7), track(new THREE.MeshBasicMaterial({ map: logoTex })), 0, 2.4, MALL_L - 0.06, dyn);
-  logo.rotation.y = Math.PI;
+  // il fondo della galleria è il murale delle entità (lo costruisce MallDream)
 
   // ---------- La porta 1313: una porta di servizio verde accanto all'ingresso ----------
   const door13 = { x: -15, z: 0.1 };
@@ -493,7 +489,6 @@ export function buildMallInterior(scene, { day }) {
     setDay(d) {
       skyMat.color.set(d ? '#e8f4ff' : '#101a3a');
       outsideMat.color.set(d ? '#f4f8ff' : '#141c38');
-      moonMat.color.set(d ? '#bfe0ff' : '#1c2a5a');
     },
     update(t, dt) {
       steps.offset.y = (steps.offset.y + dt * 0.35) % 1;

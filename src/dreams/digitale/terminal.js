@@ -1,5 +1,5 @@
-import { Fight, FW, FH } from './fight.js';
-import { SKILLS, HERO_NAME, loadChiavetta, xpToNext, addXp, heroStats } from './chiavetta.js';
+import { Fight, FW, FH, drawForm, drawSilhouette } from './fight.js';
+import { SKILLS, loadChiavetta, xpToNext, addXp, heroStats, FORMS, formById, formUnlocked, formData } from './chiavetta.js';
 
 // I terminali sparsi nei macroluoghi: ognuno ha le sue entità e il suo boss.
 export const TERMINALS = {
@@ -36,6 +36,10 @@ export class TerminalScreen {
   }
 
   // def: un TERMINALS[...]; onClose({ won, firstClear }) quando si scollega
+  get formName() {
+    return formById(this.data?.form).name;
+  }
+
   start(def, ctx, onClose) {
     this.def = def;
     this.ctx = ctx;
@@ -87,7 +91,7 @@ export class TerminalScreen {
     const hero = this.data.hero;
     if (this.phase === 'boot') {
       this.drawFrame(g);
-      const lines = ['> chiavetta rilevata', `> caricamento ${HERO_NAME}...`, `> LV ${hero.level} · pronto`];
+      const lines = ['> chiavetta rilevata', `> caricamento ${this.formName}...`, `> LV ${hero.level} · pronto`];
       lines.forEach((l, i) => this.t > 0.3 + i * 0.45 && text(g, l, 40, 90 + i * 22, { size: 12 }));
       g.fillStyle = '#1a2a3a';
       g.fillRect(40, 180, 400, 6);
@@ -102,6 +106,120 @@ export class TerminalScreen {
     if (this.phase === 'skills') return this.skills(g, input, hero);
     if (this.phase === 'fight') return this.fightUpdate(dt, input);
     if (this.phase === 'result') return this.result(g, input);
+    if (this.phase === 'mural') return this.mural(g, input);
+    if (this.phase === 'transfer') return this.transfer(g);
+  }
+
+  // ---------- Il murale: si sceglie quale entità trasferire nella chiavetta ----------
+  startMural(ctx, onClose) {
+    this.ctx = ctx;
+    this.onClose = onClose;
+    this.data = loadChiavetta(ctx.progress);
+    this.def = null;
+    this.phase = 'mural';
+    this.t = 0;
+    this.msel = Math.max(0, FORMS.findIndex((q) => q.id === this.data.form));
+    this.summary = { transferred: false };
+    this.open = true;
+    this.el.classList.add('show');
+    ctx.input.unlock();
+    ctx.audio.chime(990, 0.06);
+  }
+
+  mural(g, input) {
+    const d = this.data;
+    this.drawFrame(g);
+    text(g, 'IL MURALE', 24, 28, { size: 13, color: '#ff3ad8' });
+    text(g, 'scegli chi abita la chiavetta', 112, 28, { size: 9, color: '#8aa' });
+    const cw = 62;
+    const x0 = (FW - cw * FORMS.length) / 2;
+    FORMS.forEach((fm, i) => {
+      const cx = x0 + i * cw + cw / 2;
+      const on = this.msel === i;
+      const open = formUnlocked(d, fm.id);
+      g.fillStyle = on ? 'rgba(122,248,255,0.16)' : 'rgba(122,248,255,0.04)';
+      g.fillRect(cx - cw / 2 + 3, 40, cw - 6, 104);
+      if (d.form === fm.id) {
+        g.strokeStyle = '#ffe42a';
+        g.strokeRect(cx - cw / 2 + 3.5, 40.5, cw - 7, 103);
+      }
+      const sc = Math.min(1.6, 64 / fm.h);
+      g.save();
+      g.translate(cx, 122);
+      g.scale(sc, sc);
+      if (open) drawForm(g, fm.id, 0, 0, 1, this.t + i, { state: on ? 'run' : 'idle' });
+      else drawSilhouette(g, fm.id, 0, 0, 1, this.t);
+      g.restore();
+      text(g, open ? fm.name.split(' ')[0] : '???', cx, 138, { size: 8, color: open ? '#ffffff' : '#5a6a7a', align: 'center' });
+    });
+    // la scheda dell'entità scelta
+    const fm = FORMS[this.msel];
+    const open = formUnlocked(d, fm.id);
+    text(g, open ? fm.name : '??? · dati insufficienti', 24, 168, { size: 12, color: open ? '#7af8ff' : '#ff5a5a' });
+    text(g, open ? fm.desc : `Batti altre entità di questo tipo: dati ${Math.min(formData(d, fm.id), fm.need)}/${fm.need}`, 24, 184, { size: 9, color: '#9ab' });
+    if (open) {
+      const stats = [['VITA', fm.hp], ['CORPO A CORPO', fm.melee], ['TIRO', fm.shot / (fm.shotCd || 1)], ['VELOCITÀ', fm.speed]];
+      stats.forEach(([label, v], k) => {
+        const y = 202 + k * 12;
+        text(g, label, 24, y + 6, { size: 8, color: '#8aa' });
+        g.fillStyle = '#1a2a3a';
+        g.fillRect(120, y, 160, 6);
+        g.fillStyle = v >= 1.2 ? '#4aff8a' : v <= 0.8 ? '#ff8a5a' : '#7af8ff';
+        g.fillRect(120, y, Math.round(Math.min(1, v / 2) * 160), 6);
+      });
+    }
+    text(g, d.form === fm.id ? '◆ NELLA CHIAVETTA' : open ? 'INVIO: TRASFERISCI' : '', FW - 24, 212, { size: 11, color: d.form === fm.id ? '#ffe42a' : '#4aff8a', align: 'right' });
+    text(g, `livello e abilità restano della chiavetta (LV ${d.hero.level})`, FW - 24, 228, { size: 8, color: '#6a8a9a', align: 'right' });
+    this.footer.innerHTML = '<kbd>A</kbd><kbd>D</kbd> scegli · <kbd>Invio</kbd> trasferisci nella chiavetta · <kbd>Esc</kbd> sfila la chiavetta';
+    if (input.wasPressed('KeyA', 'ArrowLeft')) this.msel = (this.msel + FORMS.length - 1) % FORMS.length;
+    if (input.wasPressed('KeyD', 'ArrowRight')) this.msel = (this.msel + 1) % FORMS.length;
+    if (input.wasPressed('Enter', 'Space', 'KeyE')) {
+      if (open && d.form !== fm.id) {
+        this.phase = 'transfer';
+        this.t = 0;
+        this.ctx.audio.whoosh(0.2);
+      } else this.ctx.audio.thud(0.1);
+    }
+    if (input.wasPressed('Escape', 'KeyQ')) this.close();
+  }
+
+  transfer(g) {
+    const fm = FORMS[this.msel];
+    this.drawFrame(g);
+    const k = Math.min(1, this.t / 1.6);
+    text(g, 'TRASFERIMENTO IN CORSO', FW / 2, 60, { size: 14, color: '#ff3ad8', align: 'center' });
+    // i pixel dell'entità scendono dal murale nella chiavetta
+    for (let i = 0; i < 30; i++) {
+      const p = (k * 1.4 + i / 30) % 1;
+      g.fillStyle = i % 2 ? '#7af8ff' : '#ff3ad8';
+      g.fillRect(140 + p * 190 + Math.sin(i + this.t * 6) * 6, 130 + Math.sin(i * 2.3) * 20 * (1 - p), 3, 3);
+    }
+    g.save();
+    g.translate(120, 160);
+    g.scale(1.4, 1.4);
+    drawForm(g, fm.id, 0, 0, 1, this.t);
+    g.restore();
+    // la chiavetta
+    g.fillStyle = '#c8ccd2';
+    g.fillRect(345, 118, 40, 22);
+    g.fillStyle = '#2a2a30';
+    g.fillRect(385, 122, 14, 14);
+    g.fillStyle = '#7af8ff';
+    g.fillRect(351, 124, Math.round(28 * k), 10);
+    g.fillStyle = '#1a2a3a';
+    g.fillRect(90, 200, 300, 6);
+    g.fillStyle = '#7af8ff';
+    g.fillRect(90, 200, Math.round(300 * k), 6);
+    text(g, `${Math.round(k * 100)}%`, FW / 2, 222, { size: 10, align: 'center' });
+    this.footer.innerHTML = '';
+    if (this.t > 1.9) {
+      this.data.form = fm.id;
+      this.summary.transferred = fm.id;
+      this.save();
+      this.ctx.audio.ding(0.12);
+      this.phase = 'mural';
+      this.t = 0;
+    }
   }
 
   drawFrame(g) {
@@ -116,18 +234,11 @@ export class TerminalScreen {
   }
 
   drawHeroIcon(g, x, y, s) {
-    const R = (dx, dy, w, h, c) => {
-      g.fillStyle = c;
-      g.fillRect(x + dx * s, y + dy * s, w * s, h * s);
-    };
-    R(-9 - Math.round(Math.sin(this.t * 6)), -26, 6, 3, '#ff8a2a');
-    R(-4, -10, 4, 10, '#e8f0f4');
-    R(1, -10, 4, 10, '#e8f0f4');
-    R(-5, -21, 11, 12, '#2ab8c8');
-    R(4, -19, 3, 8, '#e8f0f4');
-    R(-7, -19, 3, 8, '#e8f0f4');
-    R(-4, -28, 9, 8, '#e8f0f4');
-    R(0, -26, 6, 3, '#7af8ff');
+    g.save();
+    g.translate(x, y);
+    g.scale(s, s);
+    drawForm(g, this.data.form, 0, 0, 1, this.t);
+    g.restore();
   }
 
   menu(g, input, hero) {
@@ -138,7 +249,7 @@ export class TerminalScreen {
     text(g, `pericolo ${'■'.repeat(this.def.diff)}${'□'.repeat(4 - this.def.diff)}`, 24, 60, { size: 9, color: '#ffe42a' });
     this.drawHeroIcon(g, 380, 150, 3);
     const st = heroStats(hero);
-    text(g, `${HERO_NAME}  LV ${hero.level}`, 300, 180, { size: 12 });
+    text(g, `${this.formName}  LV ${hero.level}`, 300, 180, { size: 12 });
     g.fillStyle = '#1a2a3a';
     g.fillRect(300, 186, 150, 4);
     g.fillStyle = '#ffe42a';
@@ -166,7 +277,7 @@ export class TerminalScreen {
     for (let i = 0; i < 3; i++) if (input.wasPressed(`Digit${i + 1}`, `Numpad${i + 1}`)) pick = i;
     if (input.wasPressed('Escape')) pick = 2;
     if (pick === 0) {
-      this.fight = new Fight(this.def, hero, (n) => this.sfx(n));
+      this.fight = new Fight(this.def, hero, (n) => this.sfx(n), this.data.form);
       this.phase = 'fight';
       this.ctx.audio.chiptune(true, 0.03);
     } else if (pick === 1) {
@@ -177,7 +288,7 @@ export class TerminalScreen {
 
   skills(g, input, hero) {
     this.drawFrame(g);
-    text(g, `ABILITÀ DI ${HERO_NAME}`, 24, 30, { size: 12, color: '#ff3ad8' });
+    text(g, `ABILITÀ DI ${this.formName}`, 24, 30, { size: 12, color: '#ff3ad8' });
     text(g, `punti da spendere: ${hero.sp}`, FW - 24, 30, { size: 11, color: '#ffe42a', align: 'right' });
     SKILLS.forEach((sk, i) => {
       const y = 70 + i * 46;
@@ -251,10 +362,15 @@ export class TerminalScreen {
       } else xp = Math.round(xp * 0.5);
       rec.wins++;
     } else xp = Math.round(xp * 0.5);
+    // i dati delle entità battute: servono al murale
+    const before = new Set(FORMS.filter((q) => formUnlocked(this.data, q.id)).map((q) => q.id));
+    for (const [key, n] of Object.entries(f.killsBy)) this.data.kills[key] = (this.data.kills[key] || 0) + n;
+    const newForms = FORMS.filter((q) => !before.has(q.id) && formUnlocked(this.data, q.id)).map((q) => q.name);
+    if (newForms.length) this.summary.newForms = (this.summary.newForms || []).concat(newForms);
     const lvl0 = hero.level;
     const ups = addXp(hero, xp);
     this.save();
-    this.res = { won: f.won, xp, ups, first, lvl0 };
+    this.res = { won: f.won, xp, ups, first, lvl0, newForms };
     if (f.won) this.summary.won = true;
     if (first) this.summary.firstClear = true;
     this.ctx.audio.chiptune(false);
@@ -272,7 +388,7 @@ export class TerminalScreen {
       text(g, 'Le entità restano dove sono. Nessun dato salvato.', FW / 2, 140, { size: 9, color: '#9ab', align: 'center' });
     } else {
       text(g, r.won ? 'ENTITÀ CANCELLATE' : 'DISCONNESSO', FW / 2, 60, { size: 18, color: r.won ? '#4aff8a' : '#ff5a5a', align: 'center' });
-      text(g, r.won ? (r.first ? 'Terminale liberato!' : 'Il terminale è di nuovo pulito.') : `${HERO_NAME} torna nella chiavetta. Metà dei dati è salva.`, FW / 2, 82, { size: 10, color: '#9ab', align: 'center' });
+      text(g, r.won ? (r.first ? 'Terminale liberato!' : 'Il terminale è di nuovo pulito.') : `${this.formName} torna nella chiavetta. Metà dei dati è salva.`, FW / 2, 82, { size: 10, color: '#9ab', align: 'center' });
       const shown = Math.min(r.xp, Math.floor(this.t * 120));
       text(g, `+${shown} XP`, FW / 2, 120, { size: 16, color: '#ffe42a', align: 'center' });
       if (r.ups && this.t > 0.8) {
@@ -280,6 +396,10 @@ export class TerminalScreen {
         text(g, `+${r.ups * 2} punti abilità`, FW / 2, 175, { size: 11, color: '#7af8ff', align: 'center' });
       }
       this.drawHeroIcon(g, 70, 220, 2);
+      if (r.newForms?.length && this.t > 1.2) {
+        text(g, `NUOVA ENTITÀ NEL MURALE: ${r.newForms.join(', ')}`, FW / 2, 205, { size: 10, color: '#4aff8a', align: 'center' });
+        text(g, 'Il murale in fondo alla galleria del centro commerciale', FW / 2, 219, { size: 8, color: '#8aa', align: 'center' });
+      }
     }
     if (this.t > 0.6 && Math.floor(this.t * 2) % 2) text(g, 'INVIO PER CONTINUARE', FW / 2, 240, { size: 9, color: '#7af8ff', align: 'center' });
     this.footer.innerHTML = '';
