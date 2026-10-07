@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { mulberry32 } from '../../core/noise.js';
 import { glowTexture, textTexture } from '../../core/textures.js';
+import { models } from '../../core/models.js';
 import { FIELD, HOTEL, START, DEMON_POS, ROAD_HALF, VILLAGE, MALL } from './terrain.js';
 
 // Griglia spaziale per gli ostacoli fissi (alberi, gambe del demone).
@@ -43,6 +44,28 @@ export function buildScenery(scene, terrain) {
   const p = new THREE.Vector3();
   const up = new THREE.Vector3(0, 1, 0);
 
+  // Alberi del Nature Kit di Kenney, se ci sono: le varianti a turno, tante
+  // copie per variante. list: [x, y, z, scala]; k: metri per unità del kit.
+  const kitTrees = (list, variants, k, yDrop = 0.3) => {
+    const avail = variants.filter((v) => models.has(v));
+    if (!avail.length) return false;
+    const buckets = avail.map(() => []);
+    list.forEach((t, i) => buckets[i % avail.length].push(t));
+    avail.forEach((name, b) => {
+      const inst = models.instanced(name, buckets[b].length);
+      if (!inst) return;
+      buckets[b].forEach(([x, h, z, sc], i) => {
+        q.setFromAxisAngle(up, rand() * 6.28);
+        const v = k * sc;
+        m4.compose(p.set(x, h - yDrop, z), q, s.set(v, v * (0.9 + rand() * 0.25), v));
+        inst.set(i, m4);
+      });
+      inst.done();
+      inst.meshes.forEach((m) => track(group.add(m) && m));
+    });
+    return true;
+  };
+
   // ---------- Pini in montagna ----------
   const pines = [];
   for (let tries = 0; tries < 60000 && pines.length < 3200; tries++) {
@@ -71,6 +94,9 @@ export function buildScenery(scene, terrain) {
     if (terrain.roadInfo(x, z).dist < ROAD_HALF + 10) continue;
     pines.push([x, terrain.heightAt(x, z), z, 1 + rand() * 0.6]);
   }
+  const kitPines = kitTrees(pines, ['tree_pineTallA', 'tree_pineTallB', 'tree_pineDefaultA', 'tree_pineDefaultB'], 15);
+  for (const [x, , z, sc] of pines) colliders.add(x, z, 1.2 * sc);
+  if (!kitPines) {
   const crownGeo = track(new THREE.ConeGeometry(4.5, 16, 7));
   crownGeo.translate(0, 13, 0);
   const crown2Geo = track(new THREE.ConeGeometry(3.4, 11, 7));
@@ -89,13 +115,13 @@ export function buildScenery(scene, terrain) {
     crowns.setMatrixAt(i, m4);
     crowns2.setMatrixAt(i, m4);
     trunks.setMatrixAt(i, m4);
-    colliders.add(x, z, 1.2 * sc);
   });
   [crowns, crowns2, trunks].forEach((m) => {
     m.castShadow = true;
     m.receiveShadow = true;
     group.add(m);
   });
+  }
 
   // ---------- Alberi sparsi nel campo (ostacoli) ----------
   const oaks = [];
@@ -108,6 +134,8 @@ export function buildScenery(scene, terrain) {
     if (terrain.roadInfo(x, z).dist < 30) continue;
     oaks.push([x, terrain.heightAt(x, z), z, 0.8 + rand() * 0.7]);
   }
+  for (const [x, , z, sc] of oaks) colliders.add(x, z, 1.4 * sc);
+  if (!kitTrees(oaks, ['tree_oak', 'tree_default', 'tree_fat'], 11)) {
   const oakCrownGeo = track(new THREE.IcosahedronGeometry(6, 1));
   oakCrownGeo.translate(0, 10, 0);
   const oakTrunkGeo = track(new THREE.CylinderGeometry(0.8, 1.2, 8, 7));
@@ -120,13 +148,13 @@ export function buildScenery(scene, terrain) {
     m4.compose(p.set(x, h - 0.4, z), q, s.set(sc, sc * (0.8 + rand() * 0.4), sc));
     oakCrowns.setMatrixAt(i, m4);
     oakTrunks.setMatrixAt(i, m4);
-    colliders.add(x, z, 1.4 * sc);
   });
   [oakCrowns, oakTrunks].forEach((m) => {
     m.castShadow = true;
     m.receiveShadow = true;
     group.add(m);
   });
+  }
 
   // ---------- Lampioni lungo la strada (accesi di notte) ----------
   const glowTex = track(glowTexture('rgba(255,210,150,1)'));
@@ -145,22 +173,40 @@ export function buildScenery(scene, terrain) {
     side = -side;
     const x = r.x + r.tz * (ROAD_HALF + 3) * side;
     const z = r.z - r.tx * (ROAD_HALF + 3) * side;
-    lampPos.push([x, terrain.heightAt(x, z), z, r.s]);
+    // il braccio del lampione guarda la strada
+    lampPos.push([x, terrain.heightAt(x, z), z, r.s, Math.atan2(-(r.x - x), -(r.z - z))]);
   }
-  const poles = new THREE.InstancedMesh(poleGeo, poleMat, lampPos.length);
-  lampPos.forEach(([x, h, z, rs], i) => {
-    m4.compose(p.set(x, h, z), q.identity(), s.set(1, 1, 1));
-    poles.setMatrixAt(i, m4);
+  // il lampione curvo del Roads Kit di Kenney, se c'è; se no un palo semplice
+  const kitLamps = models.instanced('light-curved', lampPos.length);
+  const poles = kitLamps ? null : new THREE.InstancedMesh(poleGeo, poleMat, lampPos.length);
+  lampPos.forEach(([x, h, z, rs, yaw], i) => {
+    let lx = x;
+    let lz = z;
+    let ly = h + 7.2;
+    if (kitLamps) {
+      q.setFromAxisAngle(up, yaw);
+      m4.compose(p.set(x, h, z), q, s.setScalar(10.5));
+      kitLamps.set(i, m4);
+      lx = x - Math.sin(yaw) * 2;
+      lz = z - Math.cos(yaw) * 2;
+      ly = h + 6.6;
+    } else {
+      m4.compose(p.set(x, h, z), q.identity(), s.set(1, 1, 1));
+      poles.setMatrixAt(i, m4);
+    }
     colliders.add(x, z, 0.5);
     const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: '#ffcf8a', blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 }));
     track(sp.material);
-    sp.position.set(x, h + 7.2, z);
+    sp.position.set(lx, ly, lz);
     sp.scale.set(7, 7, 1);
     sp.userData.s = rs;
     group.add(sp);
     lampSprites.push(sp);
   });
-  group.add(poles);
+  if (kitLamps) {
+    kitLamps.done();
+    kitLamps.meshes.forEach((m) => track(group.add(m) && m));
+  } else group.add(poles);
 
   // ---------- Cartello e faro di luce all'imbocco della strada ----------
   const entrance = road.find((r) => r.s > 150) || road[0];

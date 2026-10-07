@@ -15,6 +15,10 @@ import { placeById } from './core/places.js';
 import { WorldMap } from './core/worldmap.js';
 import { models } from './core/models.js';
 import { HOTEL_MODELS } from './models/hotel/index.js';
+import { NATURE_MODELS } from './models/nature/index.js';
+import { CAR_MODELS, CAR_MODELS_TEXTURE } from './models/car/index.js';
+import { SUBURBAN_MODELS, SUBURBAN_MODELS_TEXTURE } from './models/city/suburban.js';
+import { ROADS_MODELS, ROADS_MODELS_TEXTURE } from './models/city/roads.js';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -29,6 +33,10 @@ const ui = new UI();
 const worldMap = new WorldMap();
 // i mobili 3D si caricano subito, mentre c'è ancora la schermata iniziale
 models.load(HOTEL_MODELS);
+models.load(NATURE_MODELS);
+models.load(CAR_MODELS, { texture: CAR_MODELS_TEXTURE });
+models.load(SUBURBAN_MODELS, { texture: SUBURBAN_MODELS_TEXTURE });
+models.load(ROADS_MODELS, { texture: ROADS_MODELS_TEXTURE });
 const ctx = {
   renderer,
   input: new Input(renderer.domElement),

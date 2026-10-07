@@ -6,5 +6,14 @@
   In `src/models/hotel/`. Usati nella suite 1313: letti, comodino e lampada, poltrona e lampada da terra,
   sedie del tè, credenza della moka, divano, armadio, ventilatore da soffitto, attaccapanni, trofeo con la testa d'orso,
   libri, radio, tavolo rotondo del tè, tavolino e tappeto del salotto; nel bagno vasca, doccia, water, lavandino, specchio e cestino.
+- **Car Kit** di [Kenney](https://kenney.nl), CC0. In `src/models/car/`. La sportiva rossa che guidi
+  nel campo e intorno all'hotel (con le ruote che girano e sterzano) e le auto parcheggiate alla Spiaggia Grande.
+- **Nature Kit** di [Kenney](https://kenney.nl), CC0. In `src/models/nature/`. I pini delle montagne, gli alberi
+  del campo, i pini marittimi, la macchia e gli scogli della costa, le palme, i cespugli e i fiori dell'Isola.
+- **City Kit Roads** e **City Kit Suburban** di [Kenney](https://kenney.nl), CC0. In `src/models/city/`.
+  I lampioni lungo la strada dell'hotel e le casette del villaggio dell'Isola.
+- **City Kit Commercial** di [Kenney](https://kenney.nl), CC0: caricato, non ancora usato.
+
+Ogni cartella ha un file che elenca i modelli usati: solo quelli finiscono nel gioco.
 
 Tutto il resto (terreni, edifici, personaggi, texture, suoni e musica) è generato dal codice del gioco.

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clamp } from '../../core/noise.js';
+import { models } from '../../core/models.js';
 
 const G = 28;
 const MAX_SPEED = 56; // ~200 km/h
@@ -35,6 +36,9 @@ export class Car {
   }
 
   build() {
+    // l'auto del Car Kit di Kenney, se c'è (la jeep ha la sua build e non passa di qui)
+    const kit = this.constructor === Car ? models.make('sedan-sports') : null;
+    if (kit) return this.buildKit(kit);
     const paint = new THREE.MeshStandardMaterial({ color: '#c42b2b', metalness: 0.35, roughness: 0.35 });
     const dark = new THREE.MeshStandardMaterial({ color: '#1c1d22', roughness: 0.8 });
     const chrome = new THREE.MeshStandardMaterial({ color: '#d8dde4', metalness: 0.9, roughness: 0.2 });
@@ -102,6 +106,45 @@ export class Car {
     // luce dei fari (conta di notte)
     this.headlight = new THREE.SpotLight('#ffe8c0', 0, 160, 0.45, 0.5, 1);
     this.headlight.position.set(0, 1, 2.2);
+    this.headlight.target.position.set(0, -2, 30);
+    this.body.add(this.headlight, this.headlight.target);
+  }
+
+  // la sportiva rossa del kit: carrozzeria chiusa, ruote vere che girano e sterzano
+  buildKit(kit) {
+    const S = 4.6 / 2.55; // lunga quanto la decappottabile di prima
+    kit.scale.setScalar(S);
+    kit.traverse((o) => {
+      if (o.isMesh) o.castShadow = true;
+    });
+    this.body.add(kit);
+    this.kit = kit; // geometrie condivise con la libreria dei modelli: non si distruggono
+    this.wheels = [];
+    kit.traverse((o) => {
+      const m = /^wheel-(front|back)-(left|right)$/.exec(o.name);
+      if (!m) return;
+      o.rotation.order = 'YXZ';
+      this.wheels.push({ pivot: o, spin: o, front: m[1] === 'front' });
+    });
+    // fari e luci dei freni, appena davanti e dietro alla carrozzeria
+    const add = (geo, mat, x, y, z) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      this.body.add(m);
+      return m;
+    };
+    const headMat = new THREE.MeshStandardMaterial({ color: '#fff', emissive: '#fff4d0', emissiveIntensity: 1.2 });
+    this.tailMat = new THREE.MeshStandardMaterial({ color: '#400', emissive: '#ff2020', emissiveIntensity: 0.6 });
+    for (const x of [0.62, -0.62]) {
+      add(new THREE.BoxGeometry(0.34, 0.12, 0.04), headMat, x, 0.82, 2.33);
+      add(new THREE.BoxGeometry(0.34, 0.12, 0.04), this.tailMat, x, 0.92, -2.36);
+    }
+    // tu e il tuo amico, seduti dentro (dietro i vetri scuri)
+    this.driver = this.person('#e0b089', '#3b2a1e', '#2f4f8f', 0.42);
+    this.friend = this.person('#c99470', '#141414', '#d9a82e', -0.42);
+    for (const p of [this.driver, this.friend]) p.group.position.y = 0.5;
+    this.headlight = new THREE.SpotLight('#ffe8c0', 0, 160, 0.45, 0.5, 1);
+    this.headlight.position.set(0, 0.9, 2.2);
     this.headlight.target.position.set(0, -2, 30);
     this.body.add(this.headlight, this.headlight.target);
   }
@@ -291,6 +334,7 @@ export class Car {
   }
 
   dispose() {
+    this.kit?.removeFromParent();
     this.group.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
       if (o.material) o.material.dispose();

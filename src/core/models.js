@@ -6,6 +6,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // materiali anche, tranne quando una copia viene ricolorata.
 // Ogni modello è ricentrato: il perno è in basso, al centro dell'ingombro.
 // Il davanti del modello guarda verso +z.
+//
+// Alcuni kit (auto, città) colorano tutto con una piccola immagine esterna,
+// "colormap.png": la si passa a load() e la si attacca ai materiali che la usano.
+// Niente fetch per i file incorporati nel gioco (data:): certe pagine lo vietano.
 
 // Il Furniture Kit di Kenney è piccolo: un'unità è circa 2,1 m del sogno.
 export const KENNEY = 2.1;
@@ -14,24 +18,42 @@ class ModelLibrary {
   constructor() {
     this.templates = new Map();
     this.recolored = new Map();
-    this.ready = Promise.resolve();
+    this.baked = new Map();
+    this.pending = [];
+    this.ready = Promise.resolve(this);
   }
 
-  // urls: { nome: url }. Restituisce una promessa che non fallisce mai: un
-  // modello che non si carica resta semplicemente assente (si usa il ripiego).
-  load(urls) {
+  // urls: { nome: url }; texture: l'url della colormap del kit (se serve).
+  // La promessa non fallisce mai: un modello che non si carica resta
+  // semplicemente assente (e si usa il ripiego disegnato a codice).
+  load(urls, { texture = null } = {}) {
     const loader = new GLTFLoader();
-    // i modelli incorporati (data:) si decodificano qui: alcune pagine vietano
-    // di "scaricarli" con fetch, anche se sono già dentro il gioco
-    const get = (url) => (url.startsWith('data:') ? loader.parseAsync(decodeDataUrl(url), '') : loader.loadAsync(url));
+    const tex = texture ? loadTexture(texture).catch(() => new Promise((r) => setTimeout(r, 600)).then(() => loadTexture(texture))).catch((e) => console.warn('colormap non caricata:', e?.message || e)) : Promise.resolve(null);
+    const one = async (url) => {
+      const raw = await readBuffer(url);
+      const { buffer, textured } = stripImages(raw);
+      const gltf = await loader.parseAsync(buffer, '');
+      const map = await tex;
+      if (map && textured.size) {
+        gltf.scene.traverse((m) => {
+          if (!m.isMesh) return;
+          for (const mat of [m.material].flat()) if (textured.has(mat.name)) {
+            mat.map = map;
+            mat.needsUpdate = true;
+          }
+        });
+      }
+      return gltf;
+    };
     const jobs = Object.entries(urls).map(([name, url]) =>
-      get(url)
+      one(url)
         // un secondo tentativo, se la rete ha avuto un singhiozzo
-        .catch(() => new Promise((r) => setTimeout(r, 600)).then(() => get(url)))
+        .catch(() => new Promise((r) => setTimeout(r, 600)).then(() => one(url)))
         .then((gltf) => this.templates.set(name, prepare(gltf.scene)))
         .catch((e) => console.warn(`modello ${name} non caricato:`, e?.message || e)),
     );
-    this.ready = Promise.all(jobs).then(() => this);
+    this.pending.push(...jobs);
+    this.ready = Promise.all(this.pending).then(() => this);
     return this.ready;
   }
 
@@ -47,35 +69,125 @@ class ModelLibrary {
     if (colors) {
       o.traverse((m) => {
         if (!m.isMesh) return;
-        const swap = (mat) => {
-          const c = colors[mat.name];
-          if (!c) return mat;
-          if (c.isMaterial) return c;
-          const key = `${mat.uuid}|${c}`;
-          if (!this.recolored.has(key)) {
-            const n = mat.clone();
-            n.color.set(c);
-            this.recolored.set(key, n);
-          }
-          return this.recolored.get(key);
-        };
+        const swap = (mat) => this.recolor(mat, colors[mat.name]);
         m.material = Array.isArray(m.material) ? m.material.map(swap) : swap(m.material);
       });
     }
     return o;
   }
 
+  recolor(mat, c) {
+    if (!c) return mat;
+    if (c.isMaterial) return c;
+    const key = `${mat.uuid}|${c}`;
+    if (!this.recolored.has(key)) {
+      const n = mat.clone();
+      n.color.set(c);
+      this.recolored.set(key, n);
+    }
+    return this.recolored.get(key);
+  }
+
   // l'ingombro del modello in unità originali [larghezza x, altezza, profondità z]
   size(name) {
     return this.templates.get(name)?.userData.size ?? null;
   }
+
+  // Tante copie dello stesso modello con poche chiamate di disegno: una
+  // InstancedMesh per pezzo. Restituisce { meshes, set(i, matrix), done() } o null.
+  instanced(name, count, { colors = null, shadows = true } = {}) {
+    const t = this.templates.get(name);
+    if (!t || !count) return null;
+    if (!this.baked.has(name)) {
+      t.updateMatrixWorld(true);
+      const parts = [];
+      t.traverse((m) => {
+        if (!m.isMesh) return;
+        const g = m.geometry.clone();
+        g.applyMatrix4(m.matrixWorld);
+        parts.push({ geometry: g, material: m.material });
+      });
+      this.baked.set(name, parts);
+    }
+    const meshes = this.baked.get(name).map(({ geometry, material }) => {
+      const mat = Array.isArray(material) ? material.map((x) => this.recolor(x, colors?.[x.name])) : this.recolor(material, colors?.[material.name]);
+      const im = new THREE.InstancedMesh(geometry, mat, count);
+      im.castShadow = shadows;
+      im.receiveShadow = true;
+      im.frustumCulled = false;
+      return im;
+    });
+    return {
+      meshes,
+      set(i, m4) {
+        for (const im of meshes) im.setMatrixAt(i, m4);
+      },
+      done() {
+        for (const im of meshes) im.instanceMatrix.needsUpdate = true;
+      },
+    };
+  }
 }
 
+// ---------- lettura dei file senza fetch per quelli incorporati ----------
 function decodeDataUrl(url) {
   const bin = atob(url.slice(url.indexOf(',') + 1));
   const out = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out.buffer;
+}
+
+async function readBuffer(url) {
+  if (url.startsWith('data:')) return decodeDataUrl(url);
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${url}`);
+  return r.arrayBuffer();
+}
+
+async function loadTexture(url) {
+  const blob = new Blob([await readBuffer(url)], { type: 'image/png' });
+  const bitmap = await createImageBitmap(blob);
+  const t = new THREE.Texture(bitmap);
+  t.flipY = false; // come vuole glTF
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.NearestFilter; // la colormap è una tavolozza: niente sbavature
+  t.needsUpdate = true;
+  return t;
+}
+
+// Toglie dal .glb le immagini esterne (che non potremmo caricare) e ricorda
+// quali materiali le usavano: la colormap gliela attacchiamo noi.
+function stripImages(buf) {
+  const dv = new DataView(buf);
+  if (dv.getUint32(0, true) !== 0x46546c67) return { buffer: buf, textured: new Set() };
+  const jsonLen = dv.getUint32(12, true);
+  const json = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 20, jsonLen)));
+  const textured = new Set();
+  if (!json.images?.length) return { buffer: buf, textured };
+  for (const m of json.materials || []) {
+    if (m.pbrMetallicRoughness?.baseColorTexture) {
+      textured.add(m.name);
+      delete m.pbrMetallicRoughness.baseColorTexture;
+    }
+  }
+  delete json.images;
+  delete json.textures;
+  delete json.samplers;
+  const enc = new TextEncoder().encode(JSON.stringify(json));
+  const pad = (4 - (enc.length % 4)) % 4;
+  const jsonChunk = new Uint8Array(enc.length + pad).fill(0x20);
+  jsonChunk.set(enc);
+  const rest = new Uint8Array(buf, 20 + jsonLen);
+  const out = new Uint8Array(20 + jsonChunk.length + rest.length);
+  const o = new DataView(out.buffer);
+  o.setUint32(0, 0x46546c67, true);
+  o.setUint32(4, 2, true);
+  o.setUint32(8, out.length, true);
+  o.setUint32(12, jsonChunk.length, true);
+  o.setUint32(16, 0x4e4f534a, true);
+  out.set(jsonChunk, 20);
+  out.set(rest, 20 + jsonChunk.length);
+  return { buffer: out.buffer, textured };
 }
 
 function prepare(scene) {
