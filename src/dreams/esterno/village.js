@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { models } from '../../core/models.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32 } from '../../core/noise.js';
 import { textTexture, glowTexture } from '../../core/textures.js';
@@ -150,7 +151,60 @@ export function buildVillage(scene, terrain) {
 
   // Una casa di montagna: base di pietra, uno o due piani, tetto a falde,
   // persiane verdi, a volte un balcone di legno con i gerani.
-  const house = (x, z, rotY, w, d, floors, kind) => {
+  // Le case dei kit di Kenney, se ci sono: sulla piazza i palazzetti del
+  // Commercial, nei vicoli le casette del Suburban. Ricolorate un poco, a caso,
+  // per non sembrare tutte uguali. Le geometrie restano della libreria (dyn).
+  const SUB = ['building-type-a', 'building-type-c', 'building-type-d', 'building-type-e', 'building-type-g', 'building-type-o'];
+  const COM = ['building-a', 'building-c', 'building-d'];
+  const kitHouse = (x, z, rotY, onPiazza) => {
+    const list = (onPiazza ? COM : SUB).filter((n) => models.has(n));
+    if (!list.length) return null;
+    const name = list[Math.floor(rand() * list.length)];
+    // una tinta d'intonaco diversa per ogni casa (moltiplica la tavolozza del kit)
+    const TINTS = ['#fff2dc', '#f4dcb4', '#f0c8a8', '#e8e0d0', '#f8e4c0', '#ffffff'];
+    const o = models.make(name, { colors: { colormap: TINTS[Math.floor(rand() * TINTS.length)] } });
+    const sc = onPiazza ? 8.5 : 6.6;
+    o.scale.setScalar(sc);
+    o.position.set(x, Y - 0.05, z);
+    o.rotation.y = rotY;
+    o.traverse((m) => m.isMesh && (m.castShadow = m.receiveShadow = true));
+    dyn.add(o);
+    const [sw, sh, sd] = models.size(name);
+    const w = sw * sc;
+    const d = sd * sc;
+    // una fioriera davanti alla porta, a volte
+    if (rand() < 0.6) {
+      const pl = models.make('planter');
+      if (pl) {
+        pl.scale.setScalar(5);
+        const off = d / 2 + 0.9;
+        pl.position.set(x + Math.sin(rotY) * off + Math.cos(rotY) * (w * 0.3), Y, z + Math.cos(rotY) * off - Math.sin(rotY) * (w * 0.3));
+        pl.rotation.y = rotY;
+        dyn.add(pl);
+      }
+    }
+    if (onPiazza && models.has('detail-awning')) {
+      // le tende dei negozi sul piano terra
+      for (const k of [-0.25, 0.25]) {
+        const aw = models.make('detail-awning');
+        aw.scale.setScalar(sc);
+        const off = d / 2;
+        aw.position.set(x + Math.sin(rotY) * off + Math.cos(rotY) * (w * k), Y + 0.2 * sc, z + Math.cos(rotY) * off - Math.sin(rotY) * (w * k));
+        aw.rotation.y = rotY;
+        dyn.add(aw);
+      }
+    }
+    const c = Math.abs(Math.cos(rotY));
+    const s = Math.abs(Math.sin(rotY));
+    const ex = (w * c + d * s) / 2;
+    const ez = (w * s + d * c) / 2;
+    colliders.push({ minX: x - ex, maxX: x + ex, minZ: z - ez, maxZ: z + ez });
+    return { g: o, H: sh * sc, w, d };
+  };
+
+  const house = (x, z, rotY, w, d, floors, kind, onPiazza = false) => {
+    const kit = kitHouse(x, z, rotY, onPiazza);
+    if (kit) return kit;
     const g = new THREE.Group();
     g.position.set(x, Y, z);
     g.rotation.y = rotY;
@@ -357,7 +411,7 @@ export function buildVillage(scene, terrain) {
     if (nearRoad(x, z, 14 + rad)) continue;
     // la facciata guarda verso la piazza: angolo arrotondato a 90° per allineare i vicoli
     const face = Math.round(Math.atan2(C.x - x, C.z - z) / (Math.PI / 2)) * (Math.PI / 2);
-    house(x, z, face, w, d, rand() < 0.65 ? 2 : 3, rand() < 0.45 ? 'stone' : 'plaster');
+    house(x, z, face, w, d, rand() < 0.65 ? 2 : 3, rand() < 0.45 ? 'stone' : 'plaster', r < 48);
     placed.push({ x, z, rad });
   }
 

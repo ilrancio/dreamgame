@@ -11,8 +11,8 @@
 - **Nature Kit** di [Kenney](https://kenney.nl), CC0. In `src/models/nature/`. I pini delle montagne, gli alberi
   del campo, i pini marittimi, la macchia e gli scogli della costa, le palme, i cespugli e i fiori dell'Isola.
 - **City Kit Roads** e **City Kit Suburban** di [Kenney](https://kenney.nl), CC0. In `src/models/city/`.
-  I lampioni lungo la strada dell'hotel e le casette del villaggio dell'Isola.
-- **City Kit Commercial** di [Kenney](https://kenney.nl), CC0: caricato, non ancora usato.
+  I lampioni lungo la strada dell'hotel, le casette del villaggio dell'Isola e dei vicoli di Sant'Onirio.
+- **City Kit Commercial** di [Kenney](https://kenney.nl), CC0. I palazzetti con le tende sulla piazza di Sant'Onirio.
 
 Ogni cartella ha un file che elenca i modelli usati: solo quelli finiscono nel gioco.
 
