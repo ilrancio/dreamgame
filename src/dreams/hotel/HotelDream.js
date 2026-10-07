@@ -868,9 +868,11 @@ export class HotelDream {
       p.pos.copy(k.chairs[0].pos);
       p.facing = k.chairs[0].facing;
       p.sitting = true;
+      p.seatHeight = k.chairs[0].seat;
       this.friend.pos.copy(k.chairs[1].pos);
       this.friend.facing = k.chairs[1].facing;
       this.friend.sitting = true;
+      this.friend.seatHeight = k.chairs[1].seat;
       const pool = [...TEA_TALK].sort(() => Math.random() - 0.5).slice(0, 3);
       this.activity.lines = pool;
       this.startGesture('te');
@@ -897,9 +899,11 @@ export class HotelDream {
       p.pos.copy(k.chairs[0].pos);
       p.facing = k.chairs[0].facing;
       p.sitting = true;
+      p.seatHeight = k.chairs[0].seat;
       this.friend.pos.copy(k.chairs[1].pos);
       this.friend.facing = k.chairs[1].facing;
       this.friend.sitting = true;
+      this.friend.seatHeight = k.chairs[1].seat;
       this.activity.lines = [...COFFEE_TALK].sort(() => Math.random() - 0.5).slice(0, 2);
       this.activity.cam = k.teaCam.clone();
       this.activity.look = k.teaLook.clone();
@@ -938,9 +942,11 @@ export class HotelDream {
       this.friend.pos.copy(k.chairs[1].pos);
       this.friend.facing = k.chairs[1].facing;
       this.friend.sitting = true;
+      this.friend.seatHeight = k.chairs[1].seat;
       p.pos.copy(k.armchair.pos);
       p.facing = k.armchair.facing;
       p.sitting = true;
+      p.seatHeight = k.armchair.seat;
       this.activity.cam = k.armchair.pos.clone().add(new THREE.Vector3(2.4, 1.9, 1.6));
       this.activity.look = k.fireplace.clone().add(new THREE.Vector3(0, 0.8, 0));
       this.activity.duration = 999;
@@ -2113,6 +2119,7 @@ export class HotelDream {
         f.pos.copy(a.pos);
         f.facing = a.facing;
         f.sitting = true;
+        f.seatHeight = a.seat;
         this.friendSatAt = this.time;
         // seduto: niente spinte degli ostacoli (la poltrona stessa lo butterebbe fuori)
         f.vel.set(0, 0, 0);

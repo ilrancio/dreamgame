@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { clamp } from '../../core/noise.js';
-import { buildFigure, hasFigure } from '../../core/figure.js';
+import { buildFigure, hasFigure, FIGURE_HIP } from '../../core/figure.js';
 
 // Personaggio a piedi: stessi colori di chi era in macchina nel campo.
 export class Character {
@@ -156,9 +156,11 @@ export class Character {
       this.armR.rotation.x = -0.7;
       this.armL.rotation.z = 0;
       this.armR.rotation.z = 0;
-      this.body.position.y = -0.36;
+      // il corpo vero si siede all'altezza del sedile (se chi lo fa sedere la conosce)
+      this.body.position.y = this.figure ? (this.seatHeight ?? 0.42) + 0.04 - FIGURE_HIP : -0.36;
       this.body.rotation.x = 0;
     }
+    if (!this.sitting) this.seatHeight = null;
     if (this.figure) this.poseFigure();
     this.group.position.copy(this.pos);
     this.group.rotation.y = this.facing;

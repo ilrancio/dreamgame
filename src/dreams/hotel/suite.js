@@ -66,7 +66,7 @@ export function buildSuite(a, bathApi, rb) {
       for (const [lx, lz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) box(0.05, 0.44, 0.05, darkWood, cx + lx, 0.22, table.z + lz, { collide: false });
       box(0.06, 0.7, 0.6, darkWood, cx + Math.sign(dx) * 0.28, 0.85, table.z, { collide: false });
     }
-    chairs.push({ pos: W(cx, table.z), facing });
+    chairs.push({ pos: W(cx, table.z), facing, seat: 0.5 }); // il cuscino della sedia è a 50 cm
   }
   a.sphere(0.13, porcelain, ...spread(P(table.x, table.z + 0.15), 0.9), { collide: false }).scale.set(1, 0.85, 1);
   for (const dx of [0.45, -0.45]) cyl(0.05, 0.04, 0.07, porcelain, table.x + dx, 0.83, table.z - 0.15, { collide: false });
@@ -124,7 +124,8 @@ export function buildSuite(a, bathApi, rb) {
     box(1.1, 0.5, 1.1, a.mat('#5a2a1a'), 2.9, 0.25, fireZ);
     box(0.25, 0.9, 1.1, a.mat('#5a2a1a'), 3.4, 0.9, fireZ, { collide: false });
   }
-  const armchair = { pos: W(2.9, fireZ), facing: -Math.PI / 2 };
+  // il bacino un po' avanti rispetto al centro della poltrona: le ginocchia escono dal cuscino
+  const armchair = { pos: W(2.78, fireZ), facing: -Math.PI / 2, seat: 0.48 };
   // sopra il camino, appeso al muro: un trofeo con la testa d'orso (di legno e pelliccia finta)
   put('bear', 0.42, fireZ, { y: 3.05, rot: Math.PI / 2, scale: 2.4, colors: { wood: '#3a2416' } });
 

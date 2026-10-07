@@ -26,6 +26,8 @@ const J = {
   elbow: { y: 2.68 },
   neck: { y: 3.92 },
 };
+// l'altezza del bacino in piedi, in metri
+export const FIGURE_HIP = 2.05 * FIGURE_SCALE;
 const BONES = ['spine', 'head', 'legL', 'shinL', 'legR', 'shinR', 'armL', 'foreL', 'armR', 'foreR'];
 const B = Object.fromEntries(BONES.map((n, i) => [n, i]));
 
