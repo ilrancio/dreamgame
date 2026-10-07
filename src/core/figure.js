@@ -31,21 +31,26 @@ const B = Object.fromEntries(BONES.map((n, i) => [n, i]));
 
 const geometries = new Map(); // nome → geometria con i pesi (condivisa)
 
-function weigh(x, y) {
+// armSide: 'L'/'R' se il vertice sta su un braccio (deciso dai collegamenti
+// del modello, vedi armParts), null se no
+function weigh(x, y, armSide) {
   const w = new Map();
-  const add = (b, v) => v > 1e-3 && w.set(b, (w.get(b) || 0) + v);
+  const add = (bn, v) => v > 1e-3 && w.set(bn, (w.get(bn) || 0) + v);
   const side = x >= 0 ? 'L' : 'R';
   const ax = Math.abs(x);
-  // le braccia: fuori dal busto, sotto la spalla (le mani scendono fin quasi al ginocchio)
-  const arm = y > 1.5 ? smooth(0.37, 0.39, ax) * (1 - smooth(3.5, 3.8, y)) : 0;
+  // le braccia: sotto la spalla sono pezzi a sé; sopra, la spalla sfuma nel busto
+  let arm = 0;
+  if (y < ARM_CUT) arm = armSide ? 1 : 0;
+  else arm = smooth(0.38, 0.46, ax) * (1 - smooth(3.5, 3.8, y));
+  const aSide = armSide || side;
   // le gambe: sotto le anche
   const leg = (1 - arm) * (1 - smooth(1.85, 2.2, y));
   const head = (1 - arm) * smooth(3.86, 4.02, y);
   const spine = Math.max(0, 1 - arm - leg - head);
   if (arm) {
     const fore = 1 - smooth(2.55, 2.8, y);
-    add(B[`arm${side}`], arm * (1 - fore));
-    add(B[`fore${side}`], arm * fore);
+    add(B[`arm${aSide}`], arm * (1 - fore));
+    add(B[`fore${aSide}`], arm * fore);
   }
   if (leg) {
     const shin = 1 - smooth(0.95, 1.15, y);
@@ -54,9 +59,54 @@ function weigh(x, y) {
   }
   add(B.head, head);
   add(B.spine, spine);
-  const list = [...w.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
-  const sum = list.reduce((s, e) => s + e[1], 0) || 1;
-  return list.map(([b, v]) => [b, v / sum]);
+  const list = [...w.entries()].sort((p, q) => q[1] - p[1]).slice(0, 4);
+  const sum = list.reduce((t, e) => t + e[1], 0) || 1;
+  return list.map(([bn, v]) => [bn, v / sum]);
+}
+
+// Sotto la spalla le braccia non toccano il busto: tagliando il modello a
+// quell'altezza restano tre pezzi (busto con le gambe, braccio sinistro,
+// braccio destro). Così una mano vicina al fianco non si confonde col fianco.
+const ARM_CUT = 3.45;
+function armParts(pos) {
+  const n = pos.count;
+  const key = new Map();
+  const rep = new Int32Array(n);
+  for (let i = 0; i < n; i++) {
+    const k = `${pos.getX(i).toFixed(4)},${pos.getY(i).toFixed(4)},${pos.getZ(i).toFixed(4)}`;
+    if (!key.has(k)) key.set(k, i);
+    rep[i] = key.get(k);
+  }
+  const par = Int32Array.from({ length: n }, (_, i) => i);
+  const find = (a) => {
+    while (par[a] !== a) a = par[a] = par[par[a]];
+    return a;
+  };
+  for (let t = 0; t + 2 < n; t += 3) {
+    const vs = [rep[t], rep[t + 1], rep[t + 2]].filter((v) => pos.getY(v) < ARM_CUT);
+    for (let k = 1; k < vs.length; k++) par[find(vs[k])] = find(vs[0]);
+  }
+  const comps = new Map();
+  for (let i = 0; i < n; i++) {
+    if (pos.getY(rep[i]) >= ARM_CUT) continue;
+    const r = find(rep[i]);
+    if (!comps.has(r)) comps.set(r, { n: 0, sx: 0 });
+    const c = comps.get(r);
+    c.n++;
+    c.sx += pos.getX(i);
+  }
+  // il pezzo più grande è il busto; gli altri, a destra o sinistra, sono braccia
+  const sorted = [...comps.entries()].sort((p, q) => q[1].n - p[1].n);
+  const torso = sorted[0]?.[0];
+  const side = new Array(n).fill(null);
+  for (let i = 0; i < n; i++) {
+    if (pos.getY(rep[i]) >= ARM_CUT) continue;
+    const r = find(rep[i]);
+    if (r === torso) continue;
+    const c = comps.get(r);
+    side[i] = c.sx / c.n >= 0 ? 'L' : 'R';
+  }
+  return side;
 }
 
 // legge un OBJ (testo) e lo prepara una volta sola
@@ -71,8 +121,9 @@ export function registerFigure(name, objText) {
   const pos = g.attributes.position;
   const si = new Uint16Array(pos.count * 4);
   const sw = new Float32Array(pos.count * 4);
+  const arms = armParts(pos);
   for (let i = 0; i < pos.count; i++) {
-    const ws = weigh(pos.getX(i), pos.getY(i));
+    const ws = weigh(pos.getX(i), pos.getY(i), arms[i]);
     ws.forEach(([b, v], k) => {
       si[i * 4 + k] = b;
       sw[i * 4 + k] = v;

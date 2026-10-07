@@ -167,7 +167,15 @@ export class Character {
   // le ossa del corpo vero seguono le membra; ginocchia e gomiti si piegano da soli
   poseFigure() {
     const b = this.figure.bones;
-    for (const [bone, limb] of [[b.legL, this.legL], [b.legR, this.legR], [b.armL, this.armL], [b.armR, this.armR]]) bone.rotation.set(limb.rotation.x, 0, limb.rotation.z);
+    for (const [bone, limb] of [[b.legL, this.legL], [b.legR, this.legR]]) bone.rotation.set(limb.rotation.x, 0, limb.rotation.z);
+    // le braccia un filo staccate dai fianchi, così le mani non sfiorano il corpo
+    b.armL.rotation.set(this.armL.rotation.x, 0, this.armL.rotation.z + 0.09);
+    b.armR.rotation.set(this.armR.rotation.x, 0, this.armR.rotation.z - 0.09);
+    if (this.armed && !this.sitting) {
+      // a due mani, quasi parallele: con le braccia vere quelle disegnate si incrocerebbero
+      b.armR.rotation.z = 0.06;
+      b.armL.rotation.z = -0.22;
+    }
     // il ginocchio si piega quando la gamba va indietro, e da seduti
     for (const [shin, leg] of [[b.shinL, this.legL], [b.shinR, this.legR]]) {
       shin.rotation.x = this.sitting ? 1.5 : Math.max(0, leg.rotation.x) * 1.1 + (this.grounded ? 0 : 0.6);
