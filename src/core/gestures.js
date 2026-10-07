@@ -546,6 +546,16 @@ class Doccia {
     g.beginPath();
     g.ellipse(320, 100, 27, 18, 0, Math.PI, 0);
     g.fill();
+    // il mosaico della censura, dal collo alle ginocchia
+    const tones = ['#e8bc96', '#d6a27c', '#c98f6a', '#f0c8a4', '#dcae88'];
+    const tick = Math.floor(t * 8);
+    for (let y = 143; y < 300; y += 13) {
+      for (let x = 251; x < 390; x += 13) {
+        if (!this.inside(x + 6, y + 6)) continue;
+        g.fillStyle = tones[(((x * 73856093) ^ (y * 19349663) ^ (tick * 83492791)) >>> 0) % tones.length];
+        g.fillRect(x, y, 13, 13);
+      }
+    }
     if (this.stage !== 'temp') {
       for (const c of this.cells) {
         if (!c.foam) continue;

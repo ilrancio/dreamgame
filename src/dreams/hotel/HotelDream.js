@@ -882,6 +882,7 @@ export class HotelDream {
     } else if (kind === 'shower') {
       p.pos.copy(k.shower);
       p.facing = -Math.PI / 2;
+      p.setUndressed(true);
       this.activity.cam = k.showerCam.clone();
       this.activity.look = k.shower.clone().add(new THREE.Vector3(0, 1.3, 0));
       this.activity.duration = 7;
@@ -909,10 +910,13 @@ export class HotelDream {
       this.activity.look = k.teaLook.clone();
       this.activity.duration = 11;
     } else if (kind === 'bath') {
+      // sdraiato nella vasca: i piedi verso il rubinetto, la testa dall'altra parte
       p.pos.copy(k.tub);
-      p.pos.y = 0.18;
-      p.facing = Math.PI / 2;
-      p.sitting = true;
+      p.pos.x -= 0.85;
+      p.pos.y = 0.2;
+      p.facing = -Math.PI / 2;
+      p.lying = true;
+      p.setUndressed(true);
       this.activity.cam = k.tubCam.clone();
       this.activity.look = k.tub.clone().add(new THREE.Vector3(0, 0.7, 0));
       this.activity.duration = 999;
@@ -1064,6 +1068,10 @@ export class HotelDream {
     this.activity = null;
     this.baseHint = null;
     this.player.sitting = false;
+    this.player.lying = false;
+    this.player.body.rotation.x = 0;
+    this.player.body.position.y = 0;
+    this.player.setUndressed(false);
     this.friend.sitting = false;
     this.player.group.visible = true;
     if (a.kind === 'shower') {

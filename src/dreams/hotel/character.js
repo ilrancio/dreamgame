@@ -23,6 +23,8 @@ export class Character {
     this.looks = { skin: skinM, shirt: shirtM, hair: hairM };
     const pantsM = m(pants);
     const shoeM = m('#1a1614');
+    this.pantsM = pantsM;
+    this.shoeM = shoeM;
 
     const body = new THREE.Group();
     this.body = body;
@@ -97,6 +99,31 @@ export class Character {
     if (shirt) this.looks.shirt.color.set(shirt);
   }
 
+  // In doccia e in vasca: niente vestiti (maglia, pantaloni e scarpe color pelle)
+  // e un riquadro a pixel dal collo alle ginocchia, come in TV.
+  setUndressed(on) {
+    const L = this.looks;
+    if (on && !this.dressed) {
+      this.dressed = { shirt: L.shirt.color.clone(), pants: this.pantsM.color.clone(), shoe: this.shoeM.color.clone() };
+      for (const m of [L.shirt, this.pantsM, this.shoeM]) m.color.copy(L.skin.color);
+    } else if (!on && this.dressed) {
+      L.shirt.color.copy(this.dressed.shirt);
+      this.pantsM.color.copy(this.dressed.pants);
+      this.shoeM.color.copy(this.dressed.shoe);
+      this.dressed = null;
+    }
+    if (on && !this.censor && this.figure) {
+      const tex = this.track(censorTexture(L.skin.color));
+      const mat = this.track(new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      // in unità del modello, attaccato all'osso del busto (che sta alle anche)
+      const box = new THREE.Mesh(this.track(new THREE.BoxGeometry(1.7, 2.9, 1.05)), mat);
+      box.position.set(0, 0.45, 0.08);
+      this.figure.bones.spine.add(box);
+      this.censor = box;
+    }
+    if (this.censor) this.censor.visible = on;
+  }
+
   setArmed(v) {
     this.armed = v;
     this.gun.visible = v;
@@ -159,6 +186,22 @@ export class Character {
       // il corpo vero si siede all'altezza del sedile (se chi lo fa sedere la conosce)
       this.body.position.y = this.figure ? (this.seatHeight ?? 0.42) + 0.04 - FIGURE_HIP : -0.36;
       this.body.rotation.x = 0;
+    }
+    if (this.lying) {
+      // sdraiato sulla schiena (la vasca): gambe distese, braccia lungo i fianchi, testa un po' su
+      this.legL.rotation.set(0, 0, 0.04);
+      this.legR.rotation.set(0, 0, -0.04);
+      this.armL.rotation.set(0.15, 0, 0.12);
+      this.armR.rotation.set(0.15, 0, -0.12);
+      this.body.rotation.x = -Math.PI / 2 + 0.22;
+      this.body.position.y = 0;
+    }
+    if (this.censor) {
+      this.censorT = (this.censorT || 0) + dt;
+      if (this.censorT > 0.12) {
+        this.censorT = 0;
+        this.censor.material.map.offset.set(Math.floor(Math.random() * 8) / 8, Math.floor(Math.random() * 8) / 8);
+      }
     }
     if (!this.sitting) this.seatHeight = null;
     if (this.figure) this.poseFigure();
@@ -227,4 +270,27 @@ export class Character {
     this.disposables.forEach((d) => d.dispose());
     this.group.removeFromParent();
   }
+}
+
+// i quadratoni della censura: toni di pelle mescolati, a scatti
+function censorTexture(skin) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const base = skin.clone();
+  const tmp = new THREE.Color();
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      tmp.copy(base).offsetHSL((Math.random() - 0.5) * 0.04, (Math.random() - 0.5) * 0.15, (Math.random() - 0.5) * 0.22);
+      g.fillStyle = `#${tmp.getHexString()}`;
+      g.fillRect(x * 8, y * 8, 8, 8);
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = THREE.NearestFilter;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(0.5, 0.75);
+  return t;
 }
