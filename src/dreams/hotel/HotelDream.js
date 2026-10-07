@@ -2104,7 +2104,8 @@ export class HotelDream {
       // nella suite l'amico si mette comodo in poltrona
       const a = this.suiteKit.armchair;
       const dd = Math.hypot(a.pos.x - f.pos.x, a.pos.z - f.pos.z);
-      if (dd > 0.4) {
+      // la poltrona non si attraversa: appena ci arriva accanto, ci si siede
+      if (dd > 1.25) {
         tx = (a.pos.x - f.pos.x) / dd;
         tz = (a.pos.z - f.pos.z) / dd;
         speed = 2.6;
@@ -2113,6 +2114,10 @@ export class HotelDream {
         f.facing = a.facing;
         f.sitting = true;
         this.friendSatAt = this.time;
+        // seduto: niente spinte degli ostacoli (la poltrona stessa lo butterebbe fuori)
+        f.vel.set(0, 0, 0);
+        f.animate(dt, 0, 0);
+        return;
       }
     } else if (d > 6 || !this.goal || this.conciergeState === 'lead') {
       if (d > 3) {
