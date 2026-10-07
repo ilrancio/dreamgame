@@ -152,6 +152,34 @@ async function loadTexture(url) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.magFilter = THREE.NearestFilter; // la colormap è una tavolozza: niente sbavature
   t.needsUpdate = true;
+  t.userData.glowMap = windowMask(bitmap);
+  return t;
+}
+
+// I vetri delle finestre, nei kit città di Kenney, sono una sfumatura
+// azzurra della tavolozza (da 126,166,226 a 157,192,237 circa; il telaio
+// intorno è grigio-blu): una maschera bianca solo lì, per accenderli di notte.
+const isGlass = (r, g, b) => b >= 200 && b - r >= 60 && g - r >= 20 && g - r <= 50;
+function windowMask(bitmap) {
+  const c = document.createElement('canvas');
+  c.width = bitmap.width;
+  c.height = bitmap.height;
+  const g = c.getContext('2d');
+  g.drawImage(bitmap, 0, 0);
+  const img = g.getImageData(0, 0, c.width, c.height);
+  const d = img.data;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    const hit = isGlass(d[i], d[i + 1], d[i + 2]);
+    d[i] = d[i + 1] = d[i + 2] = hit ? 255 : 0;
+    d[i + 3] = 255;
+    if (hit) n++;
+  }
+  if (!n) return null;
+  g.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.flipY = false;
+  t.magFilter = THREE.NearestFilter;
   return t;
 }
 

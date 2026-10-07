@@ -156,6 +156,7 @@ export function buildVillage(scene, terrain) {
   // per non sembrare tutte uguali. Le geometrie restano della libreria (dyn).
   const SUB = ['building-type-a', 'building-type-c', 'building-type-d', 'building-type-e', 'building-type-g', 'building-type-o'];
   const COM = ['building-a', 'building-c', 'building-d'];
+  const glowMats = new Set();
   const kitHouse = (x, z, rotY, onPiazza) => {
     const list = (onPiazza ? COM : SUB).filter((n) => models.has(n));
     if (!list.length) return null;
@@ -167,7 +168,21 @@ export function buildVillage(scene, terrain) {
     o.scale.setScalar(sc);
     o.position.set(x, Y - 0.05, z);
     o.rotation.y = rotY;
-    o.traverse((m) => m.isMesh && (m.castShadow = m.receiveShadow = true));
+    o.traverse((m) => {
+      if (!m.isMesh) return;
+      m.castShadow = m.receiveShadow = true;
+      // di notte le finestre si accendono: i vetri della tavolozza diventano luce calda
+      for (const mat of [m.material].flat()) {
+        const glowMap = mat.map?.userData.glowMap;
+        if (!glowMap || glowMats.has(mat)) continue;
+        mat.emissive = new THREE.Color('#ffb860');
+        mat.emissiveMap = glowMap;
+        mat.emissiveIntensity = 0;
+        mat.needsUpdate = true;
+        mat.userData.glow = 0.7 + rand() * 0.9; // non tutte le case hanno la stessa lampada
+        glowMats.add(mat);
+      }
+    });
     dyn.add(o);
     const [sw, sh, sd] = models.size(name);
     const w = sw * sc;
@@ -501,6 +516,7 @@ export function buildVillage(scene, terrain) {
     },
     setNight(k) {
       windowMat.emissiveIntensity = 1.6 * k;
+      for (const m of glowMats) m.emissiveIntensity = m.userData.glow * k;
       roseMat.emissiveIntensity = 0.3 + 1.5 * k;
       for (const l of lamps) if (!l.always) l.s.material.opacity = 0.85 * k;
     },
