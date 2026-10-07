@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { mulberry32, createNoise2D, clamp } from '../../core/noise.js';
 import { textTexture, glowTexture } from '../../core/textures.js';
-import { Batch, mtx, canvasTex } from '../costa/world.js';
+import { Batch, mtx, canvasTex, scatterKit } from '../costa/world.js';
+import { models } from '../../core/models.js';
 import { EXT, M, TERRACES, STRIP, RUINS, LIGHT, ISLET, PIER_X, shoreR, shoreDist } from './terrain.js';
 
 // L'isola come si vede: sabbia, prato, palme, la montagna a gradoni, il faro
@@ -152,6 +153,9 @@ export function buildIsland(scene, T) {
     palms.push({ x, z, y: ground(x, z), h: 6 + rand() * 4, lean: 0.1 + rand() * 0.3, ry: rand() * 6.28 });
   }
   palms.push({ x: ISLET.x + 2, z: ISLET.z - 3, y: 1.6, h: 7, lean: 0.3, ry: 1 });
+  for (const p of palms) colliders.push({ minX: p.x - 0.3, maxX: p.x + 0.3, minZ: p.z - 0.3, maxZ: p.z + 0.3 });
+  // le palme del Nature Kit, se ci sono
+  if (!scatterKit(root, track, palms, ['tree_palmTall', 'tree_palmBend', 'tree_palmShort'], (p) => mtx(p.x, p.y - 0.2, p.z, p.ry, p.h / 1.25, p.h / 1.3, p.h / 1.25))) {
   const trunkGeo = track(new THREE.CylinderGeometry(0.16, 0.28, 1, 7).translate(0, 0.5, 0));
   const leafParts = [];
   for (let i = 0; i < 7; i++) {
@@ -174,12 +178,12 @@ export function buildIsland(scene, T) {
     const tx = p.x + Math.sin(p.ry) * Math.sin(p.lean) * p.h;
     const tz = p.z + Math.cos(p.ry) * Math.sin(p.lean) * p.h;
     crowns.setMatrixAt(i, mtx(tx, p.y - 0.2 + Math.cos(p.lean) * p.h, tz, rand() * 6, 1, 1, 1));
-    colliders.push({ minX: p.x - 0.3, maxX: p.x + 0.3, minZ: p.z - 0.3, maxZ: p.z + 0.3 });
   });
   for (const m of [trunks, crowns]) {
     m.castShadow = true;
     m.frustumCulled = false;
     root.add(m);
+  }
   }
   const bushes = [];
   for (let t = 0; t < 5000 && bushes.length < 700; t++) {
@@ -191,6 +195,13 @@ export function buildIsland(scene, T) {
     if (nrm.y < 0.8) continue;
     bushes.push({ x, z, s: 0.5 + rand() * 1.1, flower: rand() < 0.3 });
   }
+  // cespugli e fiori del Nature Kit, se ci sono
+  const flowers = bushes.filter((b) => b.flower);
+  const greens = bushes.filter((b) => !b.flower);
+  const kitBushes =
+    scatterKit(root, track, greens, ['plant_bushLarge', 'plant_bush', 'plant_bushDetailed'], (b) => mtx(b.x, ground(b.x, b.z) - 0.1, b.z, b.x * 5.1, b.s * 5, b.s * 4.5, b.s * 5)) &&
+    scatterKit(root, track, flowers, ['flower_redA', 'flower_yellowA', 'flower_purpleA'], (b) => mtx(b.x, ground(b.x, b.z) - 0.05, b.z, b.z * 3.7, 3 + b.s * 2, 3 + b.s * 2, 3 + b.s * 2));
+  if (!kitBushes) {
   const bushGeo = track(new THREE.IcosahedronGeometry(1, 0));
   const bm = new THREE.InstancedMesh(bushGeo, mat('#ffffff', { flatShading: true }), bushes.length);
   const cc = new THREE.Color();
@@ -201,6 +212,7 @@ export function buildIsland(scene, T) {
   bm.castShadow = true;
   bm.frustumCulled = false;
   root.add(bm);
+  }
 
   // ---------- La montagna: colonne di roccia e funghi ----------
   for (const p of T.pillars) {
@@ -331,7 +343,18 @@ export function buildIsland(scene, T) {
   const VY = T.flatH;
   const houseCols = ['#f4d23a', '#5ac8e8', '#f48aa8', '#8ae86a', '#f4a03a'];
   const houses = [[-70, 128], [-45, 126], [-20, 128], [10, 126], [38, 128]];
+  const houseKit = ['building-type-a', 'building-type-c', 'building-type-e'].filter((n) => models.has(n));
   houses.forEach(([x, z], i) => {
+    // le casette del City Kit Suburban, se ci sono (con il loro tetto e la loro porta)
+    const kit = houseKit.length ? models.make(houseKit[i % houseKit.length]) : null;
+    if (kit) {
+      kit.scale.setScalar(7);
+      kit.position.set(x, VY, z);
+      kit.traverse((o) => o.isMesh && (o.castShadow = o.receiveShadow = true));
+      root.add(kit);
+      colliders.push({ minX: x - 4.5, maxX: x + 4.5, minZ: z - 3.6, maxZ: z + 3.6, top: VY + 6 });
+      return;
+    }
     box(9, 4.5, 8, mat(houseCols[i]), x, VY, z, 0, { col: true });
     batch.add(track(new THREE.ConeGeometry(7.2, 3, 4)), mat('#c8583a'), mtx(x, VY + 6, z, Math.PI / 4, 1, 1, 0.82));
     box(1.4, 2.4, 0.1, mat('#6a4a2a'), x, VY, z + 4.02);

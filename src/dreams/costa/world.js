@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, createNoise2D, clamp } from '../../core/noise.js';
 import { textTexture } from '../../core/textures.js';
+import { models } from '../../core/models.js';
 import { X0, X1, Z0, Z1, BAY, STRIP, LOT, ROAD_HW, coastZ, coveAt } from './terrain.js';
 
 // Tutto quello che si vede sulla costa, tranne la folla: il terreno, il mare,
@@ -58,6 +59,24 @@ export function mtx(x, y, z, ry = 0, sx = 1, sy = 1, sz = 1, rx = 0, rz = 0) {
   return M4.compose(V.set(x, y, z), Q, S.set(sx, sy, sz)).clone();
 }
 
+// Modelli dei kit di Kenney, se ci sono: le varianti a turno (o quella scelta
+// in o.variant), una matrice per oggetto (place(o) → Matrix4), tante copie con
+// poche chiamate di disegno. Restituisce false se il kit non c'è.
+export function scatterKit(root, track, list, variants, place) {
+  const avail = variants.filter((v) => models.has(v));
+  if (!avail.length || !list.length) return false;
+  const buckets = avail.map(() => []);
+  list.forEach((o, i) => buckets[(o.variant ?? i) % avail.length].push(o));
+  avail.forEach((name, b) => {
+    const inst = models.instanced(name, buckets[b].length);
+    if (!inst) return;
+    buckets[b].forEach((o, i) => inst.set(i, place(o)));
+    inst.done();
+    for (const m of inst.meshes) root.add(track(m));
+  });
+  return true;
+}
+
 export function buildCoast(scene, terrain) {
   const disposables = [];
   const track = (o) => (disposables.push(o), o);
@@ -88,6 +107,7 @@ export function buildCoast(scene, terrain) {
     }
   };
   const ground = (x, z) => T.heightAt(x, z);
+  const kitScatter = (list, variants, place) => scatterKit(root, track, list, variants, place);
   const bayPoint = (x, d) => ({ x, z: coastZ(x) - d });
 
   // ---------- Il terreno ----------
@@ -256,6 +276,12 @@ export function buildCoast(scene, terrain) {
       if (!okVeg(x, z)) continue;
       pines.push({ x, z, y: ground(x, z), h: 6 + rand() * 4, lean: (rand() - 0.5) * 0.25, ry: rand() * 6.28 });
     }
+    for (const p of pines) {
+      circles.push({ x: p.x, z: p.z, r: 0.5 });
+      colliders.push({ minX: p.x - 0.35, maxX: p.x + 0.35, minZ: p.z - 0.35, maxZ: p.z + 0.35 });
+    }
+    // i pini marittimi: quelli tondi del Nature Kit, alti come prima
+    if (!kitScatter(pines, ['tree_pineRoundA', 'tree_pineRoundC'], (p) => mtx(p.x, p.y - 0.2, p.z, p.ry, p.h / 1.2, p.h / 1.3, p.h / 1.2, p.lean * 0.5, 0))) {
     const trunkGeo = track(new THREE.CylinderGeometry(0.18, 0.3, 1, 7));
     trunkGeo.translate(0, 0.5, 0);
     const crownGeo = track(new THREE.SphereGeometry(1, 10, 6));
@@ -267,12 +293,11 @@ export function buildCoast(scene, terrain) {
       const tz = p.z + Math.cos(p.ry) * Math.sin(p.lean) * p.h;
       const r = 3.2 + rand() * 1.6;
       crowns.setMatrixAt(i, mtx(tx, p.y + p.h, tz, p.ry, r, 1.1 + rand() * 0.4, r * (0.85 + rand() * 0.3)));
-      circles.push({ x: p.x, z: p.z, r: 0.5 });
-      colliders.push({ minX: p.x - 0.35, maxX: p.x + 0.35, minZ: p.z - 0.35, maxZ: p.z + 0.35 });
     });
     trunks.castShadow = crowns.castShadow = true;
     trunks.frustumCulled = crowns.frustumCulled = false;
     root.add(trunks, crowns);
+    }
     // cespugli della macchia
     const bushes = [];
     for (let t = 0; t < 9000 && bushes.length < 1400; t++) {
@@ -283,6 +308,7 @@ export function buildCoast(scene, terrain) {
       if (!okVeg(x, z, 6)) continue;
       bushes.push({ x, z, y: ground(x, z), s: 0.6 + rand() * 1.3 });
     }
+    if (!kitScatter(bushes, ['plant_bushLarge', 'plant_bush', 'plant_bushDetailed'], (b) => mtx(b.x, b.y - 0.1, b.z, b.x * 7.3, b.s * 4.5, b.s * 4, b.s * 4.5))) {
     const bushGeo = track(new THREE.IcosahedronGeometry(1, 0));
     const bm = new THREE.InstancedMesh(bushGeo, mat('#5b6e34', { flatShading: true }), bushes.length);
     const shade = new THREE.Color();
@@ -293,6 +319,7 @@ export function buildCoast(scene, terrain) {
     bm.castShadow = true;
     bm.frustumCulled = false;
     root.add(bm);
+    }
     // massi in fondo alla scogliera
     const rocks = [];
     for (let x = X0 + 10; x < X1 - 10; x += 7 + rand() * 9) {
@@ -300,11 +327,13 @@ export function buildCoast(scene, terrain) {
       const z = coastZ(x) + 1 + rand() * 7;
       rocks.push({ x, z, s: 1 + rand() * 2.5 });
     }
+    if (!kitScatter(rocks, ['rock_largeA', 'rock_largeC', 'rock_largeE'], (r) => mtx(r.x, ground(r.x, r.z) - 0.3, r.z, r.x * 3.1, r.s * 2.4, r.s * 2.6, r.s * 2.4))) {
     const rockGeo = track(new THREE.DodecahedronGeometry(1, 0));
     const rm = new THREE.InstancedMesh(rockGeo, mat('#a89a84', { flatShading: true }), rocks.length);
     rocks.forEach((r, i) => rm.setMatrixAt(i, mtx(r.x, ground(r.x, r.z) + r.s * 0.3, r.z, rand() * 6, r.s, r.s * 0.7, r.s * 1.2)));
     rm.frustumCulled = false;
     root.add(rm);
+    }
   }
 
   // ---------- La pista e l'aereo ----------
@@ -433,6 +462,12 @@ export function buildCoast(scene, terrain) {
       parked.push({ x, z, ry: Math.atan2(r.tx, r.tz) + (rand() - 0.5) * 0.08, along: true });
     }
     const n = parked.length;
+    // le auto vere del Car Kit, se ci sono: cinque modelli mescolati
+    for (const p of parked) {
+      p.y = ground(p.x, p.z);
+      p.variant = Math.floor(rand() * 5);
+    }
+    const kitCars = kitScatter(parked, ['sedan', 'suv', 'van', 'taxi', 'hatchback-sports'], (p) => mtx(p.x, p.y, p.z, p.ry, 1.55, 1.55, 1.55));
     const body = new THREE.InstancedMesh(boxGeo, mat('#ffffff', { roughness: 0.4, metalness: 0.2 }), n);
     const cab = new THREE.InstancedMesh(boxGeo, mat('#ffffff', { roughness: 0.3, metalness: 0.2 }), n);
     const wheels = new THREE.InstancedMesh(boxGeo, mat('#1e1e1e'), n * 2);
@@ -456,10 +491,12 @@ export function buildCoast(scene, terrain) {
       const hd = (Math.abs(Math.sin(p.ry)) * 1.75 + Math.abs(Math.cos(p.ry)) * L) / 2;
       colliders.push({ minX: p.x - hw, maxX: p.x + hw, minZ: p.z - hd, maxZ: p.z + hd, low: true });
     });
-    for (const m of [body, cab, wheels]) {
-      m.castShadow = true;
-      m.frustumCulled = false;
-      root.add(m);
+    if (!kitCars) {
+      for (const m of [body, cab, wheels]) {
+        m.castShadow = true;
+        m.frustumCulled = false;
+        root.add(m);
+      }
     }
     lotSpot.push(bayPoint(BAY.x + 12, (LOT.d0 + LOT.d1) / 2));
   }
