@@ -13,6 +13,7 @@ import { CoastDream } from './dreams/costa/CoastDream.js';
 import { IslandDream } from './dreams/isola/IslandDream.js';
 import { placeById } from './core/places.js';
 import { WorldMap } from './core/worldmap.js';
+import { Coop } from './core/coop.js';
 import { models } from './core/models.js';
 import { HOTEL_MODELS } from './models/hotel/index.js';
 import { NATURE_MODELS } from './models/nature/index.js';
@@ -116,7 +117,9 @@ async function goToChapter(i, first = false) {
   await new Promise((r) => setTimeout(r, ch.card ? 1200 : 100));
   // aspetta i modelli (ma non per sempre: senza, si usano i mobili disegnati)
   await Promise.race([models.ready, new Promise((r) => setTimeout(r, 5000))]);
+  ctx.lastSpawn = ctx.spawn ?? null;
   current = ch.create(ctx);
+  coop.attach(current);
   onResize();
   await new Promise((r) => setTimeout(r, ch.card ? 1500 : 400));
   ui.center(null);
@@ -135,7 +138,21 @@ function onResize() {
 window.addEventListener('resize', onResize);
 
 // i pannelli che hanno già i loro tasti: lì la mappa non si apre
-const MODALS = '#choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
+const MODALS = '#coop-panel.show, #choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
+
+// il sogno condiviso: O apre il pannello
+const coop = new Coop(ctx, {
+  chapterId: () => CHAPTERS[chapterIndex].id,
+  goToChapterById: (id, spawn) => {
+    const i = CHAPTERS.findIndex((c) => c.id === id);
+    if (i < 0) return;
+    if (id === 'hotel') {
+      ctx.resumeHotel = true;
+      ctx.hotelEntry = 'door';
+    } else ctx.spawn = spawn ?? null;
+    goToChapter(i);
+  },
+});
 
 const timer = new THREE.Timer();
 timer.connect(document);
@@ -147,11 +164,20 @@ function frame(t) {
     // M: la mappa del sogno. Mentre è aperta il sogno si ferma.
     const input = ctx.input;
     let closed = false;
-    if (worldMap.open && input.wasPressed('KeyM', 'Escape')) {
+    if (coop.open && input.wasPressed('KeyO', 'Escape')) {
+      coop.close();
+      closed = true;
+    } else if (!coop.open && !worldMap.open && input.wasPressed('KeyO') && !document.querySelector(MODALS)) coop.toggle();
+    if (coop.open) closed = true;
+    else if (worldMap.open && input.wasPressed('KeyM', 'Escape')) {
       worldMap.close();
       closed = true; // il tasto che chiude la mappa non arriva al sogno
     } else if (!worldMap.open && running && input.wasPressed('KeyM') && !document.querySelector(MODALS)) worldMap.toggle(ctx, CHAPTERS[chapterIndex].id, current);
-    if (running && !worldMap.open && !closed) current.update(dt);
+    if (running && !worldMap.open && !closed) {
+      coop.beforeUpdate();
+      current.update(dt);
+      coop.frame(dt);
+    }
     renderer.render(current.scene, current.camera);
     if (worldMap.open) worldMap.draw();
   }
@@ -188,4 +214,4 @@ if (hasHotel) {
 }
 
 // accesso da console per debug: __dreamgame.current
-window.__dreamgame = { ctx, get current() { return current; } };
+window.__dreamgame = { ctx, coop, get current() { return current; } };

@@ -18,6 +18,8 @@ export class Character {
     const m = (c) => this.track(new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }));
     const skinM = m(skin);
     const shirtM = m(shirt);
+    const hairM = m(hair);
+    this.looks = { skin: skinM, shirt: shirtM, hair: hairM };
     const pantsM = m(pants);
     const shoeM = m('#1a1614');
 
@@ -37,7 +39,7 @@ export class Character {
     this.head.position.set(0, 1.68, 0);
     body.add(this.head);
     mesh(new THREE.SphereGeometry(0.17, 16, 12), skinM, this.head, 0, 0, 0);
-    const hairMesh = mesh(new THREE.SphereGeometry(0.18, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), m(hair), this.head, 0, 0.03, -0.01);
+    const hairMesh = mesh(new THREE.SphereGeometry(0.18, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55), hairM, this.head, 0, 0.03, -0.01);
     hairMesh.rotation.x = -0.3;
 
     const limb = (x, y, len, r, mat, endMat) => {
@@ -69,6 +71,13 @@ export class Character {
     this.armed = false;
     this.aimPitch = 0;
     this.sitting = false;
+  }
+
+  // cambia pelle, capelli e maglia (nel sogno condiviso chi entra veste da amico)
+  setLook({ skin, hair, shirt }) {
+    if (skin) this.looks.skin.color.set(skin);
+    if (hair) this.looks.hair.color.set(hair);
+    if (shirt) this.looks.shirt.color.set(shirt);
   }
 
   setArmed(v) {
