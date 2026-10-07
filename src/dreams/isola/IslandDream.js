@@ -66,10 +66,10 @@ export class IslandDream extends WalkScene {
 
     // le persone dell'isola
     const VY = W.villageY;
-    this.pilot = new Character(S, { skin: '#d8a880', hair: '#f0f0f0', shirt: '#7a5232', pants: '#4a4238' });
+    this.pilot = new Character(S, { skin: '#d8a880', hair: '#f0f0f0', shirt: '#7a5232', pants: '#4a4238', model: 'shirt' });
     this.pilot.pos.set(PILOT_HOME.x + 1.5, VY, PILOT_HOME.z + 2);
     this.pilot.facing = 0.3;
-    this.seller = new Character(S, { skin: '#c88a5a', hair: '#2a1a10', shirt: '#2a6ac8', pants: '#e8e0d0' });
+    this.seller = new Character(S, { skin: '#c88a5a', hair: '#2a1a10', shirt: '#2a6ac8', pants: '#e8e0d0', model: 'shirt' });
     this.seller.pos.set(SHOP.x - 6, VY, SHOP.z + 9);
     this.seller.facing = 0.4;
     for (const c of [this.pilot, this.seller]) c.animate(0, 0);

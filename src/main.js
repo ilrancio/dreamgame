@@ -15,6 +15,8 @@ import { placeById } from './core/places.js';
 import { WorldMap } from './core/worldmap.js';
 import { Coop } from './core/coop.js';
 import { models } from './core/models.js';
+import { registerFigure } from './core/figure.js';
+import { CHARACTER_MODELS } from './models/characters/index.js';
 import { HOTEL_MODELS } from './models/hotel/index.js';
 import { NATURE_MODELS } from './models/nature/index.js';
 import { CAR_MODELS, CAR_MODELS_TEXTURE } from './models/car/index.js';
@@ -34,6 +36,13 @@ document.getElementById('app').appendChild(renderer.domElement);
 const ui = new UI();
 const worldMap = new WorldMap();
 // i mobili 3D si caricano subito, mentre c'è ancora la schermata iniziale
+for (const [name, text] of Object.entries(CHARACTER_MODELS)) {
+  try {
+    registerFigure(name, text);
+  } catch (e) {
+    console.warn(`personaggio ${name} non caricato:`, e?.message || e);
+  }
+}
 models.load(HOTEL_MODELS);
 models.load(NATURE_MODELS);
 models.load(CAR_MODELS, { texture: CAR_MODELS_TEXTURE });

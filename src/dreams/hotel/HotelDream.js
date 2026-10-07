@@ -144,7 +144,7 @@ export class HotelDream {
     this.scene.add(this.flash);
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
-    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
+    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     this.friend.radius = 0.4;
 
     const noBlock = new Uint8Array(NW * NH);
@@ -158,7 +158,7 @@ export class HotelDream {
     this.gesture = new GestureScreen();
     this.events = new EventDirector(this);
     // il concierge: divisa bordeaux, berretto, sempre dietro la reception
-    this.concierge = new Character(this.scene, { skin: '#d8a888', hair: '#9a9a9a', shirt: '#6a1020', pants: '#1a1a22' });
+    this.concierge = new Character(this.scene, { skin: '#d8a888', hair: '#9a9a9a', shirt: '#6a1020', pants: '#1a1a22', model: 'suit' });
     const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.19, 0.12, 14), new THREE.MeshStandardMaterial({ color: '#4a0a14' }));
     cap.position.y = 0.16;
     this.concierge.head.add(cap);

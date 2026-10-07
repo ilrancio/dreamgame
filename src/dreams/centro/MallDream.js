@@ -83,7 +83,7 @@ export class MallDream {
     this.refreshGates(true);
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
-    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
+    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     // i commessi: uno per negozio aperto, dietro al banco. Nient'altro.
     this.clerks = [];
     let li = 0;
@@ -91,7 +91,7 @@ export class MallDream {
       if (!shop.clerk) continue;
       const k = shop.clerk;
       const look = k.calm ? ['#d8b090', '#6a4a30', '#7a9a7a'] : CLERK_LOOKS[li++ % CLERK_LOOKS.length];
-      const c = new Character(this.scene, { skin: look[0], hair: look[1], shirt: look[2], pants: '#2a2a30' });
+      const c = new Character(this.scene, { skin: look[0], hair: look[1], shirt: look[2], pants: '#2a2a30', model: ['casual', 'shirt', 'longsleeve'][Math.floor(Math.random() * 3)] });
       c.pos.set(k.x, k.y, k.z);
       c.facing = k.facing;
       c.animate(0, 0);

@@ -46,7 +46,7 @@ export class AirportDream extends WalkScene {
 
     // l'unica persona dell'aeroporto: l'addetta al gate 4
     const g4 = this.port.gates[ACTIVE_GATE - 1];
-    this.agent = new Character(this.scene, { skin: '#e0b8a0', hair: '#2a1a14', shirt: '#1a3a6a', pants: '#1a1a24' });
+    this.agent = new Character(this.scene, { skin: '#e0b8a0', hair: '#2a1a14', shirt: '#1a3a6a', pants: '#1a1a24', model: 'suit' });
     this.agent.pos.set(g4.desk.x + 1.3, 0, g4.desk.z);
     this.agent.facing = -Math.PI / 2;
     this.agent.animate(0, 0);

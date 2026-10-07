@@ -21,7 +21,7 @@ export class WalkScene {
     this.baseSpeed = speed;
     this.colliders = [];
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
-    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
+    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     if (this.hs.activeEntity === 'gnomi' && this.hs.entities?.gnomi) {
       this.followers = new GnomeFollowers(this.scene, this.hs.entities.gnomi);
       this.followers.ground = (x, z) => this.groundAt(x, z);

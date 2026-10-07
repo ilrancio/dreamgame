@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { clamp } from '../../core/noise.js';
+import { buildFigure, hasFigure } from '../../core/figure.js';
 
 // Personaggio a piedi: stessi colori di chi era in macchina nel campo.
 export class Character {
-  constructor(scene, { skin, hair, shirt, pants = '#2a2a34' }) {
+  constructor(scene, { skin, hair, shirt, pants = '#2a2a34', model = 'casual' }) {
     this.group = new THREE.Group();
     scene.add(this.group);
     this.pos = new THREE.Vector3();
@@ -64,6 +65,8 @@ export class Character {
     this.gun.position.set(0, -0.62, 0.04);
     this.gun.visible = false;
     this.armR.add(this.gun);
+    this.gunParts = new Set();
+    this.gun.traverse((o) => this.gunParts.add(o));
     this.muzzle = new THREE.Object3D();
     this.muzzle.position.set(0, -0.24, 0.02);
     this.gun.add(this.muzzle);
@@ -71,6 +74,20 @@ export class Character {
     this.armed = false;
     this.aimPitch = 0;
     this.sitting = false;
+
+    // il corpo vero (Quaternius), se c'è: le membra disegnate restano come
+    // "manopole" invisibili dell'animazione, che le ossa copiano
+    if (model && hasFigure(model)) {
+      const fig = buildFigure(model, { skin: skinM, hair: hairM, shirt: shirtM, pants: pantsM, shoe: shoeM, dark: m('#1a1418') });
+      if (fig) {
+        this.figure = fig;
+        body.add(fig.root);
+        this.gun.position.y = -0.76; // il braccio vero è un po' più lungo
+        body.traverse((o) => {
+          if (o.isMesh && o !== fig.mesh && !this.gunParts.has(o)) o.visible = false;
+        });
+      }
+    }
   }
 
   // cambia pelle, capelli e maglia (nel sogno condiviso chi entra veste da amico)
@@ -142,8 +159,21 @@ export class Character {
       this.body.position.y = -0.36;
       this.body.rotation.x = 0;
     }
+    if (this.figure) this.poseFigure();
     this.group.position.copy(this.pos);
     this.group.rotation.y = this.facing;
+  }
+
+  // le ossa del corpo vero seguono le membra; ginocchia e gomiti si piegano da soli
+  poseFigure() {
+    const b = this.figure.bones;
+    for (const [bone, limb] of [[b.legL, this.legL], [b.legR, this.legR], [b.armL, this.armL], [b.armR, this.armR]]) bone.rotation.set(limb.rotation.x, 0, limb.rotation.z);
+    // il ginocchio si piega quando la gamba va indietro, e da seduti
+    for (const [shin, leg] of [[b.shinL, this.legL], [b.shinR, this.legR]]) {
+      shin.rotation.x = this.sitting ? 1.5 : Math.max(0, leg.rotation.x) * 1.1 + (this.grounded ? 0 : 0.6);
+    }
+    for (const [fore, arm] of [[b.foreL, this.armL], [b.foreR, this.armR]]) fore.rotation.x = this.armed && !this.sitting ? 0 : Math.min(0, arm.rotation.x) * 0.6 - 0.15;
+    b.head.rotation.copy(this.head.rotation);
   }
 
   muzzleWorld(out = new THREE.Vector3()) {

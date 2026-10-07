@@ -121,7 +121,7 @@ export class OutdoorDream {
     this.car.turbo = 1;
 
     this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
-    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e' });
+    this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     this.npcs = this.village.npcs.map((n) => {
       const [skin, hair, shirt] = n.look;
       const c = new Character(this.scene, { skin, hair, shirt, pants: '#3a3430' });
