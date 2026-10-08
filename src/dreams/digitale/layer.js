@@ -1,5 +1,5 @@
 import { buildTerminal, buildInvasion } from './world.js';
-import { TerminalScreen, TERMINALS, terminalsCleared } from './terminal.js';
+import { TerminalScreen, TERMINALS, terminalsCleared, groupOf } from './terminal.js';
 
 const FRIEND = 'Il tuo amico:';
 
@@ -23,7 +23,11 @@ export class DigitalLayer {
   refresh() {
     const done = this.data.terminals || {};
     for (const t of this.terms) t.obj.setCleared(!!done[t.id]?.cleared);
-    this.invasion?.setAmount(1 - terminalsCleared(this.ctx.progress) / Object.keys(TERMINALS).length);
+    // l'invasione di questo posto si ritira con i terminali del suo gruppo
+    const group = groupOf(this.terms[0]?.id);
+    const ids = Object.keys(TERMINALS).filter((id) => groupOf(id) === group);
+    const n = ids.filter((id) => done[id]?.cleared).length;
+    this.invasion?.setAmount(1 - n / ids.length);
   }
 
   get open() {

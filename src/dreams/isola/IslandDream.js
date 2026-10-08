@@ -58,6 +58,8 @@ export class IslandDream extends WalkScene {
     this.world = buildIsland(S, T);
     const W = this.world;
     this.colliders = W.colliders;
+    // un terminale in mezzo al villaggio, fra la casa del pilota e l'hangar
+    this.addTerminal('isola', 45, 150, 0, { y: W.villageY, spread: 16 });
     for (const pd of W.pads) T.addPlatform({ x: pd.pad.x, z: pd.pad.z, r: 1.75, top: pd.pad.y + 1.55, kind: 'pad', pad: pd });
     this.taken = new Set(this.saved.coins);
     W.setTaken(this.taken);

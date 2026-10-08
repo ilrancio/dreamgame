@@ -7,7 +7,16 @@ export const TERMINALS = {
   borgo: { id: 'borgo', name: 'Piazza di Sant\'Onirio', diff: 2, boss: 'spam', theme: 'borgo' },
   parcheggio: { id: 'parcheggio', name: 'Parcheggio Orizzonte', diff: 3, boss: 'firewall', theme: 'parcheggio' },
   galleria: { id: 'galleria', name: 'Galleria Orizzonte', diff: 4, boss: 'kernel', theme: 'galleria' },
+  // i terminali nei posti dove si arriva in aereo (o dove l'invasione è arrivata dopo)
+  aeroporto: { id: 'aeroporto', name: 'Atrio dell\'aeroporto', diff: 5, boss: 'lag', theme: 'aeroporto', group: 'aeroporto' },
+  costa: { id: 'costa', name: 'Spiaggia Grande', diff: 6, boss: 'phishing', theme: 'spiaggia', group: 'costa' },
+  isola: { id: 'isola', name: 'Villaggio dell\'Isola', diff: 7, boss: 'trojan', theme: 'isola', group: 'isola' },
 };
+
+// i terminali che si liberano insieme: l'invasione di un posto si ritira quando sono puliti i suoi
+export function groupOf(id) {
+  return TERMINALS[id]?.group || 'mondo';
+}
 
 export function terminalsCleared(progress) {
   const t = progress.digitale?.terminals || {};
@@ -139,7 +148,7 @@ export class TerminalScreen {
     this.drawFrame(g);
     text(g, 'IL MURALE', 24, 28, { size: 13, color: '#ff3ad8' });
     text(g, 'scegli chi abita la chiavetta', 112, 28, { size: 9, color: '#8aa' });
-    const cw = 62;
+    const cw = Math.min(62, Math.floor((FW - 20) / FORMS.length));
     const x0 = (FW - cw * FORMS.length) / 2;
     FORMS.forEach((fm, i) => {
       const cx = x0 + i * cw + cw / 2;
@@ -151,14 +160,14 @@ export class TerminalScreen {
         g.strokeStyle = '#ffe42a';
         g.strokeRect(cx - cw / 2 + 3.5, 40.5, cw - 7, 103);
       }
-      const sc = Math.min(1.6, 64 / fm.h);
+      const sc = Math.min(1.6, 64 / fm.h, (cw - 8) / fm.w);
       g.save();
       g.translate(cx, 122);
       g.scale(sc, sc);
       if (open) drawForm(g, fm.id, 0, 0, 1, this.t + i, { state: on ? 'run' : 'idle' });
       else drawSilhouette(g, fm.id, 0, 0, 1, this.t);
       g.restore();
-      text(g, open ? fm.name.split(' ')[0] : '???', cx, 138, { size: 8, color: open ? '#ffffff' : '#5a6a7a', align: 'center' });
+      text(g, open ? fm.name.split(' ')[0].slice(0, 8) : '???', cx, 138, { size: 7, color: open ? '#ffffff' : '#5a6a7a', align: 'center' });
     });
     // la scheda dell'entità scelta
     const fm = FORMS[this.msel];
@@ -177,7 +186,7 @@ export class TerminalScreen {
       });
     }
     text(g, d.form === fm.id ? '◆ NELLA CHIAVETTA' : open ? 'INVIO: TRASFERISCI' : '', FW - 24, 212, { size: 11, color: d.form === fm.id ? '#ffe42a' : '#4aff8a', align: 'right' });
-    text(g, `livello e abilità restano della chiavetta (LV ${d.hero.level})`, FW - 24, 228, { size: 8, color: '#6a8a9a', align: 'right' });
+    text(g, `livello e abilità restano della chiavetta (LV ${d.hero.level})`, FW - 24, 254, { size: 8, color: '#6a8a9a', align: 'right' });
     this.footer.innerHTML = '<kbd>A</kbd><kbd>D</kbd> scegli · <kbd>Invio</kbd> trasferisci nella chiavetta · <kbd>Esc</kbd> sfila la chiavetta';
     if (input.wasPressed('KeyA', 'ArrowLeft')) this.msel = (this.msel + FORMS.length - 1) % FORMS.length;
     if (input.wasPressed('KeyD', 'ArrowRight')) this.msel = (this.msel + 1) % FORMS.length;
@@ -254,7 +263,7 @@ export class TerminalScreen {
     const rec = this.data.terminals[this.def.id] || {};
     text(g, `TERMINALE · ${this.def.name.toUpperCase()}`, 24, 30, { size: 11, color: '#ff3ad8' });
     text(g, rec.cleared ? 'stato: LIBERATO (le entità tornano a farsi vedere, ogni tanto)' : 'stato: INVASO', 24, 46, { size: 9, color: rec.cleared ? '#4aff8a' : '#ff5a5a' });
-    text(g, `pericolo ${'■'.repeat(this.def.diff)}${'□'.repeat(4 - this.def.diff)}`, 24, 60, { size: 9, color: '#ffe42a' });
+    text(g, `pericolo ${'■'.repeat(this.def.diff)}${'□'.repeat(Math.max(0, 7 - this.def.diff))}`, 24, 60, { size: 9, color: this.def.diff > 4 ? '#ff8a5a' : '#ffe42a' });
     this.drawHeroIcon(g, 380, 150, 3);
     const st = heroStats(hero);
     text(g, `${this.formName}  LV ${hero.level}`, 300, 180, { size: 12 });
@@ -310,19 +319,20 @@ export class TerminalScreen {
     this.drawFrame(g);
     text(g, 'MODULI DELLA CHIAVETTA', 24, 30, { size: 12, color: '#ff3ad8' });
     text(g, `montati ${mods.equipped.length}/${MODULE_SLOTS}`, FW - 24, 30, { size: 11, color: '#ffe42a', align: 'right' });
+    const step = MODULES.length > 6 ? 23 : 32;
     MODULES.forEach((m, i) => {
-      const y = 58 + i * 32;
+      const y = 56 + i * step;
       const on = this.modSel === i;
       const own = mods.owned.includes(m.id);
       const eq = mods.equipped.includes(m.id);
       if (on) {
         g.fillStyle = 'rgba(122,248,255,0.12)';
-        g.fillRect(18, y - 13, FW - 36, 30);
+        g.fillRect(18, y - 11, FW - 36, step - 2);
       }
       g.fillStyle = eq ? '#ffe42a' : own ? '#1a2a3a' : '#0a0e18';
-      g.fillRect(28, y - 8, 9, 9);
-      text(g, own ? m.name : '???', 46, y, { size: 11, color: !own ? '#4a5a6a' : on ? '#ffffff' : '#7af8ff' });
-      text(g, own ? m.desc : `si trova: ${m.how}`, 46, y + 11, { size: 8, color: own ? '#8aa' : '#5a6a7a' });
+      g.fillRect(28, y - 7, 8, 8);
+      text(g, own ? m.name : '???', 44, y, { size: step < 30 ? 10 : 11, color: !own ? '#4a5a6a' : on ? '#ffffff' : '#7af8ff' });
+      text(g, own ? m.desc : `si trova: ${m.how}`, 44, y + (step < 30 ? 9 : 11), { size: step < 30 ? 7 : 8, color: own ? '#8aa' : '#5a6a7a' });
       if (eq) text(g, 'MONTATO', FW - 28, y, { size: 9, color: '#ffe42a', align: 'right' });
     });
     this.footer.innerHTML = '<kbd>W</kbd><kbd>S</kbd> scegli · <kbd>Invio</kbd> monta / smonta · <kbd>Esc</kbd> indietro';

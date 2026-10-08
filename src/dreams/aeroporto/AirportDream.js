@@ -43,6 +43,8 @@ export class AirportDream extends WalkScene {
     this.port.setDay(day);
     this.colliders = this.port.colliders;
     this.choice = new ChoicePanel();
+    // l'invasione è arrivata anche qui: un terminale nell'atrio, accanto alle file dei check-in
+    this.addTerminal('aeroporto', 14, 16, -Math.PI / 2, { spread: 12 });
 
     // l'unica persona dell'aeroporto: l'addetta al gate 4
     const g4 = this.port.gates[ACTIVE_GATE - 1];

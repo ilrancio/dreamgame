@@ -75,6 +75,8 @@ export class CoastDream extends WalkScene {
     this.world = buildCoast(S, this.terrain);
     this.crowd = buildCrowd(S, this.terrain, this.world);
     this.colliders = this.world.colliders;
+    // un terminale sulla passerella, accanto al bar del Bagno 13: le entità sopra gli ombrelloni
+    this.addTerminal('costa', this.world.bar.x + 6, this.world.bar.z + 1.5, 0, { spread: 18 });
     this.jeep = new Jeep(S);
     this.dust = new Particles(S, 600);
     this.mode = 'foot';

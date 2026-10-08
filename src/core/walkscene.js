@@ -3,6 +3,7 @@ import { clamp } from './noise.js';
 import { Character } from '../dreams/hotel/character.js';
 import { GnomeFollowers } from '../dreams/hotel/companions.js';
 import { hero } from './hero.js';
+import { DigitalLayer } from '../dreams/digitale/layer.js';
 
 export const FRIEND = 'Il tuo amico:';
 
@@ -93,6 +94,21 @@ export class WalkScene {
     return false;
   }
 
+  // Un terminale dell'invasione digitale in questa scena, con le sue entità che
+  // galleggiano intorno. Va chiamato dopo aver preparato i colliders.
+  addTerminal(id, x, z, yaw = 0, { y = null, spread = 14, count = 18 } = {}) {
+    const gy = y ?? this.groundAt(x, z);
+    const pts = [];
+    for (let i = 0; i < count; i++) {
+      const a = i * 2.4;
+      const r = 4 + ((i * 37) % 10) / 10 * spread;
+      pts.push([x + Math.cos(a) * r, gy + 2.2 + ((i * 13) % 7) * 0.6, z + Math.sin(a) * r]);
+    }
+    this.digital = new DigitalLayer(this.scene, this.ctx, [{ id, x, y: gy, z, yaw }], pts);
+    this.colliders.push(...this.digital.colliders);
+    return this.digital;
+  }
+
   // ---------- utilità ----------
   later(dt, fn) {
     this.script.push({ at: this.time + dt, fn });
@@ -115,6 +131,16 @@ export class WalkScene {
     this.lineTimer -= dt;
     if (input.wasPressed('KeyN')) audio.toggleMute();
     while (this.script.length && this.script[0].at <= this.time) this.script.shift().fn();
+    // davanti al terminale: si gioca nello schermo, il mondo aspetta
+    if (this.digital) {
+      this.digital.update(dt, this.time, input);
+      if (this.digital.open) {
+        this.player.animate(dt, 0);
+        this.updateFriend(dt);
+        return;
+      }
+      if (!this.cine && !this.busy()) this.digital.discover(this.player.pos, (d, f) => this.later(d, f));
+    }
     const busy = this.busy();
     if (this.cine) this.updateCine(dt);
     else if (!busy && !this.leaving) this.updateFoot(dt);
@@ -233,7 +259,8 @@ export class WalkScene {
     this.walk(p, dt);
     p.animate(dt, Math.hypot(p.vel.x, p.vel.z));
     if (this.exitCheck(mx, mz)) return;
-    const it = this.interaction(p.pos);
+    const term = this.digital?.near(p.pos);
+    const it = term ? { label: 'collega la chiavetta al terminale', fn: () => this.digital.connect(term, (sum) => this.onTerminalDone?.(sum)) } : this.interaction(p.pos);
     ui.hint(it ? `<kbd>E</kbd> ${it.label}` : null);
     if (it && input.wasPressed('KeyE')) it.fn();
     this.updateCamera(dt);
@@ -326,5 +353,6 @@ export class WalkScene {
     this.player.dispose();
     this.friend.dispose();
     this.followers?.dispose();
+    this.digital?.dispose();
   }
 }

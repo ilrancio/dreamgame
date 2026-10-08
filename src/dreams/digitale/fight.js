@@ -29,6 +29,12 @@ const BOSS = {
   spam: { name: 'SPAM', w: 30, h: 32, hp: 340, color: '#ffe42a', moves: ['arc', 'dash', 'spread'], speed: 55 },
   firewall: { name: 'FIREWALL', w: 40, h: 52, hp: 520, color: '#ff5a2a', moves: ['wave', 'dash', 'slam'], speed: 40, shield: true },
   kernel: { name: 'KERNEL PANIC', w: 22, h: 42, hp: 700, color: '#f4f4f4', moves: ['teleport', 'spread', 'rain', 'dash'], speed: 75 },
+  // l'aeroporto: un tabellone delle partenze che va a scatti, torna indietro nel tempo, ferma i colpi a mezz'aria
+  lag: { name: 'LAG', w: 26, h: 38, hp: 820, color: '#7ab8ff', moves: ['freeze', 'dash', 'rewind', 'spread'], speed: 65 },
+  // la spiaggia: un pesce abissale con la lucina, che lancia l'amo e ti tira a sé
+  phishing: { name: 'PHISHING', w: 32, h: 26, hp: 950, color: '#3af0a0', moves: ['hook', 'arc', 'dash', 'hook', 'spread'], speed: 70 },
+  // l'isola: un cavallo di legno con la pancia piena di entità
+  trojan: { name: 'TROJAN', w: 40, h: 44, hp: 1100, color: '#c8884a', moves: ['dash', 'spawn', 'slam', 'dash', 'spawn'], speed: 55 },
 };
 
 export class Fight {
@@ -63,6 +69,7 @@ export class Fight {
     this.waves = this.arena ? [] : this.makeWaves();
     this.waveN = 0;
     this.wavesDone = 0;
+    if (this.mods.has('cache')) this.p.oc = 100;
     this.nextWaveT = 2.4;
     if (this.arena) this.lock = 0;
     this.boss = null;
@@ -159,7 +166,9 @@ export class Fight {
     this.shake = Math.max(0, this.shake - dt * 8);
     this.updateHero(dt, k);
     this.updateWaves(dt);
-    for (const e of this.enemies) (e.type === 'boss' ? this.updateBoss : this.updateEnemy).call(this, e, dt);
+    // LAG: il tempo delle entità è fermo
+    if (this.frozenT > 0) this.frozenT -= dt;
+    else for (const e of this.enemies) (e.type === 'boss' ? this.updateBoss : this.updateEnemy).call(this, e, dt);
     this.updateShots(dt);
     this.updatePickups(dt);
     // particelle e numeri
@@ -233,6 +242,8 @@ export class Fight {
     p.dashCd -= dt;
     p.comboT -= dt;
     p.dropT -= dt;
+    p.calmT = (p.calmT || 0) + dt;
+    if (this.mods.has('salvagente') && p.calmT > 4 && p.hp > 0) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.03 * dt);
     p.energy = Math.min(100, p.energy + st.regen * dt);
     if (p.ocT > 0) {
       p.ocT -= dt;
@@ -242,6 +253,17 @@ export class Fight {
     if (this.endT !== undefined) {
       p.vx *= 0.9;
       p.state = this.won ? 'win' : 'hurt';
+      this.integrate(p, dt);
+      return;
+    }
+    // l'amo del PHISHING ti tira verso di lui
+    if (p.pullT > 0) {
+      p.pullT -= dt;
+      const b = p.pullBy;
+      if (b && !b.dead && Math.abs(b.x - p.x) > b.w / 2 + 8) p.vx = Math.sign(b.x - p.x) * 250;
+      else p.pullT = 0;
+      p.state = 'hurt';
+      p.t = 0;
       this.integrate(p, dt);
       return;
     }
@@ -281,6 +303,12 @@ export class Fight {
         p.inv = st.dashTime + 0.05;
         p.dashCd = st.dashCd;
         this.sfx('dash');
+        if (this.form.freeze) {
+          this.frozenT = 1.4;
+          p.dashCd = Math.max(p.dashCd, 3.2);
+          this.nums.push({ x: p.x, y: p.y - p.h - 10, text: 'PAUSA', color: '#7ab8ff', life: 0.9 });
+          this.sfx('glitch');
+        }
         // KERNEL PANIC: lo scatto è un teletrasporto alle spalle del nemico più vicino
         const near = this.form.teleport && this.enemies.filter((e) => e.state !== 'enter' && Math.abs(e.x - p.x) < 260).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
         if (near) {
@@ -429,10 +457,17 @@ export class Fight {
     if (kind === 'punch') {
       p.combo = p.comboT > 0 ? (p.combo % this.st.combo) + 1 : 1;
       p.comboT = 0.4;
+      // ECO: l'ultimo pugno della combo spara anche
+      if (this.mods.has('eco') && p.combo === this.st.combo) this.shots.push({ x: p.x + p.facing * (p.w / 2 + 3), y: p.y - Math.min(17, p.h * 0.6), vx: p.facing * 340, vy: 0, from: 'hero', dmg: this.st.shot * 1.2, r: 4, life: 1.2, color: '#ffe42a' });
     }
     p.state = kind;
     p.t = 0;
     this.sfx(kind === 'kick' ? 'swing2' : 'swing');
+    // TROJAN: il calcio a terra manda un'onda d'urto
+    if (kind === 'kick' && this.form.quake && p.ground) {
+      this.shots.push({ x: p.x + p.facing * 14, y: GY - 5, vx: p.facing * 230, vy: 0, from: 'hero', dmg: this.st.kick * 0.6, r: 6, life: 1.1, color: '#c8884a', ground: true, pierce: true });
+      this.shake = Math.max(this.shake, 0.6);
+    }
   }
 
   integrate(o, dt) {
@@ -607,6 +642,7 @@ export class Fight {
       this.sfx('hurt');
     }
     p.hp -= dmg;
+    p.calmT = 0;
     p.flash = 0.2;
     this.shake = Math.max(this.shake, 1);
     this.nums.push({ x: p.x, y: p.y - 32, text: `-${Math.round(dmg)}`, color: '#ff5a5a', life: 0.7 });
@@ -776,6 +812,9 @@ export class Fight {
   updateBoss(b, dt) {
     const p = this.p;
     b.t += dt;
+    // dove è stato (per il LAG, che torna indietro nel tempo)
+    (b.hist ??= []).push([b.x, b.y]);
+    if (b.hist.length > 75) b.hist.shift();
     b.flash = Math.max(0, b.flash - dt);
     const dx = p.x - b.x;
     const dir = Math.sign(dx) || 1;
@@ -855,6 +894,38 @@ export class Fight {
     } else if (m === 'teleport') {
       b.alpha = 0.1;
       this.sfx('glitch');
+    } else if (m === 'freeze') {
+      // un anello di colpi che resta fermo a mezz'aria, poi parte tutto insieme verso di te
+      for (let i = 0; i < (d >= 6 ? 7 : 5); i++) {
+        const a = (i / (d >= 6 ? 7 : 5)) * Math.PI * 2;
+        this.shots.push({ x: b.x + Math.cos(a) * 34, y: b.y - b.h / 2 + Math.sin(a) * 26, vx: 0, vy: 0, from: 'enemy', dmg: 7 + d * 2, r: 4, life: 3, color: b.color, hold: 0.7 + i * 0.12 });
+      }
+      this.sfx('alert');
+    } else if (m === 'rewind') {
+      b.alpha = 0.3;
+      this.sfx('glitch');
+    } else if (m === 'hook') {
+      // l'amo: se ti prende, ti tira verso la bocca
+      const ax = this.p.x - b.x;
+      const ay = this.p.y - 14 - (b.y - b.h);
+      const l = Math.hypot(ax, ay) || 1;
+      this.shots.push({ x: b.x + dir * 10, y: b.y - b.h, vx: (ax / l) * 240, vy: (ay / l) * 240, from: 'enemy', dmg: 4 + d, r: 3, life: 2, color: '#e8e8e8', hook: true, owner: b, ox: b.x, oy: b.y - b.h });
+      this.sfx('eshot');
+    } else if (m === 'spawn') {
+      // la pancia si apre: ne escono entità
+      if (this.enemies.length < 5) {
+        for (let i = 0; i < 2; i++) {
+          const q = this.spawn(i === 1 && d >= 7 ? 'drone' : 'glitch', 1);
+          q.x = b.x - dir * 6;
+          q.y = q.fly ? b.y - b.h : b.y - 10;
+          q.vy = -220;
+          q.vx = dir * (60 + i * 50);
+          q.ground = false;
+          q.inside = true;
+        }
+      }
+      this.shake = Math.max(this.shake, 0.6);
+      this.sfx('slam');
     } else if (m === 'rain') {
       for (let i = 0; i < 6; i++) this.shots.push({ x: this.p.x + rnd(-110, 110), y: -20 - i * 30, vx: 0, vy: 170, from: 'enemy', dmg: 6 + d * 2, r: 5, life: 3, color: '#ff3a3a', err: true });
       this.sfx('alert');
@@ -869,6 +940,23 @@ export class Fight {
     };
     if (m === 'dash') {
       if (b.t > 0.35) end();
+    } else if (m === 'rewind') {
+      // torna dov'era un secondo fa, e da lì manda due onde
+      if (b.t > 0.3 && !b.rewound) {
+        b.rewound = true;
+        for (let i = 0; i < 4; i++) this.parts.push({ x: b.x, y: b.y - b.h / 2, vx: 0, vy: 0, life: 0.3 + i * 0.08, color: 'rgba(122,184,255,0.35)', size: 10, ghost: true });
+        const old = b.hist[0];
+        if (old) b.x = Math.max(this.camX + 30, Math.min(this.camX + FW - 30, old[0]));
+        b.alpha = 1;
+        for (const sd of [-1, 1]) this.shots.push({ x: b.x, y: GY - 5, vx: sd * 200, vy: 0, from: 'enemy', dmg: 8 + this.diff * 2, r: 5, life: 1.4, color: b.color, ground: true });
+        this.sfx('slam');
+      }
+      if (b.t > 0.7) {
+        b.rewound = false;
+        end();
+      }
+    } else if (m === 'freeze') {
+      if (b.t > 0.9) end();
     } else if (m === 'hop' || m === 'slam') {
       if (b.ground && b.t > 0.15) end();
     } else if (m === 'teleport') {
@@ -895,6 +983,18 @@ export class Fight {
   updateShots(dt) {
     const p = this.p;
     for (const s of this.shots) {
+      if (s.from === 'enemy' && this.frozenT > 0) continue;
+      // i colpi del LAG: fermi a mezz'aria, poi partono verso dove sei
+      if (s.hold > 0) {
+        s.hold -= dt;
+        if (s.hold <= 0) {
+          const ax = p.x - s.x;
+          const ay = p.y - 14 - s.y;
+          const l = Math.hypot(ax, ay) || 1;
+          s.vx = (ax / l) * 230;
+          s.vy = (ay / l) * 230;
+        } else continue;
+      }
       s.life -= dt;
       if (s.grav) s.vy += 500 * dt;
       s.x += s.vx * dt;
@@ -907,7 +1007,8 @@ export class Fight {
           if (s.life > 0 && e.state !== 'enter' && (e.alpha ?? 1) > 0.5 && !s.hit?.has(e) && overlap(box, e)) {
             if (s.pierce) (s.hit ??= new Set()).add(e);
             else s.life = 0;
-            this.damageEnemy(e, s.dmg, Math.sign(s.vx) * 40, 0, Math.sign(s.vx), false, true);
+            const kb = this.form.hookShots && e.type !== 'boss' ? -Math.sign(s.vx) * 230 : Math.sign(s.vx) * 40;
+            this.damageEnemy(e, s.dmg, kb, 0, Math.sign(s.vx), false, true);
           }
         }
       } else if (s.life > 0 && overlap(box, p)) {
@@ -923,7 +1024,13 @@ export class Fight {
           s.dmg *= 2.5;
           s.life = 1.5;
           s.color = '#7af8ff';
-        } else s.life = 0;
+        } else {
+          s.life = 0;
+          if (s.hook && r === 'hit') {
+            p.pullT = 0.7;
+            p.pullBy = s.owner;
+          }
+        }
       }
     }
     this.shots = this.shots.filter((s) => s.life > 0);
@@ -953,6 +1060,15 @@ export class Fight {
       g.fillRect(p.x - p.w / 2 - 5, p.y - p.h - 5, p.w + 10, p.h + 6);
     }
     this.drawHero(g, t);
+    // la lenza dell'amo
+    for (const s of this.shots) if (s.hook && s.owner && !s.owner.dead) {
+      g.strokeStyle = 'rgba(232,232,232,0.6)';
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(s.owner.x, s.owner.y - s.owner.h);
+      g.lineTo(s.x, s.y);
+      g.stroke();
+    }
     if (this.ring) {
       this.ring.t += 1 / 60;
       const r = this.ring.t * 600;
@@ -981,6 +1097,10 @@ export class Fight {
       g.fillText(n.text, n.x, n.y);
     }
     g.restore();
+    if (this.frozenT > 0) {
+      g.fillStyle = 'rgba(122,184,255,0.12)';
+      g.fillRect(0, 0, FW, FH);
+    }
     g.restore();
     this.drawHud(g, t);
   }
@@ -989,7 +1109,7 @@ export class Fight {
     const th = this.def.theme;
     const sky = g.createLinearGradient(0, 0, 0, GY);
     sky.addColorStop(0, '#05030f');
-    sky.addColorStop(1, th === 'borgo' ? '#1a1240' : th === 'galleria' ? '#0a1a2a' : '#120a2a');
+    sky.addColorStop(1, { borgo: '#1a1240', galleria: '#0a1a2a', aeroporto: '#0a1430', spiaggia: '#082a30', isola: '#1a1a10' }[th] || '#120a2a');
     g.fillStyle = sky;
     g.fillRect(0, 0, FW, FH);
     // pixel che piovono: il mondo è stato digitalizzato
@@ -1044,6 +1164,61 @@ export class Fight {
         g.stroke();
         g.strokeRect(bx + 150, 100, 110, 22);
         for (let l = 0; l < 4; l++) g.strokeRect(bx + 30 + l * 100, 150, 2, 82);
+      } else if (th === 'aeroporto') {
+        // la torre di controllo, la vetrata del terminal, un aereo fermo
+        g.beginPath();
+        g.rect(bx + 20, 150, 300, 82);
+        g.fill();
+        g.stroke();
+        for (let c = 0; c < 10; c++) g.strokeRect(bx + 24 + c * 30, 156, 26, 40);
+        g.strokeRect(bx + 340, 90, 18, 142);
+        g.beginPath();
+        g.rect(bx + 326, 66, 46, 24);
+        g.fill();
+        g.stroke();
+        g.beginPath();
+        g.moveTo(bx + 150, 120);
+        g.lineTo(bx + 270, 120);
+        g.lineTo(bx + 290, 108);
+        g.moveTo(bx + 200, 120);
+        g.lineTo(bx + 180, 104);
+        g.lineTo(bx + 230, 120);
+        g.stroke();
+      } else if (th === 'spiaggia') {
+        // ombrelloni e onde
+        for (let u = 0; u < 4; u++) {
+          const ux = bx + 30 + u * 100;
+          g.beginPath();
+          g.moveTo(ux, GY);
+          g.lineTo(ux, GY - 60);
+          g.moveTo(ux - 34, GY - 52);
+          g.quadraticCurveTo(ux, GY - 82, ux + 34, GY - 52);
+          g.closePath();
+          g.fill();
+          g.stroke();
+        }
+        g.beginPath();
+        for (let x = 0; x <= 420; x += 20) g.lineTo(bx + x, 150 + Math.sin(x * 0.05 + this.t * 2) * 4);
+        g.stroke();
+      } else if (th === 'isola') {
+        // le palme e il vulcano
+        g.beginPath();
+        g.moveTo(bx + 120, GY);
+        g.lineTo(bx + 230, 70);
+        g.lineTo(bx + 260, 70);
+        g.lineTo(bx + 380, GY);
+        g.fill();
+        g.stroke();
+        for (const px of [30, 70, 330]) {
+          g.beginPath();
+          g.moveTo(bx + px, GY);
+          g.quadraticCurveTo(bx + px + 10, GY - 50, bx + px + 4, GY - 90);
+          for (const a of [-1, -0.4, 0.4, 1]) {
+            g.moveTo(bx + px + 4, GY - 90);
+            g.quadraticCurveTo(bx + px + 4 + a * 20, GY - 104, bx + px + 4 + a * 34, GY - 80);
+          }
+          g.stroke();
+        }
       } else {
         for (let c = 0; c < 5; c++) g.strokeRect(bx + c * 90, 40, 8, 192);
         g.strokeRect(bx - 10, 130, 440, 10);
@@ -1346,6 +1521,64 @@ export class Fight {
       if (b.shield > 0) {
         g.fillStyle = 'rgba(122,248,255,0.6)';
         g.fillRect(x + f * 22 - 1, y - 56, 3, 58);
+      }
+    } else if (b.kind === 'lag') {
+      // un tabellone delle partenze con le gambe, che va a scatti
+      const jx = Math.floor(t * 8) % 3 === 0 ? 1 : 0;
+      g.fillStyle = col;
+      g.fillRect(x - 13 + jx, y - 38, 26, 26);
+      g.fillStyle = '#0a1430';
+      g.fillRect(x - 11 + jx, y - 36, 22, 22);
+      g.fillStyle = '#ffe42a';
+      g.font = 'bold 6px monospace';
+      g.textAlign = 'center';
+      const words = ['DELAY', 'LAG', '...', 'WAIT'];
+      for (let r = 0; r < 3; r++) g.fillText(words[(Math.floor(t * 3) + r) % 4], x + jx, y - 29 + r * 7);
+      g.fillStyle = col;
+      g.fillRect(x - 9, y - 12, 4, 12);
+      g.fillRect(x + 5, y - 12, 4, 12);
+      g.fillStyle = '#7ab8ff';
+      g.fillRect(x + f * 6 - 2, y - 42, 4, 4);
+    } else if (b.kind === 'phishing') {
+      // un pesce abissale: corpo, bocca dentata, la lucina sull'antenna
+      g.fillStyle = col;
+      g.fillRect(x - 16, y - 22, 28, 18);
+      g.fillRect(x - f * 18 - 3, y - 20, 6, 14);
+      g.fillStyle = '#05030f';
+      g.fillRect(x + f * 6 - 5, y - 10, 10, 5);
+      g.fillStyle = '#ffffff';
+      for (let k = 0; k < 3; k++) g.fillRect(x + f * 6 - 4 + k * 3, y - 10, 1, 2);
+      g.fillStyle = '#ffe42a';
+      g.fillRect(x + f * 4 - 1, y - 18, 3, 3);
+      g.strokeStyle = col;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(x, y - 22);
+      g.quadraticCurveTo(x + f * 8, y - 36, x + f * 16, y - 30);
+      g.stroke();
+      g.fillStyle = `rgba(255,255,160,${0.6 + Math.sin(t * 6) * 0.4})`;
+      g.fillRect(x + f * 16 - 2, y - 32, 4, 4);
+    } else if (b.kind === 'trojan') {
+      // il cavallo di legno, sulle ruote
+      g.fillStyle = col;
+      g.fillRect(x - 18, y - 30, 32, 16);
+      g.fillRect(x + f * 10 - 4, y - 44, 9, 18);
+      g.fillRect(x + f * 14 - 4, y - 44, 10, 7);
+      g.fillStyle = '#8a5a2a';
+      for (let k = 0; k < 4; k++) g.fillRect(x - 18 + k * 8, y - 30, 1, 16);
+      g.fillStyle = '#05030f';
+      g.fillRect(x + f * 16 - 1, y - 42, 2, 2);
+      if (b.move === 'spawn' && b.state === 'move') {
+        g.fillStyle = '#ff3ad8';
+        g.fillRect(x - 8, y - 16, 14, 4);
+      }
+      g.fillStyle = '#5a3a1a';
+      g.fillRect(x - 18, y - 14, 32, 3);
+      for (const wx of [-14, 10]) {
+        g.fillStyle = '#3a2a1a';
+        g.fillRect(x + wx - 4, y - 8, 8, 8);
+        g.fillStyle = '#c8884a';
+        g.fillRect(x + wx - 1, y - 5, 2, 2);
       }
     } else {
       // KERNEL PANIC: una figura bianca che si sfalda in errori

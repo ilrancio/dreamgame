@@ -31,6 +31,9 @@ export const MODULES = [
   { id: 'magnete', name: 'MAGNETE', desc: 'I frammenti volano da te, e ne cadono di più.', terminal: 'borgo', how: 'libera la Piazza di Sant\'Onirio' },
   { id: 'specchio', name: 'SPECCHIO', desc: 'La parata perfetta dura il doppio, e respinge più forte.', terminal: 'parcheggio', how: 'libera il Parcheggio Orizzonte' },
   { id: 'perforante', name: 'PERFORANTE', desc: 'I colpi di energia attraversano le entità.', terminal: 'galleria', how: 'libera la Galleria Orizzonte' },
+  { id: 'cache', name: 'CACHE', desc: 'Ogni combattimento comincia con l\'overclock già pieno.', terminal: 'aeroporto', how: 'libera l\'Atrio dell\'aeroporto' },
+  { id: 'salvagente', name: 'SALVAGENTE', desc: 'Se nessuno ti colpisce per quattro secondi, la vita torna su piano piano.', terminal: 'costa', how: 'libera la Spiaggia Grande' },
+  { id: 'eco', name: 'ECO', desc: 'L\'ultimo pugno della combo lancia anche un colpo di energia, gratis.', terminal: 'isola', how: 'libera il Villaggio dell\'Isola' },
   { id: 'turbo', name: 'OVERCLOCK+', desc: 'La barra dell\'overclock si riempie il doppio più in fretta.', wave: 8, how: 'resisti 8 ondate nel Sovraccarico' },
   { id: 'backup', name: 'BACKUP', desc: 'Una volta per combattimento, a vita zero torni con metà vita.', wave: 15, how: 'resisti 15 ondate nel Sovraccarico' },
 ];
@@ -108,6 +111,9 @@ export const FORMS = [
   { id: 'bug', name: 'BUG', desc: 'Salta altissimo, doppio salto, calci in picchiata.', need: 1, w: 26, h: 24, hp: 1.05, melee: 1.15, shot: 0.8, speed: 1.2, jump: 1.3, doubleJump: true },
   { id: 'spam', name: 'SPAM', desc: 'Spara buste a ventaglio. Non smette mai di scrivere.', need: 1, w: 30, h: 32, hp: 1.1, melee: 0.85, shot: 0.8, speed: 0.95, jump: 0.95, spread: true },
   { id: 'kernel', name: 'KERNEL PANIC', desc: 'Lo scatto lo teletrasporta alle spalle del nemico più vicino.', need: 1, w: 22, h: 42, hp: 1.25, melee: 1.3, shot: 1.2, speed: 1.15, jump: 1.05, freeDash: true, teleport: true },
+  { id: 'lag', name: 'LAG', desc: 'Lo scatto ferma il tempo: le entità e i loro colpi restano immobili per un attimo.', need: 1, w: 26, h: 38, hp: 1.15, melee: 1.1, shot: 1.1, speed: 1, jump: 1, freeDash: true, freeze: true },
+  { id: 'phishing', name: 'PHISHING', desc: 'I colpi sono ami: agganciano le entità e le tirano verso di te.', need: 1, w: 32, h: 26, hp: 1.1, melee: 1.15, shot: 1.05, speed: 1.05, jump: 1, hookShots: true },
+  { id: 'trojan', name: 'TROJAN', desc: 'Un cavallo di legno, pesante. I calci a terra mandano onde d\'urto.', need: 1, w: 40, h: 44, hp: 1.6, melee: 1.3, shot: 0.7, speed: 0.8, jump: 0.85, armor: 0.25, quake: true },
 ];
 
 export function formById(id) {

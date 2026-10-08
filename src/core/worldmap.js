@@ -268,7 +268,7 @@ export class WorldMap {
         parcheggio: [MALL.x + 59, MALL.z + 16],
         galleria: [MALL.x - 20, MALL.z],
       };
-      for (const id of Object.keys(TERMINALS)) {
+      for (const id of Object.keys(TERMINALS).filter((q) => tpos[q])) {
         const [x, y] = ow(...tpos[id]);
         const done = P.digitale?.terminals?.[id]?.cleared;
         g.fillStyle = done ? '#2ad8a8' : '#ff2ad8';
@@ -345,7 +345,7 @@ export class WorldMap {
     const term = P.digitale?.found ? Object.keys(TERMINALS).filter((id) => P.digitale?.terminals?.[id]?.cleared).length : null;
     const isl = P.isola;
     const bits = [`Luoghi visti: ${nSeen}/${places.length}`];
-    if (term !== null) bits.push(`Terminali liberati: ${term}/4`);
+    if (term !== null) bits.push(`Terminali liberati: ${term}/${Object.keys(TERMINALS).length}`);
     if (isl) bits.push(`Isola: pagine ${isl.pages?.length || 0}/5${isl.boss ? ' · gabbiano battuto' : ''}`);
     if (P.costa?.lain) bits.push('Spiaggia Grande: posto trovato');
     g.textAlign = 'left';

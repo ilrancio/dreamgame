@@ -61,12 +61,13 @@ function paint(c, data) {
   g.fillText('infila la chiavetta · scegli chi ci abita', 0, 48);
   g.restore();
 
-  // le entità: quattro in alto, tre in basso
-  const rows = [FORMS.slice(0, 4), FORMS.slice(4)];
+  // le entità: quattro in alto, poi file da tre
+  const rows = [FORMS.slice(0, 4), FORMS.slice(4, 7), FORMS.slice(7, 10)].filter((r) => r.length);
+  const rowH = rows.length > 2 ? 245 : 320;
   rows.forEach((row, r) => {
     const cell = 230;
     const x0 = (CW - cell * row.length) / 2;
-    const base = r === 0 ? 470 : 790;
+    const base = (rows.length > 2 ? 345 : 470) + r * rowH;
     row.forEach((fm, i) => {
       const cx = x0 + i * cell + cell / 2;
       const open = formUnlocked(data, fm.id);
@@ -77,12 +78,12 @@ function paint(c, data) {
         gl.addColorStop(0, 'rgba(255,228,42,0.35)');
         gl.addColorStop(1, 'rgba(255,228,42,0)');
         g.fillStyle = gl;
-        g.fillRect(cx - 150, base - 260, 300, 300);
+        g.fillRect(cx - 150, base - rowH + 60, 300, rowH - 20);
         g.strokeStyle = '#ffe42a';
         g.lineWidth = 6;
-        g.strokeRect(cx - 100, base - 240, 200, 262);
+        g.strokeRect(cx - 100, base - rowH + 80, 200, rowH - 58);
       }
-      const sc = Math.min(6.5, 200 / fm.h);
+      const sc = Math.min(6.5, (rowH - 120) / fm.h, 190 / fm.w);
       g.save();
       g.translate(cx, base);
       g.scale(sc, sc);
@@ -99,7 +100,7 @@ function paint(c, data) {
       g.fillText(label, cx, base + 46);
       g.font = '600 20px Inter, sans-serif';
       g.fillStyle = active ? '#ffe42a' : open ? '#7af8ff' : '#8a7aa8';
-      g.fillText(active ? 'NELLA CHIAVETTA' : open ? '' : `dati ${Math.min(formData(data, fm.id), fm.need)}/${fm.need}`, cx, base + 72);
+      g.fillText(active ? 'NELLA CHIAVETTA' : open ? '' : `dati ${Math.min(formData(data, fm.id), fm.need)}/${fm.need}`, cx, base + 70);
     });
   });
   // la freccia verso la fessura
