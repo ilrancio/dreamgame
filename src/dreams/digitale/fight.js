@@ -17,6 +17,10 @@ const ENEMY = {
   glitch: { w: 16, h: 18, hp: 26, xp: 8, color: '#ff3ad8' },
   drone: { w: 18, h: 14, hp: 18, xp: 10, color: '#3af0ff', fly: true },
   firewall: { w: 26, h: 40, hp: 70, xp: 22, color: '#ff8a2a', shield: true },
+  // VERME: scava sotto il pavimento ed esce sotto i tuoi piedi; si colpisce solo quando è fuori
+  worm: { w: 14, h: 26, hp: 34, xp: 12, color: '#a86aff' },
+  // FINESTRA: un errore che si apre a mezz'aria e sforna glitch finché non la chiudi
+  popup: { w: 34, h: 26, hp: 44, xp: 14, color: '#e8ecf4', fly: true },
 };
 
 // I boss: uno per terminale, ognuno con le sue mosse
@@ -29,17 +33,19 @@ const BOSS = {
 
 export class Fight {
   // def: { name, diff, boss, theme }; hero: dati della chiavetta; sfx(nome)
-  constructor(def, hero, sfx, formId = 'scintilla') {
+  constructor(def, hero, sfx, formId = 'scintilla', modules = []) {
     this.def = def;
+    this.mods = new Set(modules);
+    this.arena = !!def.arena;
     this.sfx = sfx;
     this.diff = def.diff;
     this.form = formById(formId);
     this.st = heroStats(hero, this.form);
     this.killsBy = {};
     this.level = hero.level;
-    this.len = 1300 + def.diff * 220;
+    this.len = this.arena ? FW : 1300 + def.diff * 220;
     const st = this.st;
-    this.p = { x: 60, y: GY, vx: 0, vy: 0, w: this.form.w, h: this.form.h, floaty: !!this.form.float, facing: 1, hp: st.hp, maxHp: st.hp, energy: 100, ground: true, state: 'idle', t: 0, combo: 0, comboT: 0, inv: 0, flash: 0, shotCd: 0, dashCd: 0, hitId: 0 };
+    this.p = { x: 60, y: GY, vx: 0, vy: 0, w: this.form.w, h: this.form.h, floaty: !!this.form.float, facing: 1, hp: st.hp, maxHp: st.hp, energy: 100, ground: true, state: 'idle', t: 0, combo: 0, comboT: 0, inv: 0, flash: 0, shotCd: 0, dashCd: 0, hitId: 0, oc: 0, ocT: 0, blockT: 0, dropT: 0 };
     this.enemies = [];
     this.shots = [];
     this.parts = [];
@@ -51,8 +57,14 @@ export class Fight {
     this.xp = 0;
     this.kills = 0;
     this.t = 0;
-    this.banner = { text: `${def.name.toUpperCase()}`, sub: 'entità rilevate', t: 2.2 };
-    this.waves = this.makeWaves();
+    this.banner = { text: `${def.name.toUpperCase()}`, sub: this.arena ? 'sovraccarico · resisti più che puoi' : 'entità rilevate', t: 2.2 };
+    this.pickups = [];
+    this.platforms = this.makePlatforms();
+    this.waves = this.arena ? [] : this.makeWaves();
+    this.waveN = 0;
+    this.wavesDone = 0;
+    this.nextWaveT = 2.4;
+    if (this.arena) this.lock = 0;
     this.boss = null;
     this.bossStarted = false;
   }
@@ -67,22 +79,66 @@ export class Fight {
       for (let k = 0; k < 2 + d + i; k++) list.push({ type: 'glitch', side: k % 3 === 2 ? -1 : 1, delay: k * rnd(0.5, 0.9) });
       if (i >= 1) for (let k = 0; k < 1 + Math.floor((d + i) / 3); k++) list.push({ type: 'drone', side: 1, delay: 1 + k * 1.4 });
       if (d >= 2 && i === n - 1) list.push({ type: 'firewall', side: 1, delay: 2 });
+      // i vermi dal borgo in poi, le finestre dal parcheggio
+      if (d >= 2 && i >= 1) list.push({ type: 'worm', side: -1, delay: 1.8 });
+      if (d >= 3 && i >= 1 && i % 2 === 1) list.push({ type: 'popup', side: 1, delay: 2.4 });
       waves.push({ at, list, started: false, done: false, pending: [] });
     }
     return waves;
+  }
+
+  // Lastre di dati sospese: ci si sale (e si scende con S + salto), da lassù si
+  // arriva ai droni e alle finestre
+  makePlatforms() {
+    if (this.arena) return [{ x: 100, y: 180, w: 84 }, { x: FW - 100, y: 180, w: 84 }, { x: FW / 2, y: 152, w: 76 }];
+    const list = [];
+    for (let x = 220; x < this.len - 420; x += rnd(150, 230)) list.push({ x, y: Math.random() < 0.55 ? 180 : 152, w: rnd(56, 92) });
+    return list;
+  }
+
+  // il Sovraccarico: ondate senza fine, un boss ogni cinque
+  startArenaWave() {
+    const n = ++this.waveN;
+    this.diff = this.def.diff + Math.floor((n - 1) / 4);
+    const list = [];
+    for (let k = 0; k < Math.min(9, 2 + n); k++) list.push({ type: 'glitch', side: k % 2 ? -1 : 1, delay: k * rnd(0.4, 0.8) });
+    for (let k = 0; k < Math.min(4, Math.floor(n / 2)); k++) list.push({ type: 'drone', side: 1, delay: 1 + k * 1.2 });
+    for (let k = 0; k < Math.min(3, Math.floor(n / 3)); k++) list.push({ type: 'worm', side: -1, delay: 1.5 + k * 1.6 });
+    for (let k = 0; k < Math.min(2, Math.floor(n / 4)); k++) list.push({ type: 'popup', side: 1, delay: 2 + k * 2 });
+    for (let k = 0; k < Math.min(2, Math.floor(n / 6)); k++) list.push({ type: 'firewall', side: k % 2 ? 1 : -1, delay: 2.5 + k });
+    this.arenaWave = { pending: list, boss: n % 5 === 0 };
+    this.banner = { text: `ONDATA ${n}`, sub: n % 5 === 0 ? 'arriva il boss' : `record ${this.def.best || 0}`, t: 1.3 };
+    this.sfx('alert');
   }
 
   spawn(type, side) {
     const e = ENEMY[type];
     const x = side > 0 ? this.camX + FW + 20 : this.camX - 20;
     const hp = e.hp * (0.8 + this.diff * 0.35);
-    this.enemies.push({ type, x, y: e.fly ? rnd(120, 150) : GY, vx: 0, vy: 0, w: e.w, h: e.h, hp, maxHp: hp, facing: -side, state: 'walk', t: 0, cd: rnd(0.5, 1.5), flash: 0, shield: e.shield ? 3 : 0, xp: e.xp * this.diff, color: e.color, fly: !!e.fly, phase: Math.random() * 6, hitBy: -1 });
+    const o = { type, x, y: e.fly ? rnd(120, 150) : GY, vx: 0, vy: 0, w: e.w, h: e.h, hp, maxHp: hp, facing: -side, state: 'walk', t: 0, cd: rnd(0.5, 1.5), flash: 0, shield: e.shield ? 3 : 0, xp: e.xp * this.diff, color: e.color, fly: !!e.fly, phase: Math.random() * 6, hitBy: -1 };
+    if (type === 'worm') {
+      // parte già sottoterra, dentro lo schermo
+      o.x = this.camX + (side > 0 ? FW - 40 : 40);
+      o.alpha = 0.15;
+      o.cd = rnd(1, 2);
+      o.inside = true;
+    } else if (type === 'popup') {
+      o.x = this.camX + rnd(90, FW - 90);
+      o.y = rnd(128, 142);
+      o.state = 'open';
+      o.cd = 1.4;
+      o.spawned = 0;
+      o.inside = true;
+    }
+    this.enemies.push(o);
+    return o;
   }
 
   spawnBoss() {
     const b = BOSS[this.def.boss];
     const hp = b.hp * (1 + (this.level - 1) * 0.04);
-    this.boss = { type: 'boss', kind: this.def.boss, def: b, x: this.camX + FW + 30, y: GY, vx: 0, vy: 0, w: b.w, h: b.h, hp, maxHp: hp, facing: -1, state: 'enter', t: 0, cd: 1.2, flash: 0, shield: b.shield ? 4 : 0, xp: 90 * this.diff + 30, color: b.color, move: null, mi: 0, hitDone: false, ground: true, hitBy: -1, alpha: 1 };
+    const hp2 = this.arena ? hp * (0.6 + this.waveN * 0.08) : hp;
+    this.boss = { type: 'boss', kind: this.def.boss, def: b, x: this.camX + FW + 30, y: GY, vx: 0, vy: 0, w: b.w, h: b.h, hp: hp2, maxHp: hp2, noPlat: true, facing: -1, state: 'enter', t: 0, cd: 1.2, flash: 0, shield: b.shield ? 4 : 0, xp: 90 * this.diff + 30, color: b.color, move: null, mi: 0, hitDone: false, ground: true, hitBy: -1, alpha: 1 };
     this.enemies.push(this.boss);
     this.banner = { text: b.name, sub: 'boss del terminale', t: 2.4 };
     this.sfx('boss');
@@ -105,6 +161,7 @@ export class Fight {
     this.updateWaves(dt);
     for (const e of this.enemies) (e.type === 'boss' ? this.updateBoss : this.updateEnemy).call(this, e, dt);
     this.updateShots(dt);
+    this.updatePickups(dt);
     // particelle e numeri
     for (const q of this.parts) {
       q.x += q.vx * dt;
@@ -130,7 +187,11 @@ export class Fight {
         this.burst(e.x, e.y - e.h / 2, e.color, e.type === 'boss' ? 60 : 18);
         this.sfx(e.type === 'boss' ? 'bossdown' : 'delete');
         this.nums.push({ x: e.x, y: e.y - e.h - 6, text: `+${e.xp} XP`, color: '#ffe42a', life: 1.2 });
-        if (e.type === 'boss') {
+        this.drop(e);
+        if (e.type === 'boss' && this.arena) {
+          this.boss = null;
+          this.shake = 2;
+        } else if (e.type === 'boss') {
           this.endT = 0;
           this.won = true;
           this.shake = 2;
@@ -142,6 +203,15 @@ export class Fight {
     let target = this.p.x - 180;
     if (this.lock !== null) target = this.lock;
     this.camX += (Math.max(0, Math.min(this.len - FW, target)) - this.camX) * Math.min(1, dt * 6);
+    // BACKUP: una seconda possibilità
+    if (this.p.hp <= 0 && this.endT === undefined && this.mods.has('backup') && !this.p.usedBackup) {
+      this.p.usedBackup = true;
+      this.p.hp = this.p.maxHp * 0.5;
+      this.p.inv = 1.6;
+      this.banner = { text: 'BACKUP', sub: 'ripristino dalla copia di sicurezza', t: 1.4 };
+      this.burst(this.p.x, this.p.y - 14, '#4aff8a', 30);
+      this.sfx('clear');
+    }
     if (this.p.hp <= 0 && this.endT === undefined) {
       this.endT = 0;
       this.won = false;
@@ -162,7 +232,13 @@ export class Fight {
     p.shotCd -= dt;
     p.dashCd -= dt;
     p.comboT -= dt;
+    p.dropT -= dt;
     p.energy = Math.min(100, p.energy + st.regen * dt);
+    if (p.ocT > 0) {
+      p.ocT -= dt;
+      p.energy = 100;
+      if (Math.random() < 0.6) this.parts.push({ x: p.x + rnd(-8, 8), y: p.y - rnd(0, p.h), vx: rnd(-20, 20), vy: rnd(-80, -30), life: 0.4, color: Math.random() < 0.5 ? '#ff3ad8' : '#ffe42a', size: 2 });
+    }
     if (this.endT !== undefined) {
       p.vx *= 0.9;
       p.state = this.won ? 'win' : 'hurt';
@@ -171,14 +247,22 @@ export class Fight {
     }
     const busy = p.state === 'punch' || p.state === 'kick' || p.state === 'hurt' || p.state === 'dash';
     // parata
-    if (!busy && k.block && p.ground) {
+    if (!busy && k.block && p.ground && k.jump && p.y < GY - 1) {
+      // giù dalla lastra
+      p.dropT = 0.25;
+      p.ground = false;
+      p.vy = 40;
+    } else if (!busy && k.block && p.ground) {
+      if (p.state !== 'block') p.blockT = 0;
       p.state = 'block';
       p.vx = 0;
     } else if (p.state === 'block') p.state = 'idle';
+    p.blockT += dt;
+    if (k.super && p.oc >= 100 && p.ocT <= 0 && p.state !== 'hurt') this.overclock();
     if (!busy && p.state !== 'block') {
       const dir = (k.right ? 1 : 0) - (k.left ? 1 : 0);
       const F = this.form;
-      p.vx = dir * 115 * F.speed;
+      p.vx = dir * 115 * F.speed * (p.ocT > 0 ? 1.2 : 1);
       if (dir) p.facing = dir;
       p.state = !p.ground ? 'jump' : dir ? 'run' : 'idle';
       if (p.ground) p.jumps = 0;
@@ -213,17 +297,17 @@ export class Fight {
     // colpo di energia (anche mentre ti muovi)
     if (k.shoot && p.shotCd <= 0 && p.energy >= st.shotCost && p.state !== 'hurt' && p.state !== 'block') {
       p.shotCd = st.shotCd;
-      p.energy -= st.shotCost;
+      if (p.ocT <= 0) p.energy -= st.shotCost;
       const y = p.y - Math.min(17, p.h * 0.6);
       const col = { glitch: '#ff3ad8', drone: '#3af0ff', firewall: '#ff8a2a', bug: '#6aff4a', spam: '#ffe42a', kernel: '#ff3a3a' }[this.form.id] || '#7af8ff';
       // il colpo si orienta da solo verso l'entità più vicina davanti a te (anche i droni in volo)
       let aim = 0;
-      const ahead = this.enemies.filter((e) => e.state !== 'enter' && Math.sign(e.x - p.x) === p.facing && Math.abs(e.x - p.x) < 320).sort((q, r) => Math.abs(q.x - p.x) - Math.abs(r.x - p.x))[0];
+      const ahead = this.enemies.filter((e) => e.state !== 'enter' && (e.alpha ?? 1) > 0.5 && Math.sign(e.x - p.x) === p.facing && Math.abs(e.x - p.x) < 320).sort((q, r) => Math.abs(q.x - p.x) - Math.abs(r.x - p.x))[0];
       if (ahead) aim = Math.max(-0.7, Math.min(0.7, Math.atan2(ahead.y - ahead.h / 2 - y, Math.abs(ahead.x - p.x))));
       const angles = this.form.spread ? [-0.2, 0, 0.2] : [0];
       for (const a0 of angles) {
         const a = a0 + aim;
-        this.shots.push({ x: p.x + p.facing * (p.w / 2 + 3), y, vx: Math.cos(a) * p.facing * 330, vy: Math.sin(a) * 330, from: 'hero', dmg: st.shot * (this.form.spread ? 0.75 : 1), r: this.form.id === 'drone' ? 4 : 3, life: 1.4, color: col, env: this.form.id === 'spam' });
+        this.shots.push({ x: p.x + p.facing * (p.w / 2 + 3), y, vx: Math.cos(a) * p.facing * 330, vy: Math.sin(a) * 330, from: 'hero', dmg: st.shot * (this.form.spread ? 0.75 : 1), r: this.form.id === 'drone' ? 4 : 3, life: 1.4, color: col, env: this.form.id === 'spam', pierce: this.mods.has('perforante') || p.ocT > 0 });
       }
       if (st.doubleShot) this.shots.push({ x: p.x + p.facing * 4, y: y + 6, vx: p.facing * 310, vy: 0, from: 'hero', dmg: st.shot * 0.7, r: 2, life: 1.4, color: col });
       this.sfx('shot');
@@ -243,6 +327,7 @@ export class Fight {
             e.hitBy = p.hitId;
             const dmg = kick ? st.kick : st.punch * (p.combo === 3 ? 1.6 : 1);
             this.damageEnemy(e, dmg, p.facing * (kick ? 160 : 60), kick ? -120 : 0, p.facing, kick);
+            if (this.mods.has('vampiro')) p.hp = Math.min(p.maxHp, p.hp + dmg * 0.12);
           }
         }
       }
@@ -264,6 +349,80 @@ export class Fight {
     p.x = Math.max(minX, Math.min(maxX, p.x));
   }
 
+  // OVERCLOCK: la barra si riempie colpendo, venendo colpiti e con le parate
+  // perfette. Piena, con I: un'onda che spazza lo schermo e sei secondi in cui
+  // colpisci più forte, corri di più, spari senza consumare e i colpi trapassano.
+  gainOc(v) {
+    const p = this.p;
+    if (p.ocT > 0) return;
+    const was = p.oc;
+    p.oc = Math.min(100, p.oc + v * (this.mods.has('turbo') ? 2 : 1));
+    if (was < 100 && p.oc >= 100) {
+      this.nums.push({ x: p.x, y: p.y - p.h - 14, text: 'OVERCLOCK PRONTO [I]', color: '#ff3ad8', life: 1.4 });
+      this.sfx('ready');
+    }
+  }
+
+  overclock() {
+    const p = this.p;
+    p.oc = 0;
+    p.ocT = 6;
+    p.inv = Math.max(p.inv, 0.4);
+    this.shake = 2;
+    this.hitstop = 0.08;
+    this.ring = { x: p.x, y: p.y - p.h / 2, t: 0 };
+    this.sfx('overclock');
+    this.nums.push({ x: p.x, y: p.y - p.h - 14, text: 'OVERCLOCK!', color: '#ffe42a', life: 1.2 });
+    // l'onda: i proiettili nemici si dissolvono, le entità vengono spinte via
+    for (const s of this.shots) if (s.from === 'enemy') {
+      s.life = 0;
+      this.burst(s.x, s.y, s.color, 3);
+    }
+    for (const e of this.enemies) {
+      if (e.state === 'enter' || (e.alpha ?? 1) < 0.5 || Math.abs(e.x - p.x) > FW) continue;
+      const dir = Math.sign(e.x - p.x) || 1;
+      this.damageEnemy(e, this.st.kick * 1.2, dir * 220, -160, dir, true);
+    }
+  }
+
+  // i frammenti che lasciano le entità: vita (verde), energia (ciano), overclock (magenta)
+  drop(e) {
+    const n = e.type === 'boss' ? 4 : Math.random() < (this.mods.has('magnete') ? 0.6 : 0.35) ? 1 : 0;
+    for (let i = 0; i < n; i++) {
+      const r = Math.random();
+      const kind = e.type === 'boss' ? (i < 2 ? 'hp' : 'oc') : r < 0.4 ? 'hp' : r < 0.72 ? 'en' : 'oc';
+      this.pickups.push({ kind, x: e.x, y: Math.min(GY, e.y - e.h / 2), vx: rnd(-60, 60), vy: rnd(-220, -120), w: 8, h: 8, life: 9, ground: false });
+    }
+  }
+
+  updatePickups(dt) {
+    const p = this.p;
+    for (const q of this.pickups) {
+      q.life -= dt;
+      const dx = p.x - q.x;
+      const dy = p.y - p.h / 2 - q.y;
+      if (this.mods.has('magnete') && Math.hypot(dx, dy) < 170) {
+        q.x += Math.sign(dx) * 190 * dt;
+        q.y += Math.sign(dy) * 120 * dt;
+        q.vy = 0;
+      } else {
+        q.vx *= 0.96;
+        this.integrate(q, dt);
+      }
+      q.x = Math.max(this.camX + 6, Math.min(this.camX + FW - 6, q.x));
+      if (overlap(q, p)) {
+        q.life = 0;
+        const label = { hp: '+VITA', en: '+ENERGIA', oc: '+OVERCLOCK' }[q.kind];
+        if (q.kind === 'hp') p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.12);
+        else if (q.kind === 'en') p.energy = 100;
+        else this.gainOc(18);
+        this.nums.push({ x: p.x, y: p.y - p.h - 8, text: label, color: { hp: '#4aff8a', en: '#3af0ff', oc: '#ff3ad8' }[q.kind], life: 0.8 });
+        this.sfx('pickup');
+      }
+    }
+    this.pickups = this.pickups.filter((q) => q.life > 0);
+  }
+
   attack(kind) {
     const p = this.p;
     p.hitId++;
@@ -279,11 +438,17 @@ export class Fight {
   integrate(o, dt) {
     if (!o.fly) {
       // il DRONE plana quando scende
+      const prevY = o.y;
       o.vy += (o.floaty && o.vy > 0 ? G * 0.3 : G) * dt;
       o.y += o.vy * dt;
-      if (o.y >= GY) {
+      // le lastre si attraversano da sotto e ci si posa sopra
+      let floor = GY;
+      if (o.vy >= 0 && !(o.dropT > 0) && !o.noPlat) {
+        for (const pl of this.platforms) if (Math.abs(o.x - pl.x) < pl.w / 2 && prevY <= pl.y + 0.5 && o.y >= pl.y) floor = Math.min(floor, pl.y);
+      }
+      if (o.y >= floor) {
         if (!o.ground && o.vy > 200 && o.onLand) o.onLand();
-        o.y = GY;
+        o.y = floor;
         o.vy = 0;
         o.ground = true;
       } else o.ground = false;
@@ -293,6 +458,7 @@ export class Fight {
 
   updateWaves(dt) {
     const p = this.p;
+    if (this.arena) return this.updateArena(dt);
     for (const w of this.waves) {
       if (!w.started && p.x >= w.at && !this.lock) {
         w.started = true;
@@ -324,7 +490,38 @@ export class Fight {
     }
   }
 
+  updateArena(dt) {
+    const w = this.arenaWave;
+    if (!w) {
+      this.nextWaveT -= dt;
+      if (this.nextWaveT <= 0) this.startArenaWave();
+      return;
+    }
+    for (const q of w.pending) {
+      q.delay -= dt;
+      if (q.delay <= 0 && !q.spawned) {
+        q.spawned = true;
+        this.spawn(q.type, q.side);
+      }
+    }
+    if (w.boss && !w.bossOut && w.pending.every((q) => q.spawned)) {
+      w.bossOut = true;
+      this.spawnBoss();
+    }
+    if (w.pending.every((q) => q.spawned) && (!w.boss || w.bossOut) && this.enemies.length === 0) {
+      this.arenaWave = null;
+      this.wavesDone = this.waveN;
+      this.nextWaveT = 2.2;
+      // tra un'ondata e l'altra si tira il fiato
+      this.p.hp = Math.min(this.p.maxHp, this.p.hp + this.p.maxHp * 0.15);
+      this.nums.push({ x: this.p.x, y: this.p.y - this.p.h - 10, text: `ONDATA ${this.waveN} SUPERATA`, color: '#4aff8a', life: 1.4 });
+      this.sfx('clear');
+    }
+  }
+
   damageEnemy(e, dmg, kbx, kby, dir, kick = false, shot = false) {
+    if (this.p.ocT > 0) dmg *= 1.6;
+    this.gainOc(dmg * 0.3);
     // lo scudo del firewall: da davanti assorbe quasi tutto, i calci lo rompono
     const front = Math.sign(e.facing) === -Math.sign(dir) || dir === 0;
     if (e.shield > 0 && front) {
@@ -347,8 +544,14 @@ export class Fight {
         e.ground = false;
       }
     }
-    if (e.type !== 'boss') e.state = 'hit';
-    e.t = 0;
+    if (e.type === 'popup') e.vx = 0;
+    if (e.type === 'worm') {
+      e.vx = 0;
+      e.flash = 0.12;
+    } else {
+      if (e.type !== 'boss') e.state = 'hit';
+      e.t = 0;
+    }
     this.hitstop = kick ? 0.06 : 0.035;
     this.shake = Math.max(this.shake, kick ? 0.9 : 0.4);
     this.burst(e.x - dir * 4, e.y - e.h / 2, '#ffffff', kick ? 8 : 4);
@@ -356,10 +559,37 @@ export class Fight {
     this.sfx(kick ? 'hit2' : 'hit');
   }
 
-  hurtHero(dmg, dir) {
+  // src: chi colpisce (un'entità o un proiettile). Restituisce 'parry' se la parata è perfetta.
+  hurtHero(dmg, dir, src = null) {
     const p = this.p;
     dmg *= 0.75;
-    if (p.inv > 0 || this.endT !== undefined) return;
+    if (p.inv > 0 || this.endT !== undefined) return null;
+    // PARATA PERFETTA: alzata proprio un attimo prima del colpo
+    const parryWin = this.mods.has('specchio') ? 0.36 : 0.18;
+    if (p.state === 'block' && Math.sign(dir) === -p.facing && p.blockT < parryWin) {
+      this.sfx('parry');
+      this.hitstop = 0.12;
+      this.shake = Math.max(this.shake, 0.8);
+      this.gainOc(22);
+      p.energy = Math.min(100, p.energy + 30);
+      this.burst(p.x + p.facing * 10, p.y - 16, '#ffffff', 12);
+      this.nums.push({ x: p.x, y: p.y - p.h - 10, text: 'PERFETTA!', color: '#ffffff', life: 0.9 });
+      if (src && src.hp !== undefined) {
+        // chi ti ha colpito resta stordito, scoperto
+        if (src.type === 'boss') {
+          src.state = 'recover';
+          src.t = -0.5;
+          src.vx = -dir * 120;
+        } else if (src.type !== 'worm') {
+          src.state = 'hit';
+          src.t = -0.7;
+          src.vx = -dir * 180;
+        }
+        src.flash = 0.3;
+      }
+      return 'parry';
+    }
+    this.gainOc(dmg * 0.45);
     // il FIREWALL è corazzato davanti
     if (this.form.armor && Math.sign(dir) === -p.facing) dmg *= 1 - this.form.armor;
     if (p.state === 'block' && Math.sign(dir) === -p.facing) {
@@ -380,6 +610,7 @@ export class Fight {
     p.flash = 0.2;
     this.shake = Math.max(this.shake, 1);
     this.nums.push({ x: p.x, y: p.y - 32, text: `-${Math.round(dmg)}`, color: '#ff5a5a', life: 0.7 });
+    return 'hit';
   }
 
   updateEnemy(e, dt) {
@@ -396,6 +627,12 @@ export class Fight {
       e.facing = dir;
       if (e.state === 'walk') {
         e.vx = Math.abs(dx) > 18 ? dir * (42 + this.diff * 8) : 0;
+        // sali sulla lastra? ti seguono
+        if (p.y < e.y - 24 && Math.abs(dx) < 70 && e.ground && e.cd <= 0) {
+          e.vy = -410;
+          e.ground = false;
+          e.cd = 0.8;
+        }
         if (Math.abs(dx) < 26 && e.cd <= 0 && Math.abs(p.y - e.y) < 30) {
           e.state = 'windup';
           e.t = 0;
@@ -409,7 +646,7 @@ export class Fight {
       } else if (e.state === 'lunge') {
         if (!e.hitDone && overlap(e, p)) {
           e.hitDone = true;
-          this.hurtHero(6 + this.diff * 2, dir);
+          this.hurtHero(6 + this.diff * 2, dir, e);
         }
         if (e.t > 0.22) {
           e.state = 'walk';
@@ -451,21 +688,89 @@ export class Fight {
         const box = { x: e.x + e.facing * 22, y: GY, w: 30, h: 30 };
         if (!e.hitDone && overlap(box, p)) {
           e.hitDone = true;
-          this.hurtHero(12 + this.diff * 3, dir);
+          this.hurtHero(12 + this.diff * 3, dir, e);
         }
         if (e.t > 0.3) {
           e.state = 'walk';
           e.cd = 1.6;
         }
       }
+    } else if (e.type === 'worm') {
+      this.updateWorm(e, dt, dx, dir);
+    } else if (e.type === 'popup') {
+      this.updatePopup(e, dt);
     }
-    if (!e.fly) this.integrate(e, dt);
+    if (e.type === 'worm' || e.type === 'popup') {
+      // non cadono e non volano via
+    } else if (!e.fly) this.integrate(e, dt);
     else e.x += e.vx * dt;
     // una volta entrate nello schermo, le entità non ne escono più
     const lo = this.camX + 10;
     const hi = this.camX + FW - 10;
     if (e.inside) e.x = Math.max(lo, Math.min(hi, e.x));
     else if (e.x > lo && e.x < hi) e.inside = true;
+  }
+
+  // il VERME: sotto il pavimento ti segue (si vede solo un'increspatura), poi
+  // l'increspatura lampeggia, ed esce. Fuori è scoperto per un po', poi rientra.
+  updateWorm(e, dt, dx, dir) {
+    const p = this.p;
+    e.facing = dir;
+    if (e.state === 'walk' || e.state === 'hit') {
+      e.state = 'walk';
+      e.alpha = 0.15;
+      e.vx = Math.abs(dx) > 4 ? dir * (70 + this.diff * 6) : 0;
+      e.x += e.vx * dt;
+      if ((Math.abs(dx) < 10 || e.cd <= 0) && e.cd < 1) {
+        e.state = 'rise';
+        e.t = 0;
+        e.vx = 0;
+      }
+    } else if (e.state === 'rise') {
+      if (e.t > 0.55) {
+        e.state = 'up';
+        e.t = 0;
+        e.alpha = 1;
+        e.hitDone = false;
+        this.burst(e.x, GY - 2, '#a86aff', 10);
+        this.sfx('slam');
+      }
+    } else if (e.state === 'up') {
+      if (!e.hitDone && e.t < 0.18 && overlap(e, p)) {
+        e.hitDone = true;
+        p.vy = -260;
+        p.ground = false;
+        this.hurtHero(9 + this.diff * 2.5, dir, e);
+      }
+      if (e.t > 1.4) {
+        e.state = 'walk';
+        e.t = 0;
+        e.cd = rnd(1.6, 2.6);
+        this.burst(e.x, GY - 2, '#5a3a8a', 6);
+      }
+    }
+    e.y = GY;
+  }
+
+  // la FINESTRA: si apre, poi ogni tanto ne cade fuori un glitch (al massimo tre)
+  updatePopup(e, dt) {
+    e.vx = 0;
+    if (e.state === 'open') {
+      if (e.t > 0.35) e.state = 'walk';
+      return;
+    }
+    if (e.state === 'hit' && e.t > 0.2) e.state = 'walk';
+    if (e.cd <= 0 && e.spawned < 3) {
+      e.cd = Math.max(2, 3.6 - this.diff * 0.3);
+      e.spawned++;
+      const g = this.spawn('glitch', 1);
+      g.x = e.x;
+      g.y = e.y;
+      g.vy = -80;
+      g.ground = false;
+      g.inside = true;
+      this.sfx('eshot');
+    }
   }
 
   updateBoss(b, dt) {
@@ -514,7 +819,7 @@ export class Fight {
     // contatto durante le mosse d'attacco
     if (b.state === 'move' && ['dash', 'hop', 'slam'].includes(b.move) && !b.hitDone && overlap(b, p)) {
       b.hitDone = true;
-      this.hurtHero(10 + this.diff * 3.5, Math.sign(b.vx) || dir);
+      this.hurtHero(10 + this.diff * 3.5, Math.sign(b.vx) || dir, b);
     }
     b.x = Math.max(this.camX + 20, Math.min(this.camX + FW - 20, b.x));
   }
@@ -599,14 +904,26 @@ export class Fight {
       const box = { x: s.x, y: s.y + s.r, w: s.r * 2, h: s.r * 2 };
       if (s.from === 'hero') {
         for (const e of this.enemies) {
-          if (s.life > 0 && e.state !== 'enter' && (e.alpha ?? 1) > 0.5 && overlap(box, e)) {
-            s.life = 0;
+          if (s.life > 0 && e.state !== 'enter' && (e.alpha ?? 1) > 0.5 && !s.hit?.has(e) && overlap(box, e)) {
+            if (s.pierce) (s.hit ??= new Set()).add(e);
+            else s.life = 0;
             this.damageEnemy(e, s.dmg, Math.sign(s.vx) * 40, 0, Math.sign(s.vx), false, true);
           }
         }
       } else if (s.life > 0 && overlap(box, p)) {
-        s.life = 0;
-        this.hurtHero(s.dmg, Math.sign(s.vx) || (p.x > s.x ? 1 : -1));
+        const r = this.hurtHero(s.dmg, Math.sign(s.vx) || (p.x > s.x ? 1 : -1), s);
+        if (r === 'parry') {
+          // respinto: torna indietro, ed è tuo
+          const k = this.mods.has('specchio') ? 1.7 : 1.3;
+          s.from = 'hero';
+          s.vx = -(s.vx || p.facing * 100) * k;
+          s.vy = -Math.abs(s.vy) * 0.3;
+          s.grav = false;
+          s.ground = false;
+          s.dmg *= 2.5;
+          s.life = 1.5;
+          s.color = '#7af8ff';
+        } else s.life = 0;
       }
     }
     this.shots = this.shots.filter((s) => s.life > 0);
@@ -625,9 +942,27 @@ export class Fight {
     this.drawBackground(g, t);
     g.save();
     g.translate(-Math.round(this.camX), 0);
+    this.drawPlatforms(g, t);
+    for (const q of this.pickups) this.drawPickup(g, q, t);
     for (const s of this.shots) this.drawShot(g, s, t);
     for (const e of this.enemies) e.type === 'boss' ? this.drawBoss(g, e, t) : this.drawEnemy(g, e, t);
+    if (this.p.ocT > 0) {
+      // l'aura dell'overclock
+      const p = this.p;
+      g.fillStyle = `rgba(255,58,216,${0.18 + Math.sin(t * 20) * 0.08})`;
+      g.fillRect(p.x - p.w / 2 - 5, p.y - p.h - 5, p.w + 10, p.h + 6);
+    }
     this.drawHero(g, t);
+    if (this.ring) {
+      this.ring.t += 1 / 60;
+      const r = this.ring.t * 600;
+      g.strokeStyle = `rgba(255,228,42,${Math.max(0, 1 - this.ring.t * 2)})`;
+      g.lineWidth = 3;
+      g.beginPath();
+      g.arc(this.ring.x, this.ring.y, r, 0, Math.PI * 2);
+      g.stroke();
+      if (this.ring.t > 0.5) this.ring = null;
+    }
     for (const q of this.parts) {
       if (q.ghost) {
         g.fillStyle = q.color;
@@ -738,6 +1073,54 @@ export class Fight {
     }
   }
 
+  drawPlatforms(g, t) {
+    for (const pl of this.platforms) {
+      const x = Math.round(pl.x - pl.w / 2);
+      g.fillStyle = 'rgba(58,240,255,0.16)';
+      g.fillRect(x, pl.y, Math.round(pl.w), 5);
+      g.fillStyle = '#3af0ff';
+      g.fillRect(x, pl.y, Math.round(pl.w), 1);
+      // i dati che colano sotto la lastra
+      for (let i = 0; i < pl.w; i += 9) {
+        const k = (t * 30 + i * 7) % 18;
+        g.fillStyle = 'rgba(58,240,255,0.25)';
+        g.fillRect(x + i + 2, pl.y + 5 + k, 1, 3);
+      }
+    }
+  }
+
+  drawPickup(g, q, t) {
+    if (q.life < 2 && Math.floor(t * 12) % 2) return;
+    const col = { hp: '#4aff8a', en: '#3af0ff', oc: '#ff3ad8' }[q.kind];
+    const x = Math.round(q.x);
+    const y = Math.round(q.y) - 5 + Math.round(Math.sin(t * 6 + q.x) * 1.5);
+    g.fillStyle = 'rgba(0,0,0,0.5)';
+    g.fillRect(x - 5, y - 4, 10, 10);
+    g.fillStyle = col;
+    if (q.kind === 'hp') {
+      g.fillRect(x - 1, y - 3, 3, 9);
+      g.fillRect(x - 4, y, 9, 3);
+    } else if (q.kind === 'en') {
+      g.beginPath();
+      g.moveTo(x + 1, y - 4);
+      g.lineTo(x - 3, y + 2);
+      g.lineTo(x, y + 2);
+      g.lineTo(x - 1, y + 6);
+      g.lineTo(x + 3, y);
+      g.lineTo(x, y);
+      g.closePath();
+      g.fill();
+    } else {
+      g.beginPath();
+      g.moveTo(x, y - 4);
+      g.lineTo(x + 4, y + 1);
+      g.lineTo(x, y + 6);
+      g.lineTo(x - 4, y + 1);
+      g.closePath();
+      g.fill();
+    }
+  }
+
   drawHero(g, t) {
     const p = this.p;
     if (p.inv > 0 && p.state !== 'dash' && Math.floor(t * 20) % 2) return;
@@ -844,6 +1227,53 @@ export class Fight {
       g.fillRect(x - 3, y - 2, 6, 4);
       g.fillStyle = '#ff3a3a';
       g.fillRect(x + e.facing * 1 - 1, y - 1, 2, 2);
+    } else if (e.type === 'worm') {
+      if (e.state === 'walk' || e.state === 'rise') {
+        // sotto il pavimento: un'increspatura di pixel che ti segue
+        const warn = e.state === 'rise' && Math.floor(t * 16) % 2;
+        g.fillStyle = warn ? '#ffffff' : 'rgba(168,106,255,0.8)';
+        for (let i = -3; i <= 3; i++) g.fillRect(x + i * 3 - 1, y - 2 - Math.round(Math.abs(Math.sin(t * 14 + i)) * (e.state === 'rise' ? 5 : 2)), 2, 2);
+        return;
+      }
+      // fuori: un verme a segmenti, a bocca aperta
+      const rise = Math.min(1, e.t / 0.12);
+      for (let k = 0; k < 4; k++) {
+        const sy = y - Math.round(k * 7 * rise);
+        g.fillStyle = flash ? '#ffffff' : k % 2 ? '#7a4ad8' : col;
+        g.fillRect(x - 6 + Math.round(Math.sin(t * 8 + k) * 1.5), sy - 7, 12, 7);
+      }
+      g.fillStyle = '#05030f';
+      g.fillRect(x - 3, y - Math.round(26 * rise), 6, 3);
+      g.fillStyle = '#ffe42a';
+      g.fillRect(x + e.facing * 3 - 1, y - Math.round(22 * rise), 2, 2);
+    } else if (e.type === 'popup') {
+      // una finestra di errore
+      const k = e.state === 'open' ? Math.min(1, e.t / 0.35) : 1;
+      const w = Math.round(34 * k);
+      const h = Math.round(26 * k);
+      g.fillStyle = flash ? '#ffffff' : '#c8ccd8';
+      g.fillRect(x - w / 2, y - h, w, h);
+      g.fillStyle = flash ? '#ffffff' : '#2a4ad8';
+      g.fillRect(x - w / 2, y - h, w, Math.min(h, 6));
+      if (k >= 1) {
+        g.fillStyle = '#ff3a3a';
+        g.fillRect(x + 11, y - 25, 5, 4);
+        g.fillStyle = '#ffffff';
+        g.font = 'bold 7px monospace';
+        g.textAlign = 'center';
+        g.fillText('x', x + 13, y - 21);
+        g.fillStyle = '#ffe42a';
+        g.beginPath();
+        g.moveTo(x - 11, y - 6);
+        g.lineTo(x - 6, y - 15);
+        g.lineTo(x - 1, y - 6);
+        g.closePath();
+        g.fill();
+        g.fillStyle = '#05030f';
+        g.fillRect(x - 7, y - 12, 2, 3);
+        g.fillRect(x + 2, y - 15, 11, 2);
+        g.fillRect(x + 2, y - 11, 8, 2);
+      }
     } else if (e.type === 'firewall') {
       const wind = e.state === 'windup' && Math.floor(t * 16) % 2;
       g.fillStyle = wind ? '#ffffff' : col;
@@ -973,9 +1403,33 @@ export class Fight {
     g.fillRect(10, 26, 80, 3);
     g.fillStyle = '#3af0ff';
     g.fillRect(10, 26, Math.round(0.8 * p.energy), 3);
+    // l'overclock
+    g.fillStyle = '#1a2a3a';
+    g.fillRect(10, 31, 80, 3);
+    const full = p.oc >= 100;
+    g.fillStyle = p.ocT > 0 ? '#ffe42a' : full && Math.floor(t * 6) % 2 ? '#ffffff' : '#ff3ad8';
+    g.fillRect(10, 31, Math.round(0.8 * (p.ocT > 0 ? (p.ocT / 6) * 100 : p.oc)), 3);
+    if (full && p.ocT <= 0) {
+      g.font = 'bold 8px monospace';
+      g.fillStyle = '#ff3ad8';
+      g.fillText('OVERCLOCK [I]', 94, 35);
+    }
+    // i moduli montati
+    g.font = 'bold 7px monospace';
+    [...this.mods].forEach((m, i) => {
+      g.fillStyle = 'rgba(122,248,255,0.15)';
+      g.fillRect(10 + i * 52, 38, 48, 9);
+      g.fillStyle = '#7af8ff';
+      g.fillText(m.toUpperCase().slice(0, 10), 12 + i * 52, 45);
+    });
+    g.font = 'bold 9px monospace';
     g.textAlign = 'right';
     g.fillStyle = '#ffe42a';
     g.fillText(`XP ${this.xp}`, FW - 10, 14);
+    if (this.arena) {
+      g.fillStyle = '#ff3ad8';
+      g.fillText(`ONDATA ${this.waveN} · RECORD ${Math.max(this.def.best || 0, this.wavesDone)}`, FW - 10, 26);
+    }
     if (this.boss && !this.boss.dead) {
       const b = this.boss;
       g.textAlign = 'center';

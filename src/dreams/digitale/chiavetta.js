@@ -18,7 +18,35 @@ export function loadChiavetta(progress) {
   d.terminals ??= {};
   d.kills ??= {};
   d.form ??= 'scintilla';
+  d.modules ??= { owned: [], equipped: [] };
+  // i moduli dei terminali già liberati (anche nei salvataggi di prima dei moduli)
+  for (const m of MODULES) if (m.terminal && d.terminals[m.terminal]?.cleared && !d.modules.owned.includes(m.id)) d.modules.owned.push(m.id);
   return d;
+}
+
+// ---------- I moduli: piccoli programmi da montare nella chiavetta (due alla volta) ----------
+// Si trovano liberando i terminali e resistendo nel Sovraccarico.
+export const MODULES = [
+  { id: 'vampiro', name: 'VAMPIRO', desc: 'Pugni e calci a segno ti ridanno un po\' di vita.', terminal: 'piazzale', how: 'libera il Piazzale dell\'hotel' },
+  { id: 'magnete', name: 'MAGNETE', desc: 'I frammenti volano da te, e ne cadono di più.', terminal: 'borgo', how: 'libera la Piazza di Sant\'Onirio' },
+  { id: 'specchio', name: 'SPECCHIO', desc: 'La parata perfetta dura il doppio, e respinge più forte.', terminal: 'parcheggio', how: 'libera il Parcheggio Orizzonte' },
+  { id: 'perforante', name: 'PERFORANTE', desc: 'I colpi di energia attraversano le entità.', terminal: 'galleria', how: 'libera la Galleria Orizzonte' },
+  { id: 'turbo', name: 'OVERCLOCK+', desc: 'La barra dell\'overclock si riempie il doppio più in fretta.', wave: 8, how: 'resisti 8 ondate nel Sovraccarico' },
+  { id: 'backup', name: 'BACKUP', desc: 'Una volta per combattimento, a vita zero torni con metà vita.', wave: 15, how: 'resisti 15 ondate nel Sovraccarico' },
+];
+export const MODULE_SLOTS = 2;
+
+export function moduleById(id) {
+  return MODULES.find((m) => m.id === id);
+}
+
+// dà un modulo; restituisce il modulo se è nuovo
+export function grantModule(d, id) {
+  if (d.modules.owned.includes(id)) return null;
+  d.modules.owned.push(id);
+  // se c'è un posto libero lo monta subito
+  if (d.modules.equipped.length < MODULE_SLOTS) d.modules.equipped.push(id);
+  return moduleById(id);
 }
 
 export function xpToNext(level) {

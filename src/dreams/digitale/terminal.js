@@ -1,5 +1,5 @@
 import { Fight, FW, FH, drawForm, drawSilhouette } from './fight.js';
-import { SKILLS, loadChiavetta, xpToNext, addXp, heroStats, FORMS, formById, formUnlocked, formData } from './chiavetta.js';
+import { SKILLS, loadChiavetta, xpToNext, addXp, heroStats, FORMS, formById, formUnlocked, formData, MODULES, MODULE_SLOTS, moduleById, grantModule } from './chiavetta.js';
 
 // I terminali sparsi nei macroluoghi: ognuno ha le sue entità e il suo boss.
 export const TERMINALS = {
@@ -14,7 +14,7 @@ export function terminalsCleared(progress) {
   return Object.keys(TERMINALS).filter((id) => t[id]?.cleared).length;
 }
 
-const CONTROLS = '<kbd>A</kbd><kbd>D</kbd> muovi · <kbd>W</kbd>/<kbd>Spazio</kbd> salta · <kbd>J</kbd> pugno · <kbd>K</kbd> calcio · <kbd>L</kbd> spara · <kbd>S</kbd> para · <kbd>Shift</kbd> scatto · <kbd>Esc</kbd> scollega';
+const CONTROLS = '<kbd>A</kbd><kbd>D</kbd> muovi · <kbd>W</kbd>/<kbd>Spazio</kbd> salta · <kbd>J</kbd> pugno · <kbd>K</kbd> calcio · <kbd>L</kbd> spara · <kbd>S</kbd> para (al momento giusto: perfetta) · <kbd>S</kbd>+<kbd>Spazio</kbd> giù dalla lastra · <kbd>Shift</kbd> scatto · <kbd>I</kbd> overclock · <kbd>Esc</kbd> scollega';
 
 function text(g, s, x, y, { size = 10, color = '#7af8ff', align = 'left' } = {}) {
   g.font = `bold ${size}px monospace`;
@@ -77,6 +77,13 @@ export class TerminalScreen {
       slam: () => a.thud(0.4),
       glitch: () => a.squeak(0.05),
       lose: () => a.boom(0.3),
+      parry: () => a.chime(2200, 0.08),
+      ready: () => a.chime(1760, 0.06),
+      overclock: () => {
+        a.boom(0.25);
+        a.chime(1320, 0.08);
+      },
+      pickup: () => a.bleep(0.04),
     })[name]?.();
   }
 
@@ -104,6 +111,7 @@ export class TerminalScreen {
     }
     if (this.phase === 'menu') return this.menu(g, input, hero);
     if (this.phase === 'skills') return this.skills(g, input, hero);
+    if (this.phase === 'modules') return this.modules(g, input);
     if (this.phase === 'fight') return this.fightUpdate(dt, input);
     if (this.phase === 'result') return this.result(g, input);
     if (this.phase === 'mural') return this.mural(g, input);
@@ -255,35 +263,85 @@ export class TerminalScreen {
     g.fillStyle = '#ffe42a';
     g.fillRect(300, 186, Math.round((150 * hero.xp) / xpToNext(hero.level)), 4);
     text(g, `XP ${hero.xp}/${xpToNext(hero.level)} · vita ${st.hp}`, 300, 202, { size: 9, color: '#9ab' });
+    const best = rec.bestWave || 0;
+    const mods = this.data.modules;
     const items = [
-      ['COMBATTI', rec.cleared ? 'di nuovo (meno XP)' : 'libera il terminale'],
-      ['ABILITÀ', hero.sp ? `${hero.sp} punt${hero.sp === 1 ? 'o' : 'i'} da spendere!` : 'nessun punto libero'],
-      ['SCOLLEGA', 'riprendi la chiavetta'],
+      ['COMBATTI', rec.cleared ? 'di nuovo (meno XP)' : 'libera il terminale', true],
+      ['SOVRACCARICO', rec.cleared ? `ondate senza fine · record ${best}` : 'libera prima il terminale', !!rec.cleared],
+      ['MODULI', `${mods.equipped.length}/${MODULE_SLOTS} montati · ${mods.owned.length}/${MODULES.length} trovati`, true],
+      ['ABILITÀ', hero.sp ? `${hero.sp} punt${hero.sp === 1 ? 'o' : 'i'} da spendere!` : 'nessun punto libero', true],
+      ['SCOLLEGA', 'riprendi la chiavetta', true],
     ];
-    items.forEach(([label, sub], i) => {
-      const y = 100 + i * 34;
+    const N = items.length;
+    items.forEach(([label, sub, ok], i) => {
+      const y = 86 + i * 30;
       const on = this.sel === i;
       if (on) {
         g.fillStyle = 'rgba(122,248,255,0.15)';
-        g.fillRect(20, y - 16, 240, 28);
+        g.fillRect(20, y - 15, 250, 26);
       }
-      text(g, `${on ? '▶' : ' '} ${i + 1} ${label}`, 28, y, { size: 13, color: on ? '#ffffff' : '#7af8ff' });
-      text(g, sub, 50, y + 10, { size: 8, color: i === 1 && hero.sp ? '#ffe42a' : '#6a8a9a' });
+      text(g, `${on ? '▶' : ' '} ${i + 1} ${label}`, 28, y, { size: 12, color: !ok ? '#4a5a6a' : on ? '#ffffff' : '#7af8ff' });
+      text(g, sub, 50, y + 9, { size: 8, color: i === 3 && hero.sp ? '#ffe42a' : '#6a8a9a' });
     });
-    this.footer.innerHTML = '<kbd>W</kbd><kbd>S</kbd> scegli · <kbd>Invio</kbd> conferma · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · <kbd>Esc</kbd> scollega';
-    if (input.wasPressed('KeyW', 'ArrowUp')) this.sel = (this.sel + 2) % 3;
-    if (input.wasPressed('KeyS', 'ArrowDown')) this.sel = (this.sel + 1) % 3;
+    this.footer.innerHTML = '<kbd>W</kbd><kbd>S</kbd> scegli · <kbd>Invio</kbd> conferma · <kbd>1</kbd>-<kbd>5</kbd> · <kbd>Esc</kbd> scollega';
+    if (input.wasPressed('KeyW', 'ArrowUp')) this.sel = (this.sel + N - 1) % N;
+    if (input.wasPressed('KeyS', 'ArrowDown')) this.sel = (this.sel + 1) % N;
     let pick = input.wasPressed('Enter', 'Space', 'KeyE') ? this.sel : -1;
-    for (let i = 0; i < 3; i++) if (input.wasPressed(`Digit${i + 1}`, `Numpad${i + 1}`)) pick = i;
-    if (input.wasPressed('Escape')) pick = 2;
-    if (pick === 0) {
-      this.fight = new Fight(this.def, hero, (n) => this.sfx(n), this.data.form);
+    for (let i = 0; i < N; i++) if (input.wasPressed(`Digit${i + 1}`, `Numpad${i + 1}`)) pick = i;
+    if (input.wasPressed('Escape')) pick = 4;
+    if (pick === 0 || (pick === 1 && rec.cleared)) {
+      const def = pick === 1 ? { ...this.def, arena: true, best } : this.def;
+      this.fight = new Fight(def, hero, (n) => this.sfx(n), this.data.form, mods.equipped);
       this.phase = 'fight';
       this.ctx.audio.chiptune(true, 0.03);
-    } else if (pick === 1) {
+    } else if (pick === 1) this.ctx.audio.thud(0.1);
+    else if (pick === 2) {
+      this.phase = 'modules';
+      this.modSel = 0;
+    } else if (pick === 3) {
       this.phase = 'skills';
       this.skillSel = 0;
-    } else if (pick === 2) this.close();
+    } else if (pick === 4) this.close();
+  }
+
+  // I moduli: se ne montano due; quelli che non hai mostrano dove trovarli
+  modules(g, input) {
+    const mods = this.data.modules;
+    this.drawFrame(g);
+    text(g, 'MODULI DELLA CHIAVETTA', 24, 30, { size: 12, color: '#ff3ad8' });
+    text(g, `montati ${mods.equipped.length}/${MODULE_SLOTS}`, FW - 24, 30, { size: 11, color: '#ffe42a', align: 'right' });
+    MODULES.forEach((m, i) => {
+      const y = 58 + i * 32;
+      const on = this.modSel === i;
+      const own = mods.owned.includes(m.id);
+      const eq = mods.equipped.includes(m.id);
+      if (on) {
+        g.fillStyle = 'rgba(122,248,255,0.12)';
+        g.fillRect(18, y - 13, FW - 36, 30);
+      }
+      g.fillStyle = eq ? '#ffe42a' : own ? '#1a2a3a' : '#0a0e18';
+      g.fillRect(28, y - 8, 9, 9);
+      text(g, own ? m.name : '???', 46, y, { size: 11, color: !own ? '#4a5a6a' : on ? '#ffffff' : '#7af8ff' });
+      text(g, own ? m.desc : `si trova: ${m.how}`, 46, y + 11, { size: 8, color: own ? '#8aa' : '#5a6a7a' });
+      if (eq) text(g, 'MONTATO', FW - 28, y, { size: 9, color: '#ffe42a', align: 'right' });
+    });
+    this.footer.innerHTML = '<kbd>W</kbd><kbd>S</kbd> scegli · <kbd>Invio</kbd> monta / smonta · <kbd>Esc</kbd> indietro';
+    const N = MODULES.length;
+    if (input.wasPressed('KeyW', 'ArrowUp')) this.modSel = (this.modSel + N - 1) % N;
+    if (input.wasPressed('KeyS', 'ArrowDown')) this.modSel = (this.modSel + 1) % N;
+    if (input.wasPressed('Enter', 'Space', 'KeyE')) {
+      const m = MODULES[this.modSel];
+      const k = mods.equipped.indexOf(m.id);
+      if (k >= 0) {
+        mods.equipped.splice(k, 1);
+        this.ctx.audio.chime(660, 0.05);
+      } else if (mods.owned.includes(m.id) && mods.equipped.length < MODULE_SLOTS) {
+        mods.equipped.push(m.id);
+        this.ctx.audio.chime(1320, 0.06);
+      } else this.ctx.audio.thud(0.1);
+      this.save();
+    }
+    if (input.wasPressed('Escape', 'KeyQ')) this.phase = 'menu';
   }
 
   skills(g, input, hero) {
@@ -341,6 +399,7 @@ export class TerminalScreen {
       kick: input.wasPressed('KeyK', 'KeyX'),
       shoot: input.down('KeyL', 'KeyC'),
       dash: input.wasPressed('ShiftLeft', 'ShiftRight'),
+      super: input.wasPressed('KeyI', 'KeyV'),
     };
     f.update(Math.min(dt, 1 / 30), k);
     f.draw(this.g, this.t);
@@ -354,11 +413,36 @@ export class TerminalScreen {
     const rec = (this.data.terminals[this.def.id] ??= { cleared: false, wins: 0 });
     let xp = f.xp;
     let first = false;
+    const newMods = [];
+    if (f.arena) {
+      // il Sovraccarico non si vince: si resiste. Conta l'ondata a cui arrivi.
+      xp = Math.round(xp * 0.35);
+      const prev = rec.bestWave || 0;
+      rec.bestWave = Math.max(prev, f.wavesDone);
+      for (const m of MODULES) if (m.wave && f.wavesDone >= m.wave) {
+        const got = grantModule(this.data, m.id);
+        if (got) newMods.push(got.name);
+      }
+      for (const [key, n] of Object.entries(f.killsBy)) this.data.kills[key] = (this.data.kills[key] || 0) + n;
+      const lvl0 = hero.level;
+      const ups = addXp(hero, xp);
+      this.save();
+      this.res = { arena: true, waves: f.wavesDone, record: f.wavesDone > prev, xp, ups, lvl0, newMods };
+      this.ctx.audio.chiptune(false);
+      if (ups) this.ctx.audio.ding(0.12);
+      this.phase = 'result';
+      this.t = 0;
+      return;
+    }
     if (f.won) {
       if (!rec.cleared) {
         first = true;
         xp += 50 * this.def.diff;
         rec.cleared = true;
+        // ogni terminale liberato regala il suo modulo
+        const m = MODULES.find((q) => q.terminal === this.def.id);
+        const got = m && grantModule(this.data, m.id);
+        if (got) newMods.push(got.name);
       } else xp = Math.round(xp * 0.5);
       rec.wins++;
     } else xp = Math.round(xp * 0.5);
@@ -370,7 +454,7 @@ export class TerminalScreen {
     const lvl0 = hero.level;
     const ups = addXp(hero, xp);
     this.save();
-    this.res = { won: f.won, xp, ups, first, lvl0, newForms };
+    this.res = { won: f.won, xp, ups, first, lvl0, newForms, newMods };
     if (f.won) this.summary.won = true;
     if (first) this.summary.firstClear = true;
     this.ctx.audio.chiptune(false);
@@ -383,7 +467,13 @@ export class TerminalScreen {
     const r = this.res;
     const hero = this.data.hero;
     this.drawFrame(g);
-    if (r.quit) {
+    if (r.arena) {
+      text(g, 'SOVRACCARICO', FW / 2, 56, { size: 18, color: '#ff3ad8', align: 'center' });
+      text(g, `${this.formName} ha resistito a ${r.waves} ondat${r.waves === 1 ? 'a' : 'e'}${r.record ? ' · NUOVO RECORD!' : ''}`, FW / 2, 78, { size: 10, color: r.record ? '#ffe42a' : '#9ab', align: 'center' });
+      text(g, `+${Math.min(r.xp, Math.floor(this.t * 120))} XP`, FW / 2, 112, { size: 16, color: '#ffe42a', align: 'center' });
+      if (r.ups && this.t > 0.8) text(g, `LIVELLO SU!  ${r.lvl0} → ${hero.level} · +${r.ups * 2} punti abilità`, FW / 2, 142, { size: 12, color: '#ff3ad8', align: 'center' });
+      this.drawHeroIcon(g, 70, 220, 2);
+    } else if (r.quit) {
       text(g, 'CHIAVETTA SCOLLEGATA', FW / 2, 110, { size: 16, color: '#ff5a5a', align: 'center' });
       text(g, 'Le entità restano dove sono. Nessun dato salvato.', FW / 2, 140, { size: 9, color: '#9ab', align: 'center' });
     } else {
@@ -396,16 +486,18 @@ export class TerminalScreen {
         text(g, `+${r.ups * 2} punti abilità`, FW / 2, 175, { size: 11, color: '#7af8ff', align: 'center' });
       }
       this.drawHeroIcon(g, 70, 220, 2);
+      if (r.newMods?.length && this.t > 1) text(g, `NUOVO MODULO: ${r.newMods.join(', ')} (menu MODULI)`, FW / 2, 191, { size: 10, color: '#ffe42a', align: 'center' });
       if (r.newForms?.length && this.t > 1.2) {
         text(g, `NUOVA ENTITÀ NEL MURALE: ${r.newForms.join(', ')}`, FW / 2, 205, { size: 10, color: '#4aff8a', align: 'center' });
         text(g, 'Il murale in fondo alla galleria del centro commerciale', FW / 2, 219, { size: 8, color: '#8aa', align: 'center' });
       }
     }
+    if (r.arena && r.newMods?.length && this.t > 1) text(g, `NUOVO MODULO: ${r.newMods.join(', ')} (menu MODULI)`, FW / 2, 172, { size: 10, color: '#ffe42a', align: 'center' });
     if (this.t > 0.6 && Math.floor(this.t * 2) % 2) text(g, 'INVIO PER CONTINUARE', FW / 2, 240, { size: 9, color: '#7af8ff', align: 'center' });
     this.footer.innerHTML = '';
     if (this.t > 0.6 && input.wasPressed('Enter', 'Space', 'KeyE', 'Escape')) {
       this.phase = 'menu';
-      this.sel = hero.sp ? 1 : 0;
+      this.sel = hero.sp ? 3 : 0;
       this.t = 0;
     }
   }
