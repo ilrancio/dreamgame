@@ -379,6 +379,7 @@ export class Coop {
       st.f = r2(p.facing);
       st.v = r2(Math.hypot(p.vel?.x || 0, p.vel?.z || 0));
       if (p.sitting) st.sit = 1;
+      if (p.feminine) st.fm = 1;
       if (p.group && !p.group.visible) st.hid = 1;
     }
     return st;
@@ -392,6 +393,7 @@ export class Coop {
     const fr = s.friend;
     if (!here) {
       this.removeRemoteVehicle();
+      fr?.setFeminine?.(false); // l'amico del gioco resta com'è
       return;
     }
     // chi siede accanto a te in macchina non è più l'amico del gioco
@@ -411,6 +413,7 @@ export class Coop {
     d = Math.atan2(Math.sin(d), Math.cos(d));
     fr.facing += d * (1 - Math.exp(-14 * dt));
     fr.sitting = !!p.sit;
+    fr.setFeminine?.(!!p.fm);
     fr.vel?.set(0, 0, 0);
     fr.group.visible = !p.hid;
     if (this.savedPhase !== undefined) fr.walkPhase = this.savedPhase; // le gambe le muove solo l'altro

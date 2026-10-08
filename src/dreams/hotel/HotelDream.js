@@ -20,6 +20,7 @@ import { unlockedPlaces } from '../../core/places.js';
 import { ChoicePanel } from '../../core/choice.js';
 import { GATES, gateOpen } from '../digitale/corruption.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
+import { hero, setHeroFemale } from '../../core/hero.js';
 
 const FRIEND = 'Il tuo amico:';
 const CONCIERGE = 'Il concierge:';
@@ -143,7 +144,7 @@ export class HotelDream {
     this.flash.scale.set(0.9, 0.9, 1);
     this.scene.add(this.flash);
 
-    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
+    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f', feminine: hero.female });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     this.friend.radius = 0.4;
 
@@ -516,7 +517,7 @@ export class HotelDream {
     this.applyTime();
     this.snapCamera();
     this.enterSuiteMood();
-    this.script = [{ at: 1.5, fn: () => this.ctx.ui.subtitle(FRIEND, this.timeOfDay === 'night' ? 'Eccoti. Il tè è ancora caldo.' : 'Bentornato. La hall è tranquilla, oggi.', 3) }];
+    this.script = [{ at: 1.5, fn: () => this.ctx.ui.subtitle(FRIEND, this.timeOfDay === 'night' ? 'Eccoti. Il tè è ancora caldo.' : (hero.female ? 'Bentornata' : 'Bentornato') + '. La hall è tranquilla, oggi.', 3) }];
   }
 
   // Si torna da un luogo del sogno attraverso una porta 1313: si esce dalla
@@ -1079,6 +1080,16 @@ export class HotelDream {
       setTimeout(() => ui.steam(false), 1200);
       // si esce dalla doccia verso il centro del bagno
       this.player.pos.set(this.suiteKit.shower.x - 2.4, 0, this.suiteKit.shower.z - 1.6);
+      // il sogno: dopo una doccia vera (non appena entrati) si esce con l'altro corpo
+      if (a.t > 3) {
+        setHeroFemale(!this.player.feminine);
+        this.player.setFeminine(hero.female);
+        this.fx.emit(this.player.pos.x, 1.2, this.player.pos.z, 0, 0.4, 0, { color: [0.95, 0.96, 1], size: 1.2, endSize: 3, life: 3, alpha: 0.35 });
+        ui.subtitle(null, hero.female ? 'Ti guardi le mani, i capelli bagnati sulle spalle. Sei una donna. Nel sogno ti sembra normale.' : 'L\'acqua scivola via, e con lei i capelli lunghi. Sei di nuovo un uomo. Nessuno sembra farci caso.', 5);
+        const line = hero.female ? 'Oh. Ti dona. ...Non ricordavo questa doccia.' : 'Bentornato. Anche così ti dona.';
+        this.script.push({ at: this.time + 5.5, fn: () => ui.subtitle(FRIEND, line, 3.4) });
+        this.script.sort((x, y) => x.at - y.at);
+      }
     }
     if (a.kind === 'bath' || a.kind === 'sink') {
       audio.loop('water', false);

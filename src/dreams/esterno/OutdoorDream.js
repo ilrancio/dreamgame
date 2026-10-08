@@ -16,6 +16,7 @@ import { unlockPlace, placeById } from '../../core/places.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 import { DigitalLayer } from '../digitale/layer.js';
 import { GATES, gateOpen, buildCorruptRing, buildCorruptPlane, glitchOverlay } from '../digitale/corruption.js';
+import { hero } from '../../core/hero.js';
 
 const FRIEND = 'Il tuo amico:';
 
@@ -120,7 +121,7 @@ export class OutdoorDream {
     this.car.reset(pc.x, pc.z, pc.h, this.terrain);
     this.car.turbo = 1;
 
-    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
+    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f', feminine: hero.female });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     this.npcs = this.village.npcs.map((n) => {
       const [skin, hair, shirt] = n.look;

@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import { clamp } from '../../core/noise.js';
 import { buildFigure, hasFigure, FIGURE_HIP } from '../../core/figure.js';
+import { FEMININE } from '../../models/characters/index.js';
 
 // Personaggio a piedi: stessi colori di chi era in macchina nel campo.
 export class Character {
-  constructor(scene, { skin, hair, shirt, pants = '#2a2a34', model = 'casual' }) {
+  constructor(scene, { skin, hair, shirt, pants = '#2a2a34', model = 'casual', feminine = false }) {
     this.group = new THREE.Group();
     scene.add(this.group);
     this.pos = new THREE.Vector3();
@@ -79,17 +80,38 @@ export class Character {
 
     // il corpo vero (Quaternius), se c'è: le membra disegnate restano come
     // "manopole" invisibili dell'animazione, che le ossa copiano
-    if (model && hasFigure(model)) {
-      const fig = buildFigure(model, { skin: skinM, hair: hairM, shirt: shirtM, pants: pantsM, shoe: shoeM, dark: m('#1a1418') });
-      if (fig) {
-        this.figure = fig;
-        body.add(fig.root);
-        this.gun.position.y = -0.76; // il braccio vero è un po' più lungo
-        body.traverse((o) => {
-          if (o.isMesh && o !== fig.mesh && !this.gunParts.has(o)) o.visible = false;
-        });
-      }
+    this.mats = { skin: skinM, hair: hairM, shirt: shirtM, pants: pantsM, shoe: shoeM, dark: m('#1a1418') };
+    this.baseModel = model;
+    this.feminine = false;
+    this.useFigure(feminine && FEMININE[model] ? FEMININE[model] : model);
+    this.feminine = !!(feminine && this.figure && FEMININE[model]);
+  }
+
+  useFigure(model) {
+    if (!model || !hasFigure(model)) return;
+    const fig = buildFigure(model, this.mats);
+    if (!fig) return;
+    if (this.figure) this.body.remove(this.figure.root);
+    this.figure = fig;
+    this.body.add(fig.root);
+    this.gun.position.y = -0.76; // il braccio vero è un po' più lungo
+    this.body.traverse((o) => {
+      if (o.isMesh && o !== fig.mesh && !this.gunParts.has(o)) o.visible = false;
+    });
+    // il riquadro della censura stava sul vecchio scheletro
+    if (this.censor) {
+      this.censor.parent?.remove(this.censor);
+      this.censor = null;
+      if (this.dressed) this.makeCensor();
     }
+  }
+
+  // uomo o donna (il sogno della doccia): stesso vestito, l'altro corpo
+  setFeminine(on) {
+    on = !!on;
+    if (on === this.feminine || !FEMININE[this.baseModel]) return;
+    this.useFigure(on ? FEMININE[this.baseModel] : this.baseModel);
+    this.feminine = on;
   }
 
   // cambia pelle, capelli e maglia (nel sogno condiviso chi entra veste da amico)
@@ -112,16 +134,21 @@ export class Character {
       this.shoeM.color.copy(this.dressed.shoe);
       this.dressed = null;
     }
-    if (on && !this.censor && this.figure) {
-      const tex = this.track(censorTexture(L.skin.color));
-      const mat = this.track(new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-      // in unità del modello, attaccato all'osso del busto (che sta alle anche)
-      const box = new THREE.Mesh(this.track(new THREE.BoxGeometry(1.7, 2.9, 1.05)), mat);
-      box.position.set(0, 0.45, 0.08);
-      this.figure.bones.spine.add(box);
-      this.censor = box;
-    }
+    if (on && !this.censor && this.figure) this.makeCensor();
     if (this.censor) this.censor.visible = on;
+  }
+
+  makeCensor() {
+    if (!this.censorMat) {
+      const tex = this.track(censorTexture(this.looks.skin.color));
+      this.censorMat = this.track(new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      this.censorGeo = this.track(new THREE.BoxGeometry(1.7, 2.9, 1.05));
+    }
+    // in unità del modello, attaccato all'osso del busto (che sta alle anche)
+    const box = new THREE.Mesh(this.censorGeo, this.censorMat);
+    box.position.set(0, 0.45, 0.08);
+    this.figure.bones.spine.add(box);
+    this.censor = box;
   }
 
   setArmed(v) {

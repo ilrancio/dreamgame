@@ -119,6 +119,11 @@ export function registerFigure(name, objText) {
   const mesh = parts[0];
   if (!mesh) return;
   const g = mesh.geometry;
+  // le donne del pacchetto sono un po' più basse (4,63) ma con le stesse
+  // proporzioni: le portiamo all'altezza degli uomini, così le giunture tornano
+  g.computeBoundingBox();
+  const top = g.boundingBox.max.y;
+  if (Math.abs(top - H) > 0.01) g.scale(H / top, H / top, H / top);
   const names = [mesh.material].flat().map((m) => m.name);
   const pos = g.attributes.position;
   const si = new Uint16Array(pos.count * 4);
@@ -148,8 +153,9 @@ export function buildFigure(name, mats) {
   const pick = (n) => {
     const k = n.toLowerCase();
     if (k.startsWith('skin')) return mats.skin;
-    if (k.startsWith('hair')) return mats.hair;
-    if (k.startsWith('shirt') || k.startsWith('details')) return mats.shirt;
+    if (k.startsWith('hair') || k.startsWith('eyebrow')) return mats.hair;
+    if (k.startsWith('lightjacket')) return mats.pants;
+    if (k.startsWith('shirt') || k.startsWith('details') || k.startsWith('dress') || k.startsWith('jacket')) return mats.shirt;
     if (k.startsWith('pants')) return mats.pants;
     if (k.startsWith('shoe') || k.startsWith('sock')) return mats.shoe;
     return mats.dark; // occhi, cravatta

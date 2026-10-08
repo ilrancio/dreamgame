@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { clamp } from './noise.js';
 import { Character } from '../dreams/hotel/character.js';
 import { GnomeFollowers } from '../dreams/hotel/companions.js';
+import { hero } from './hero.js';
 
 export const FRIEND = 'Il tuo amico:';
 
@@ -20,7 +21,7 @@ export class WalkScene {
     this.bounds = bounds;
     this.baseSpeed = speed;
     this.colliders = [];
-    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
+    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f', feminine: hero.female });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     if (this.hs.activeEntity === 'gnomi' && this.hs.entities?.gnomi) {
       this.followers = new GnomeFollowers(this.scene, this.hs.entities.gnomi);

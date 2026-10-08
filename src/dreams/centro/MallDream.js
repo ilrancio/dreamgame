@@ -10,6 +10,7 @@ import { buildMural } from '../digitale/mural.js';
 import { GATES, gateOpen, buildCorruptPlane, glitchOverlay } from '../digitale/corruption.js';
 import { loadChiavetta, formById } from '../digitale/chiavetta.js';
 import { buildMallInterior, floorHeight, rampAt, upperWalkable, underSlab, MALL_W, MALL_L, UPPER, DOOR_W, RAMPS } from './mall.js';
+import { hero } from '../../core/hero.js';
 
 const FRIEND = 'Il tuo amico:';
 const CLERK = 'Il commesso:';
@@ -82,7 +83,7 @@ export class MallDream {
     this.colliders = this.mall.colliders.concat(this.digital.colliders.map((c) => ({ ...c, lv: 0 })), [{ ...this.mural.collider, lv: 0 }], this.rampGates.map((g) => g.col));
     this.refreshGates(true);
 
-    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f' });
+    this.player = new Character(this.scene, { skin: '#e0b089', hair: '#3b2a1e', shirt: '#2f4f8f', feminine: hero.female });
     this.friend = new Character(this.scene, { skin: '#c99470', hair: '#141414', shirt: '#d9a82e', model: 'longsleeve' });
     // i commessi: uno per negozio aperto, dietro al banco. Nient'altro.
     this.clerks = [];

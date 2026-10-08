@@ -13,7 +13,7 @@
 - **City Kit Roads** e **City Kit Suburban** di [Kenney](https://kenney.nl), CC0. In `src/models/city/`.
   I lampioni lungo la strada dell'hotel, le casette del villaggio dell'Isola e dei vicoli di Sant'Onirio.
 - **City Kit Commercial** di [Kenney](https://kenney.nl), CC0. I palazzetti con le tende sulla piazza di Sant'Onirio.
-- **Personaggi maschili** di [Quaternius](https://quaternius.com), CC0. In `src/models/characters/`: tu,
+- **Personaggi maschili e femminili** di [Quaternius](https://quaternius.com), CC0. In `src/models/characters/`: tu,
   il tuo amico e le persone che incontri. Erano senza scheletro: le ossa e i pesi li calcola il gioco
   (`src/core/figure.js`), così camminano, corrono, si siedono e impugnano la pistola.
 
