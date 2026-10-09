@@ -247,7 +247,7 @@ export class WalkScene {
       p.facing += d * (1 - Math.exp(-14 * dt));
     }
     if (input.wasPressed('Space') && p.grounded) {
-      p.vel.y = 7;
+      p.vel.y = 8.6;
       p.grounded = false;
       audio.whoosh(0.1);
     }

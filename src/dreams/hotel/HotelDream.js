@@ -1984,7 +1984,7 @@ export class HotelDream {
 
     // salto: ricadendo scrolli via chi ti si è arrampicato addosso
     if (active && input.wasPressed('Space') && p.grounded) {
-      p.vel.y = 7.2 * Math.max(0.45, 1 - cling / 140);
+      p.vel.y = 8.6 * Math.max(0.45, 1 - cling / 140);
       p.grounded = false;
       audio.whoosh(0.12);
     }

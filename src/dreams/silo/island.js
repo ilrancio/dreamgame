@@ -11,7 +11,8 @@ import { textTexture, glowTexture } from '../../core/textures.js';
 export const SILO = { x: 0, z: 84, r: 22, h: 84, base: 5 };
 export const PIER = { x: 0, z0: SILO.z + SILO.r - 1, z1: 268, halfW: 3.6, y: 5.2 };
 export const DOOR = new THREE.Vector3(0, SILO.base, SILO.z + SILO.r + 1.2);
-export const BUNKER = { x: -15, z: SILO.z + SILO.r + 8 };
+// sullo spiazzo di cemento, a ovest del portone: chi arriva dalla porta 1313 non resta sugli scogli
+export const BUNKER = { x: -24, z: SILO.z + 14 };
 
 const N = createNoise2D(1313);
 const N2 = createNoise2D(77);
