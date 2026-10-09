@@ -319,7 +319,7 @@ export class WalkScene {
       const x = head.x + dx * s;
       const z = head.z + dz * s;
       const out = b && (x < b.minX + 0.3 || x > b.maxX - 0.3 || z < b.minZ + 0.3 || z > b.maxZ - 0.3);
-      if (out || boxes.some((q) => !q.low && x > q.minX - 0.2 && x < q.maxX + 0.2 && z > q.minZ - 0.2 && z < q.maxZ + 0.2)) {
+      if (out || this.camBlocked?.(x, z) || boxes.some((q) => !q.low && x > q.minX - 0.2 && x < q.maxX + 0.2 && z > q.minZ - 0.2 && z < q.maxZ + 0.2)) {
         reach = Math.max(0.35, s - 0.25);
         break;
       }

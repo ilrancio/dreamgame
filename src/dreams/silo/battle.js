@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PARTY, SKILLS, OVERDRIVES, ITEMS, ENEMIES, ENEMY_ACTS, ELEM, xpToNext } from './data.js';
+import { PARTY, SKILLS, OVERDRIVES, ITEMS, ENEMIES, ENEMY_ACTS, ELEM, KEY_ITEMS, xpToNext, knownSkills, scaleEnemy, memberStats } from './data.js';
 import { monsterModel } from './monsters.js';
 import { Particles } from '../../core/particles.js';
 
@@ -79,48 +79,29 @@ export class Battle {
     this.disposables = [];
     this.nums = [];
     this.done = false;
-    const lvl = this.state.level;
-    // il gruppo
-    this.party = Object.entries(PARTY).map(([id, d], i) => {
-      const k = 1 + (lvl - 1) * 0.1;
-      const hk = 1 + (lvl - 1) * 0.13;
+    const st0 = this.state;
+    this.tier = opts.tier || 1;
+    // il gruppo: chi c'è in questo momento, con la vita e gli MP che aveva
+    this.party = st0.members.map((id, i) => {
+      const d = PARTY[id];
+      const ms = memberStats(st0, id);
+      const saved = st0.party?.[id] || {};
       const u = {
-        side: 'party', id, name: d.name, short: d.short, color: d.color, data: d,
-        maxHp: Math.round(d.hp * hk), maxMp: Math.round(d.mp * (1 + (lvl - 1) * 0.08)),
-        str: d.str * k, mag: d.mag * k, def: d.def * k, mdef: d.mdef * k, agi: d.agi + (lvl - 1) * 0.3,
-        od: this.state.od?.[id] || 0, st: {}, model: opts.partyModels[id], home: opts.arena.party[i].clone(), facing: Math.PI,
+        side: 'party', id, name: d.name, short: d.short, color: d.color, data: d, ...ms,
+        od: st0.od?.[id] || 0, st: {}, model: opts.partyModels[id], home: opts.arena.party[i].clone(), facing: Math.PI,
         weak: [], absorb: [], resist: [],
       };
-      u.hp = u.maxHp;
-      u.mp = u.maxMp;
+      u.hp = Math.min(u.maxHp, saved.hp ?? u.maxHp);
+      u.mp = Math.min(u.maxMp, saved.mp ?? u.maxMp);
+      if (u.hp <= 0) {
+        u.hp = 0;
+        if (u.model.pos) u.model.lying = true;
+      }
       return u;
     });
     // le creature (o il dio)
-    this.enemies = opts.foes.map((fid, i) => {
-      const d = ENEMIES[fid];
-      const scale = 1 + (lvl - 1) * 0.08;
-      const slots = opts.foes.length === 1 ? [1] : opts.foes.length === 2 ? [0, 2] : [0, 1, 2];
-      const home = d.boss ? opts.arena.boss.clone() : opts.arena.enemies[slots[i]].clone();
-      let model;
-      if (d.boss) model = opts.bossModel;
-      else {
-        model = monsterModel(d.model);
-        model.group.position.copy(home);
-        this.scene.add(model.group);
-        this.disposables.push(model);
-      }
-      const u = {
-        side: 'enemy', id: fid, name: d.name, short: d.boss ? 'Il Dio' : d.name.split(' ')[0], data: d,
-        maxHp: Math.round(d.hp * (d.boss ? 1 + (lvl - 1) * 0.12 : scale)), str: d.str * scale, mag: d.mag * scale, def: d.def, mdef: d.mdef, agi: d.agi,
-        weak: d.weak || [], absorb: d.absorb || [], resist: d.resist || [], st: {}, model, home, facing: 0, boss: !!d.boss,
-      };
-      u.hp = u.maxHp;
-      if (u.boss) {
-        u.count = 4;
-        u.countMax = 4;
-      }
-      return u;
-    });
+    this.enemies = [];
+    opts.foes.forEach((fid) => this.addEnemy(fid, opts.foes.length));
     // nomi doppi: Granchio A, Granchio B
     const seen = {};
     for (const e of this.enemies) {
@@ -133,6 +114,7 @@ export class Battle {
     }
     this.units = [...this.party, ...this.enemies];
     for (const u of this.units) u.ct = baseDelay(u.agi) * rnd(0.55, 1);
+    this.whaleFight = this.enemies.some((e) => e.whale);
     for (const p of this.party) this.placeParty(p);
     // l'interfaccia
     this.el = document.createElement('div');
@@ -160,10 +142,50 @@ export class Battle {
     this.ctx.input.unlock();
     this.ctx.audio.chime(523, 0.08);
     setTimeout(() => this.ctx.audio.chime(784, 0.08), 120);
-    this.help(opts.foes.length && ENEMIES[opts.foes[0]].boss ? 'Il dio si sveglia.' : 'Le creature vi sbarrano la strada!', 1.6);
+    const b0 = this.enemies.find((e) => e.boss);
+    this.help(this.whaleFight ? 'Il dio si sveglia.' : b0 ? `${b0.name}!` : 'Le creature vi sbarrano la strada!', 1.6);
     this.wait(1.4, () => this.nextTurn());
     this.renderParty();
     this.renderCtb();
+  }
+
+  // una creatura in campo (anche quelle evocate a metà)
+  addEnemy(fid, count = 3) {
+    const d = scaleEnemy(fid, this.tier);
+    const A = this.o.arena;
+    const used = new Set(this.enemies.filter((e) => e.hp > 0 && !e.boss).map((e) => e.slot));
+    const hasBoss = this.enemies.some((e) => e.boss) || d.boss;
+    let slot = -1;
+    let home;
+    if (d.boss) home = A.boss.clone();
+    else {
+      const order = hasBoss ? [0, 2, 3] : count === 1 ? [1] : count === 2 ? [0, 2] : [0, 1, 2, 3];
+      slot = order.find((k) => !used.has(k) && A.enemies[k]) ?? -1;
+      if (slot < 0) return null;
+      home = A.enemies[slot].clone();
+    }
+    const whale = d.model === 'whale';
+    let model;
+    if (whale) model = this.o.bossModel;
+    else {
+      model = monsterModel(d.model);
+      model.group.position.copy(home);
+      this.scene.add(model.group);
+      this.disposables.push(model);
+    }
+    const art = /^(Il |La |L')/;
+    const u = {
+      side: 'enemy', id: fid, name: d.name, short: d.boss ? d.name.replace(art, '').split(' ')[0] : d.name.split(' ')[0], data: d, slot,
+      maxHp: d.hp, str: d.str, mag: d.mag, def: d.def, mdef: d.mdef, agi: d.agi,
+      weak: d.weak || [], absorb: d.absorb || [], resist: d.resist || [], st: {}, model, home, facing: 0, boss: !!d.boss, whale,
+    };
+    u.hp = u.maxHp;
+    if (d.countdown) {
+      u.count = 4;
+      u.countMax = 4;
+    }
+    this.enemies.push(u);
+    return u;
   }
 
   // ---------- utilità ----------
@@ -187,7 +209,7 @@ export class Battle {
   }
 
   topOf(u, out = new THREE.Vector3()) {
-    return out.copy(this.posOf(u)).add(new THREE.Vector3(0, u.boss ? 16 : (u.model.height || 1.9) + 0.4, u.boss ? 6 : 0));
+    return out.copy(this.posOf(u)).add(new THREE.Vector3(0, u.whale ? 16 : (u.model.height || 1.9) + 0.4, u.whale ? 6 : 0));
   }
 
   help(text, dur = 0) {
@@ -273,7 +295,7 @@ export class Battle {
     u.st.defend = false;
     if (u.st.shell) u.st.shell = false;
     // gli effetti a tempo si consumano a ogni turno di chi li ha
-    for (const k of ['haste', 'slow']) if (u.st[k] > 0) u.st[k]--;
+    for (const k of ['haste', 'slow', 'shield', 'might']) if (u.st[k] > 0) u.st[k]--;
     this.renderParty();
     this.renderCtb();
     if (u.side === 'party') this.openMenu(u);
@@ -293,11 +315,11 @@ export class Battle {
     this.camShot = { kind: 'over', u };
     const items = [{ label: 'Attacca', key: 'attack', rank: 3, desc: 'Un colpo semplice a un nemico.' }];
     if (u.od >= 100) items.unshift({ label: 'Overdrive', key: 'od', rank: 3, od: true, desc: OVERDRIVES[u.data.od].desc });
-    items.push({ label: u.data.menu, key: 'skills', rank: 3, desc: u.data.skills.map((s) => SKILLS[s].name).join(' · ') });
+    items.push({ label: u.data.menu, key: 'skills', rank: 3, desc: knownSkills(u.id, this.state.level).map((s) => SKILLS[s].name).join(' · ') });
     items.push({ label: 'Difendi', key: 'defend', rank: 2, desc: 'Ti ripari: dimezzi i danni fino al tuo prossimo turno.' });
     const nItems = Object.values(this.state.items).reduce((a, b) => a + b, 0);
     items.push({ label: 'Oggetti', key: 'items', rank: 2, off: !nItems, desc: nItems ? 'Pozioni, eteri, code di fenice.' : 'Non è rimasto niente.' });
-    if (!this.enemies.some((e) => e.boss)) items.push({ label: 'Fuggi', key: 'flee', rank: 2, desc: 'Scappare. Non sempre riesce.' });
+    if (!this.enemies.some((e) => e.boss) && !this.o.noFlee) items.push({ label: 'Fuggi', key: 'flee', rank: 2, desc: 'Scappare. Non sempre riesce.' });
     this.menu = { u, title: u.name, items, sel: 0, stack: [] };
     this.cmdEl.style.display = '';
     this.renderMenu();
@@ -368,7 +390,7 @@ export class Battle {
     this.ctx.audio.chime(1320, 0.04);
     const u = m.u;
     if (it.key === 'skills') {
-      this.submenu(u.data.menu, u.data.skills.map((sid) => {
+      this.submenu(u.data.menu, knownSkills(u.id, this.state.level).map((sid) => {
         const s = SKILLS[sid];
         return { label: s.name, right: s.mp ? `${s.mp} MP` : '', key: 'skill', skill: sid, rank: s.rank, off: u.mp < s.mp, desc: s.desc };
       }));
@@ -388,8 +410,8 @@ export class Battle {
       if (it.key === 'skill') kind = SKILLS[it.skill].target;
       if (it.key === 'item') kind = ITEMS[it.item].target;
       if (it.key === 'od') kind = OVERDRIVES[u.data.od].target;
-      if (kind === 'allEnemies' || kind === 'randomEnemies') {
-        this.startTarget(it, 'allEnemies');
+      if (kind === 'allEnemies' || kind === 'randomEnemies' || kind === 'allAllies') {
+        this.startTarget(it, kind === 'allAllies' ? 'allAllies' : 'allEnemies');
         return;
       }
       this.startTarget(it, kind);
@@ -401,6 +423,7 @@ export class Battle {
     let list;
     if (kind === 'enemy' || kind === 'allEnemies') list = this.alive('enemy');
     else if (kind === 'koAlly') list = this.party.filter((p) => p.hp <= 0);
+    else if (kind === 'allAllies') list = this.alive('party');
     else list = this.alive('party');
     if (!list.length) return;
     m.target = { it, kind, list, i: kind === 'ally' ? list.indexOf(m.u) : 0 };
@@ -411,12 +434,12 @@ export class Battle {
 
   showTarget() {
     const T = this.menu.target;
-    const all = T.kind === 'allEnemies';
+    const all = T.kind === 'allEnemies' || T.kind === 'allAllies';
     const tg = T.list[T.i];
     this.cursor.visible = true;
     this.topOf(tg, this.cursor.position);
     this.cursorAll = all ? T.list : null;
-    let txt = all ? 'Tutti i nemici' : tg.name;
+    let txt = all ? (T.kind === 'allAllies' ? 'Tutto il gruppo' : 'Tutti i nemici') : tg.name;
     if (tg.side === 'enemy' && tg.st.scanned && !all) txt += `  ·  ${Math.round(tg.hp)}/${tg.maxHp}${tg.weak.length ? `  ·  debole: ${tg.weak.map((w) => ELEM[w]).join(', ')}` : ''}${tg.absorb.length ? `  ·  assorbe: ${tg.absorb.map((w) => ELEM[w]).join(', ')}` : ''}`;
     if (tg.side === 'party' && !all) txt += `  ·  ${Math.round(tg.hp)}/${tg.maxHp}`;
     this.help(txt);
@@ -427,7 +450,7 @@ export class Battle {
     const T = m.target;
     const u = m.u;
     const it = T.it;
-    const targets = T.kind === 'allEnemies' ? T.list : [T.list[T.i]];
+    const targets = T.kind === 'allEnemies' || T.kind === 'allAllies' ? T.list : [T.list[T.i]];
     this.cursor.visible = false;
     this.menu = null;
     this.renderMenu();
@@ -442,7 +465,7 @@ export class Battle {
   enemyTurn(e) {
     this.camShot = { kind: 'enemy', u: e };
     let act;
-    if (e.boss) {
+    if (e.countMax) {
       e.count--;
       if (e.count <= 0) {
         act = 'canto';
@@ -463,7 +486,7 @@ export class Battle {
     else if (A.target === 'self') targets = [e];
     else if (A.target === 'ally') targets = [this.alive('enemy').sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0]];
     else targets = this.alive('enemy');
-    this.wait(0.5, () => this.perform(e, { type: 'enemy', id: act }, targets, e.boss ? 3 : 3));
+    this.wait(0.5, () => this.perform(e, { type: 'enemy', id: act }, targets, 3));
   }
 
   pickAct(e) {
@@ -497,7 +520,7 @@ export class Battle {
     }
     this.renderParty();
     const physical = action.type === 'attack' || (def && def.kind === 'phys');
-    const melee = physical && (u.side === 'party' || !u.boss) && targets[0] && targets[0] !== u;
+    const melee = physical && (u.side === 'party' || !u.whale) && targets[0] && targets[0] !== u && def?.target !== 'all';
     const hits = def?.hits || 1;
     if (action.type === 'od') {
       this.camShot = { kind: 'spin', u };
@@ -510,7 +533,7 @@ export class Battle {
     // si va verso il bersaglio (corpo a corpo) o si alza le mani (magia)
     if (melee) {
       const tgt = this.posOf(targets[0]);
-      const to = tgt.clone().lerp(start, targets[0].boss ? 0.6 : 0.28);
+      const to = tgt.clone().lerp(start, targets[0].whale ? 0.6 : targets[0].boss ? 0.45 : 0.28);
       to.y = start.y;
       this.lunge = { u, from: start, to, t: 0, dur: 0.32 };
       this.wait(0.36, () => {});
@@ -538,7 +561,7 @@ export class Battle {
     this.wait(0.35, () => {
       this.lunge = null;
       if (u.side === 'party') this.placeParty(u);
-      else if (!u.boss) u.model.group.position.copy(u.home);
+      else if (!u.whale) u.model.group.position.copy(u.home);
       if (this.fled) return this.finish('fled');
       this.endTurn(u, rank);
     });
@@ -586,7 +609,8 @@ export class Battle {
       if (action.type === 'attack' || (def && (def.kind === 'phys' || def.kind === 'mag'))) {
         const kind = action.type === 'attack' ? 'phys' : def.kind;
         const power = action.type === 'attack' ? 1 : def.power;
-        this.damage(u, t, kind, power, def?.elem, lvl);
+        const dealt = this.damage(u, t, kind, power, def?.elem, lvl, def?.pierce);
+        if (def?.drain && dealt) this.heal(u, dealt * 0.6);
         if (def?.status && t.hp > 0) {
           if (def.status === 'armorBreak') {
             t.st.armorBreak = true;
@@ -601,7 +625,7 @@ export class Battle {
           }
         }
       } else if (def.kind === 'heal') {
-        this.heal(t, u.mag * 12 + 80);
+        this.heal(t, (u.mag * 12 + 80) * (def.power || 1));
       } else if (def.kind === 'status') {
         if (def.status === 'provoked') {
           t.st.provokedBy = u;
@@ -617,8 +641,14 @@ export class Battle {
           t.st.haste = 4;
           t.ct *= 0.6;
           this.pop(t, 'Rapidità', 'tag');
+        } else if (def.status === 'shield') {
+          t.st.shield = 4;
+          this.pop(t, 'Barriera', 'tag');
+        } else if (def.status === 'might') {
+          t.st.might = 4;
+          this.pop(t, 'Forza', 'tag');
         }
-        this.sparkle(t, def.status === 'haste' ? [1, 0.9, 0.4] : [0.8, 0.5, 1]);
+        this.sparkle(t, def.status === 'haste' || def.status === 'might' ? [1, 0.9, 0.4] : def.status === 'shield' ? [0.4, 0.9, 1] : [0.8, 0.5, 1]);
         audio.chime(990, 0.06);
       } else if (def.kind === 'scan') {
         t.st.scanned = true;
@@ -628,8 +658,22 @@ export class Battle {
         audio.bleep(0.05);
       } else if (def.kind === 'self') {
         t.st.shell = true;
-        this.pop(t, 'Guscio', 'tag');
+        this.pop(t, def.heal ? 'Incrostazione' : 'Guscio', 'tag');
+        if (def.heal) this.heal(t, t.maxHp * def.heal);
         audio.thud(0.15);
+      } else if (def.kind === 'summon') {
+        const n = this.alive('enemy').filter((q) => !q.boss).length;
+        const k = Math.min(2, 3 - n);
+        if (k <= 0) this.pop(t, 'Nessuno risponde', 'tag');
+        for (let i = 0; i < k; i++) {
+          const ne = this.addEnemy(def.summon);
+          if (!ne) break;
+          ne.ct = baseDelay(ne.agi) * rnd(0.6, 1);
+          this.units.push(ne);
+          this.sparkle(ne, [0.5, 0.9, 1]);
+          this.pop(ne, 'Arriva!', 'tag');
+        }
+        audio.chime(330, 0.08);
       } else if (def.kind === 'healAlly') {
         this.heal(t, def.power);
       } else if (def.kind === 'healAll') {
@@ -639,14 +683,17 @@ export class Battle {
     this.renderParty();
   }
 
-  damage(u, t, kind, power, elem, lvl) {
+  damage(u, t, kind, power, elem, lvl, pierce = false) {
     const { audio } = this.ctx;
     let dmg;
+    const ul = u.side === 'party' ? lvl : 1;
     if (kind === 'phys') {
-      const def = t.st.armorBreak ? 0 : t.def * (t.st.shell ? 1.8 : 1);
-      dmg = (u.str * 4 + lvl * 3) * power * (1 - def / (def + 60));
+      const def = t.st.armorBreak || pierce ? 0 : t.def * (t.st.shell ? 1.8 : 1);
+      dmg = (u.str * 4 + ul * 3) * power * (1 - def / (def + 60));
+      if (u.st.might > 0) dmg *= 1.35;
     } else {
-      dmg = (u.mag * 5 + lvl * 3) * power * (1 - t.mdef / (t.mdef + 80));
+      dmg = (u.mag * 5 + ul * 3) * power * (1 - t.mdef / (t.mdef + 80));
+      if (t.st.shield > 0) dmg *= 0.55;
     }
     dmg *= rnd(0.9, 1.1);
     let tag = null;
@@ -655,7 +702,7 @@ export class Battle {
         this.heal(t, dmg);
         this.pop(t, 'Assorbe', 'tag', 0.5);
         this.element(t, elem);
-        return;
+        return 0;
       }
       if (t.weak.includes(elem)) {
         dmg *= 2;
@@ -676,14 +723,14 @@ export class Battle {
     this.pop(t, `${dmg}`);
     if (tag) this.pop(t, tag, 'tag', 0.45);
     t.model.hurt?.();
-    this.shake = Math.max(this.shake, t.boss ? 0.15 : kind === 'phys' ? 0.25 : 0.15);
+    this.shake = Math.max(this.shake, t.whale ? 0.15 : kind === 'phys' ? 0.25 : 0.15);
     audio[kind === 'phys' ? 'thud' : 'pop'](kind === 'phys' ? 0.25 : 0.18);
     // la barra dell'Overdrive: si riempie prendendo colpi
     if (t.side === 'party') t.od = Math.min(100, t.od + (dmg / t.maxHp) * 130);
     else if (u.side === 'party') u.od = Math.min(100, u.od + 3);
     if (t.hp <= 0) this.ko(t);
     // il dio si sveglia del tutto a metà vita
-    if (t.boss && !t.phase2 && t.hp < t.maxHp * 0.5 && t.hp > 0) {
+    if (t.whale && !t.phase2 && t.hp < t.maxHp * 0.5 && t.hp > 0) {
       t.phase2 = true;
       t.agi += 3;
       t.countMax = 3;
@@ -691,6 +738,7 @@ export class Battle {
       this.wait(0.2, () => this.help('Il dio apre gli occhi del tutto. Il silo trema.', 2.6));
       this.o.onPhase2?.();
     }
+    return dmg;
   }
 
   heal(t, amount) {
@@ -709,10 +757,7 @@ export class Battle {
       // a terra: i personaggi sdraiati, Scintilla di lato
       if (t.model.pos) t.model.lying = true;
       this.pop(t, 'K.O.', 'tag', 0.5);
-    } else if (!t.boss) {
-      t.model.die();
-      this.state.loot.push(t.data.drop);
-    }
+    } else if (!t.whale) t.model.die();
     // chi era provocato da lui torna libero
     for (const e of this.enemies) if (e.st.provokedBy === t) e.st.provokedBy = null;
   }
@@ -729,13 +774,13 @@ export class Battle {
 
   sparkle(u, color) {
     const p = this.posOf(u);
-    const h = u.boss ? 10 : 1;
-    for (let i = 0; i < 24; i++) this.fx.emit(p.x + rnd(-0.7, 0.7) * (u.boss ? 6 : 1), p.y + rnd(0, 2) * h, p.z + rnd(-0.7, 0.7) + (u.boss ? 6 : 0), rnd(-0.3, 0.3), rnd(0.8, 2), rnd(-0.3, 0.3), { color, size: 0.25, endSize: 0.05, life: rnd(0.6, 1.1), alpha: 0.9 });
+    const h = u.whale ? 10 : u.boss ? 2 : 1;
+    for (let i = 0; i < 24; i++) this.fx.emit(p.x + rnd(-0.7, 0.7) * (u.whale ? 6 : u.boss ? 2 : 1), p.y + rnd(0, 2) * h, p.z + rnd(-0.7, 0.7) + (u.whale ? 6 : 0), rnd(-0.3, 0.3), rnd(0.8, 2), rnd(-0.3, 0.3), { color, size: 0.25, endSize: 0.05, life: rnd(0.6, 1.1), alpha: 0.9 });
   }
 
   element(u, elem) {
     const p = this.posOf(u).clone();
-    if (u.boss) p.add(new THREE.Vector3(0, 10, 6));
+    if (u.whale) p.add(new THREE.Vector3(0, 10, 6));
     const audio = this.ctx.audio;
     if (elem === 'fulmine') {
       this.bolt(p);
@@ -794,30 +839,55 @@ export class Battle {
     st.od = Object.fromEntries(this.party.map((p) => [p.id, p.hp > 0 ? p.od : 0]));
     const box = document.createElement('div');
     box.className = 'bx end';
+    // la vita e gli MP restano com'erano (chi è a terra si rialza a fatica)
+    st.party ??= {};
+    for (const p of this.party) st.party[p.id] = { hp: result === 'lost' ? p.hp : Math.max(1, Math.round(p.hp)), mp: Math.round(p.mp) };
     if (result === 'won') {
       const xp = this.enemies.reduce((s, e) => s + e.data.xp, 0);
+      const money = this.enemies.reduce((s, e) => s + (e.data.money || 0), 0);
       st.xp += xp;
+      st.money = (st.money || 0) + money;
+      const before = Object.fromEntries(st.members.map((id) => [id, knownSkills(id, st.level)]));
       let ups = 0;
       while (st.xp >= xpToNext(st.level)) {
         st.xp -= xpToNext(st.level);
         st.level++;
         ups++;
       }
-      const loot = st.loot.filter(Boolean);
-      for (const it of loot) st.items[it] = (st.items[it] || 0) + 1;
+      // il bottino: quello che lasciano le creature
+      const loot = [];
+      for (const e of this.enemies) {
+        if (e.data.drop && Math.random() < 0.65) loot.push(e.data.drop);
+        if (e.boss) loot.push('superpozione', 'etere');
+        else if (Math.random() < 0.22) loot.push(Math.random() < 0.25 ? 'etere' : 'pozione');
+      }
       const names = {};
-      for (const it of loot) names[ITEMS[it].name] = (names[ITEMS[it].name] || 0) + 1;
-      box.innerHTML = `<h3>Vittoria!</h3><p>+${xp} esperienza</p>${ups ? `<p style="color:#ffe060">Livello ${st.level}!</p>` : ''}${loot.length ? `<p>Trovato: ${Object.entries(names).map(([n, k]) => `${n} ×${k}`).join(', ')}</p>` : ''}<div class="k">Invio per continuare</div>`;
+      for (const it of loot) {
+        if (KEY_ITEMS[it]) {
+          st.keyItems[it] = (st.keyItems[it] || 0) + 1;
+          names[KEY_ITEMS[it].name] = (names[KEY_ITEMS[it].name] || 0) + 1;
+        } else {
+          st.items[it] = (st.items[it] || 0) + 1;
+          names[ITEMS[it].name] = (names[ITEMS[it].name] || 0) + 1;
+        }
+      }
+      // chi ha imparato qualcosa
+      const learned = [];
+      for (const id of st.members) {
+        const now = knownSkills(id, st.level).filter((q) => !before[id].includes(q));
+        for (const q of now) learned.push(`${PARTY[id].short}: ${SKILLS[q].name}`);
+      }
+      if (ups) for (const p of this.party) st.party[p.id] = { hp: memberStats(st, p.id).maxHp, mp: memberStats(st, p.id).maxMp };
+      box.innerHTML = `<h3>Vittoria!</h3><p>+${xp} esperienza · +${money} conchiglie</p>${ups ? `<p style="color:#ffe060">Livello ${st.level}! Tutti in forze.</p>` : ''}${learned.length ? `<p style="color:#8af8ff">Nuove abilità: ${learned.join(', ')}</p>` : ''}${loot.length ? `<p>Trovato: ${Object.entries(names).map(([n, k]) => `${n} ×${k}`).join(', ')}</p>` : ''}<div class="k">Invio per continuare</div>`;
       this.ctx.audio.ding(0.15);
       setTimeout(() => this.ctx.audio.chime(1046, 0.1), 200);
       setTimeout(() => this.ctx.audio.chime(1568, 0.1), 420);
     } else if (result === 'lost') {
-      box.innerHTML = '<h3>Il gruppo è sconfitto</h3><p>Il silo si fa buio. Il dio continua a dormire.</p><div class="k">Invio per continuare</div>';
+      box.innerHTML = '<h3>Il gruppo è sconfitto</h3><p>Tutto si fa buio. Il dio, da qualche parte, continua a dormire.</p><div class="k">Invio per continuare</div>';
       this.ctx.audio.boom(0.3);
     } else {
-      box.innerHTML = '<h3>Fuga</h3><p>Le creature tornano a girare intorno alla statua.</p><div class="k">Invio per continuare</div>';
+      box.innerHTML = '<h3>Fuga</h3><p>Siete scappati. Le creature restano dove sono.</p><div class="k">Invio per continuare</div>';
     }
-    st.loot = [];
     this.el.appendChild(box);
     this.endBox = box;
     this.endT = 0;
@@ -842,7 +912,7 @@ export class Battle {
     if (m && !this.steps.length) {
       if (m.target) {
         const T = m.target;
-        if (T.kind !== 'allEnemies') {
+        if (T.kind !== 'allEnemies' && T.kind !== 'allAllies') {
           if (input.wasPressed('KeyA', 'ArrowLeft', 'KeyW', 'ArrowUp')) {
             T.i = (T.i + T.list.length - 1) % T.list.length;
             this.showTarget();
@@ -910,7 +980,7 @@ export class Battle {
       }
     }
     for (const e of this.enemies) {
-      if (e.boss) continue;
+      if (e.whale) continue;
       if (this.lunge && this.lunge.u === e) {
         const L = this.lunge;
         L.t += dt;
@@ -952,7 +1022,7 @@ export class Battle {
       return true;
     });
     // il conto alla rovescia del dio
-    const boss = this.enemies.find((e) => e.boss && e.hp > 0);
+    const boss = this.enemies.find((e) => e.countMax && e.hp > 0);
     if (boss) {
       if (!this.countEl) {
         this.countEl = document.createElement('div');
@@ -970,32 +1040,37 @@ export class Battle {
   updateCamera(dt) {
     const c = this.camShot;
     const A = this.o.arena;
-    const boss = this.enemies.some((e) => e.boss);
+    const boss = this.whaleFight;
     const mid = A.party[1].clone().lerp(boss ? A.boss : A.enemies[1], 0.5);
+    const S = A.scale || 1; // nelle stanze strette la camera sta più vicina
+    const gy = A.party[1].y;
+    const foe = this.enemies.find((e) => e.boss && !e.whale);
+    const foeY = foe ? (foe.model.height || 2) * 0.5 : 1.2;
     let pos;
     let look;
     if (c === 'wide' || !c || this.done) {
       const s = Math.sin(this.t * 0.2) * 3;
-      pos = boss ? new THREE.Vector3(A.party[1].x + 18 + s, 9, A.party[1].z + 12) : new THREE.Vector3(mid.x + 13 + s, 6.5, mid.z + 10);
-      look = boss ? new THREE.Vector3(A.boss.x, 9, A.boss.z + 10) : mid.clone().setY(1.2);
+      pos = boss ? new THREE.Vector3(A.party[1].x + 18 + s, 9, A.party[1].z + 12) : new THREE.Vector3(mid.x + (13 + s) * S, gy + 6.5 * S, mid.z + 10 * S);
+      look = boss ? new THREE.Vector3(A.boss.x, 9, A.boss.z + 10) : mid.clone().setY(gy + foeY);
     } else if (c.kind === 'over') {
       // da dietro le spalle di chi deve scegliere
       const p = this.posOf(c.u);
-      pos = new THREE.Vector3(p.x + 3.2, p.y + 2.6, p.z + 5.5);
-      look = boss ? new THREE.Vector3(A.boss.x, 10, A.boss.z + 8) : A.enemies[1].clone().setY(1.2);
+      pos = new THREE.Vector3(p.x + 3.2 * S, p.y + 2.6 * S, p.z + 5.5 * S);
+      look = boss ? new THREE.Vector3(A.boss.x, 10, A.boss.z + 8) : (foe ? A.boss : A.enemies[1]).clone().setY(gy + foeY);
     } else if (c.kind === 'act') {
       const p = this.posOf(c.u);
       const t = c.t ? this.posOf(c.t) : A.enemies[1];
-      pos = new THREE.Vector3(p.x + 7, p.y + 3.5, (p.z + t.z) / 2 + 4);
-      look = boss ? new THREE.Vector3(A.boss.x, 7, A.boss.z + 10) : p.clone().lerp(t, 0.5).setY(1.2);
+      pos = new THREE.Vector3(p.x + 7 * S, p.y + 3.5 * S, (p.z + t.z) / 2 + 4 * S);
+      look = boss ? new THREE.Vector3(A.boss.x, 7, A.boss.z + 10) : p.clone().lerp(t, 0.5).setY(gy + 1.2);
     } else if (c.kind === 'enemy') {
       if (boss) {
         pos = new THREE.Vector3(A.boss.x - 16, 12, A.boss.z + 30);
         look = new THREE.Vector3(A.boss.x, 8, A.boss.z + 14);
       } else {
         const p = this.posOf(c.u);
-        pos = new THREE.Vector3(p.x - 6, p.y + 3, p.z - 4);
-        look = A.party[1].clone().setY(1.2);
+        const big = c.u.boss ? 1.8 : 1;
+        pos = new THREE.Vector3(p.x - 6 * S * big, p.y + 3 * S * big, p.z - 4 * S * big);
+        look = A.party[1].clone().setY(gy + 1.2);
       }
     } else if (c.kind === 'spin') {
       const p = this.posOf(c.u);
@@ -1003,6 +1078,7 @@ export class Battle {
       pos = new THREE.Vector3(p.x + Math.cos(a) * 4, p.y + 1.8, p.z + Math.sin(a) * 4);
       look = p.clone().setY(p.y + 1);
     }
+    A.clamp?.(pos);
     const k = 1 - Math.exp(-3 * dt);
     this.camPos.lerp(pos, k);
     this.camLook.lerp(look, k);

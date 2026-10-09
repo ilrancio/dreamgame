@@ -242,7 +242,169 @@ export function sparkModel() {
   return m;
 }
 
-const BUILDERS = { crab, jelly, eel, devotee };
+// Il gabbiano nero: ali che battono, vola basso
+function bird() {
+  const m = base(2.4);
+  const black = m.M('#1a1c22', { roughness: 0.7 });
+  const beak = m.M('#e8a020');
+  const holder = new THREE.Group();
+  holder.position.y = 1.8;
+  m.group.add(holder);
+  const body = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.35, 10, 8)), black);
+  body.scale.set(0.8, 0.7, 1.4);
+  const head = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.2, 8, 6)), black);
+  head.position.set(0, 0.18, 0.45);
+  const bk = new THREE.Mesh(m.track(new THREE.ConeGeometry(0.06, 0.25, 6)), beak);
+  bk.rotation.x = Math.PI / 2;
+  bk.position.set(0, 0.15, 0.68);
+  const eye = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.035, 6, 4)), m.M('#ff3a2a', { emissive: '#ff3a2a', emissiveIntensity: 1 }));
+  eye.position.set(0.1, 0.24, 0.55);
+  holder.add(body, head, bk, eye);
+  const wings = [];
+  for (const sx of [-1, 1]) {
+    const w = new THREE.Mesh(m.track(new THREE.BoxGeometry(1.2, 0.04, 0.4)), black);
+    w.geometry.translate(sx * 0.6, 0, 0);
+    w.position.set(sx * 0.2, 0.1, 0);
+    holder.add(w);
+    wings.push([w, sx]);
+  }
+  m.update = function (dt) {
+    this.step(dt);
+    if (this.dying <= 0) holder.position.y = 1.8 + Math.sin(this.t * 3) * 0.2;
+    for (const [w, sx] of wings) w.rotation.z = sx * Math.sin(this.t * 12) * 0.6;
+  };
+  return m;
+}
+
+// Il riccio di scoglio: una palla viola piena di aculei
+function urchin() {
+  const m = base(1.4);
+  const core = new THREE.Mesh(m.track(new THREE.IcosahedronGeometry(0.55, 1)), m.M('#4a1a4a', { roughness: 0.5 }));
+  core.position.y = 0.6;
+  m.group.add(core);
+  const spike = m.track(new THREE.ConeGeometry(0.05, 0.6, 4));
+  const sm = m.M('#8a3a8a');
+  const pos = core.geometry.attributes.position;
+  const seen = new Set();
+  for (let i = 0; i < pos.count; i++) {
+    const v = new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i));
+    const k = v.toArray().map((q) => q.toFixed(2)).join();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const sp = new THREE.Mesh(spike, sm);
+    sp.position.copy(v).multiplyScalar(1.15);
+    sp.lookAt(v.clone().multiplyScalar(3));
+    sp.rotateX(Math.PI / 2);
+    core.add(sp);
+  }
+  m.update = function (dt) {
+    this.step(dt);
+    core.rotation.y += dt * 0.6;
+    core.scale.setScalar(1 + Math.sin(this.t * 4) * 0.04);
+  };
+  return m;
+}
+
+// Il fuoco fatuo: una fiammella azzurra che galleggia, con la sua scia
+function wisp() {
+  const m = base(2.6);
+  const holder = new THREE.Group();
+  holder.position.y = 1.7;
+  m.group.add(holder);
+  const core = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.28, 12, 10)), m.M('#ffffff', { emissive: '#7ad8ff', emissiveIntensity: 2 }));
+  const halo = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.55, 12, 10)), m.M('#7ad8ff', { transparent: true, opacity: 0.25, emissive: '#3a9aff', emissiveIntensity: 1 }));
+  holder.add(core, halo);
+  const tail = [];
+  for (let i = 0; i < 5; i++) {
+    const t = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.16 - i * 0.025, 8, 6)), m.M('#7ad8ff', { transparent: true, opacity: 0.6 - i * 0.1, emissive: '#3a9aff', emissiveIntensity: 1 }));
+    holder.add(t);
+    tail.push(t);
+  }
+  m.update = function (dt) {
+    this.step(dt);
+    if (this.dying <= 0) holder.position.y = 1.7 + Math.sin(this.t * 2) * 0.3;
+    halo.scale.setScalar(1 + Math.sin(this.t * 7) * 0.12);
+    tail.forEach((t, i) => t.position.set(Math.sin(this.t * 3 - i) * 0.15, -0.25 - i * 0.18, Math.cos(this.t * 2 - i) * 0.1 - 0.1));
+  };
+  return m;
+}
+
+// Il cirripede vivente: un mucchio di coni bianchi che si aprono e chiudono
+function barnacle() {
+  const m = base(1.8);
+  const shell = m.M('#d8d0bc', { roughness: 0.8 });
+  const inner = m.M('#4a2a3a');
+  const cones = [];
+  for (let i = 0; i < 7; i++) {
+    const a = (i / 7) * Math.PI * 2;
+    const r = i === 0 ? 0 : 0.55;
+    const c = new THREE.Mesh(m.track(new THREE.CylinderGeometry(0.18, 0.38, 0.8 + (i === 0 ? 0.5 : 0), 8)), shell);
+    c.position.set(Math.cos(a) * r, 0.4 + (i === 0 ? 0.25 : 0), Math.sin(a) * r);
+    const lid = new THREE.Mesh(m.track(new THREE.CircleGeometry(0.17, 8)), inner);
+    lid.rotation.x = -Math.PI / 2;
+    lid.position.y = 0.41 + (i === 0 ? 0.25 : 0);
+    c.add(lid);
+    const feeler = new THREE.Mesh(m.track(new THREE.ConeGeometry(0.04, 0.5, 4)), m.M('#e8a0b0'));
+    feeler.position.y = 0.6;
+    c.add(feeler);
+    m.group.add(c);
+    cones.push(feeler);
+  }
+  m.update = function (dt) {
+    this.step(dt);
+    cones.forEach((f, i) => {
+      f.scale.y = Math.max(0.05, Math.sin(this.t * 2 + i) * 1.2);
+      f.rotation.z = Math.sin(this.t * 5 + i) * 0.4;
+    });
+  };
+  return m;
+}
+
+// I boss: le stesse creature, giganti e con qualcosa in più
+function big(builder, scale, extra) {
+  return () => {
+    const m = builder();
+    m.group.scale.setScalar(scale);
+    m.height *= scale;
+    m.baseScale = scale;
+    extra?.(m);
+    const rev = m.revive.bind(m);
+    m.revive = () => {
+      rev();
+      m.group.scale.setScalar(scale);
+    };
+    const step = m.step.bind(m);
+    m.step = (dt) => {
+      step(dt);
+      if (m.dying > 0) m.group.scale.setScalar(Math.max(0.001, scale * (1 - m.dying / 0.9)));
+    };
+    return m;
+  };
+}
+
+const BUILDERS = {
+  crab,
+  jelly,
+  eel,
+  devotee,
+  bird,
+  urchin,
+  wisp,
+  barnacle,
+  crabking: big(crab, 1.9, (m) => {
+    // la corona di punte sul guscio
+    const gold = m.M('#e8c040', { metalness: 0.7, roughness: 0.3 });
+    for (let i = 0; i < 5; i++) {
+      const c = new THREE.Mesh(m.track(new THREE.ConeGeometry(0.08, 0.35, 5)), gold);
+      c.position.set(-0.4 + i * 0.2, 1.35, 0.2);
+      m.group.add(c);
+    }
+  }),
+  eelking: big(eel, 2, (m) => {
+    m.group.traverse((o) => o.material?.color && o.material.color.offsetHSL(0.6, 0, -0.08));
+  }),
+  jellymother: big(jelly, 2.6),
+};
 
 export function monsterModel(kind) {
   return BUILDERS[kind]();

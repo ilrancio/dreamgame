@@ -11,7 +11,6 @@ import { textTexture, glowTexture } from '../../core/textures.js';
 export const SILO = { x: 0, z: 84, r: 22, h: 84, base: 5 };
 export const PIER = { x: 0, z0: SILO.z + SILO.r - 1, z1: 268, halfW: 3.6, y: 5.2 };
 export const DOOR = new THREE.Vector3(0, SILO.base, SILO.z + SILO.r + 1.2);
-export const PLANE_SPOT = new THREE.Vector3(6.5, PIER.y, PIER.z1 - 10);
 export const BUNKER = { x: -15, z: SILO.z + SILO.r + 8 };
 
 const N = createNoise2D(1313);
@@ -28,6 +27,58 @@ function coastR(a) {
   return R;
 }
 
+// ---------- I luoghi della campagna, calcolati dalla costa vera ----------
+const at = (a, d) => {
+  const R = coastR(a);
+  return { x: Math.cos(a) * (R - d), z: Math.sin(a) * (R - d), a, R };
+};
+// Porto Grigio: il villaggio dei pescatori a sud-ovest, con il suo pontile
+export const VILLAGE = { ...at(-2.3, 30), r: 30, y: 3.2 };
+export const HARBOR = (() => {
+  const a = VILLAGE.a;
+  const s = at(a, 4);
+  return { a, x0: s.x, z0: s.z, x1: s.x + Math.cos(a) * 46, z1: s.z + Math.sin(a) * 46, halfW: 2.4, y: 3.4 };
+})();
+export const PLANE_SPOT = new THREE.Vector3(HARBOR.x1 - Math.cos(HARBOR.a) * 5, HARBOR.y, HARBOR.z1 - Math.sin(HARBOR.a) * 5);
+// il Faro Spento, sul capo a est
+export const LIGHT = { ...at(0.08, 12), r: 10, y: 13 };
+// le Grotte dei Cirripedi: la bocca sotto la scogliera a ovest
+export const CAVE = { ...at(Math.PI - 0.2, 8), r: 9, y: 2.4 };
+// la Spiaggia Nera, a sud-est
+export const BEACH = { ...at(-0.72, 14), r: 30 };
+// le pietre che cantano, al centro della brughiera
+export const STONES = { x: 6, z: -10, r: 14 };
+
+// i sentieri di terra battuta
+const PATHS = [
+  [VILLAGE, STONES],
+  [STONES, { x: 0, z: SILO.z - SILO.r - 4 }],
+  [STONES, LIGHT],
+  [STONES, CAVE],
+  [STONES, BEACH],
+  [VILLAGE, BEACH],
+];
+function segDist(x, z, a, b) {
+  const dx = b.x - a.x;
+  const dz = b.z - a.z;
+  const t = Math.max(0, Math.min(1, ((x - a.x) * dx + (z - a.z) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(x - a.x - dx * t, z - a.z - dz * t);
+}
+export function pathDist(x, z) {
+  let d = Infinity;
+  for (const [a, b] of PATHS) d = Math.min(d, segDist(x, z, a, b));
+  return d;
+}
+export function onHarbor(x, z) {
+  const H = HARBOR;
+  const dx = H.x1 - H.x0;
+  const dz = H.z1 - H.z0;
+  const L = Math.hypot(dx, dz);
+  const u = ((x - H.x0) * dx + (z - H.z0) * dz) / L;
+  const v = Math.abs(((x - H.x0) * -dz + (z - H.z0) * dx) / L);
+  return u > -3 && u < L && v < H.halfW;
+}
+
 // gli scogli isolati in mare: pinnacoli di roccia nera
 const STACKS = (() => {
   const rand = mulberry32(5);
@@ -37,14 +88,17 @@ const STACKS = (() => {
     const r = coastR(a) + 6 + rand() * 70;
     const x = Math.cos(a) * r;
     const z = Math.sin(a) * r;
-    // non sul molo
+    // non sul molo, non davanti al porto né sulla spiaggia
     if (Math.abs(x) < 16 && z > 90) continue;
+    if (segDist(x, z, { x: HARBOR.x0, z: HARBOR.z0 }, { x: HARBOR.x1 + Math.cos(HARBOR.a) * 30, z: HARBOR.z1 + Math.sin(HARBOR.a) * 30 }) < 24) continue;
+    if (Math.hypot(x - BEACH.x, z - BEACH.z) < 50) continue;
     list.push({ x, z, rad: 3 + rand() * 7, h: 5 + rand() * 18 });
   }
   return list;
 })();
 
-export function heightAt(x, z) {
+// il terreno com'è in natura
+function natural(x, z, jagK = 1) {
   const r = Math.hypot(x, z);
   const a = Math.atan2(z, x);
   const R = coastR(a);
@@ -53,7 +107,21 @@ export function heightAt(x, z) {
   let h = t > 0 ? lerp(0.6, inland, smoothstep(0, 1, t)) : -1.5 + t * 16;
   // gli scogli frastagliati lungo la riva: punte e lame di roccia
   const jag = Math.max(0, ridged(N2, x * 0.07, z * 0.07, 3) - 0.5) * 34 * Math.exp(-((t - 0.08) ** 2) / 0.05);
-  h += jag;
+  h += jag * jagK;
+  return { h, t };
+}
+const STONES_Y = natural(STONES.x, STONES.z, 0).h;
+
+export function heightAt(x, z) {
+  // sui sentieri e nei posti abitati le punte di roccia si smussano
+  const dv = Math.hypot(x - VILLAGE.x, z - VILLAGE.z);
+  const dl = Math.hypot(x - LIGHT.x, z - LIGHT.z);
+  const dc = Math.hypot(x - CAVE.x, z - CAVE.z);
+  const db = Math.hypot(x - BEACH.x, z - BEACH.z);
+  const dst = Math.hypot(x - STONES.x, z - STONES.z);
+  const pd = pathDist(x, z);
+  const calm = Math.min(smoothstep(3, 7, pd), smoothstep(VILLAGE.r, VILLAGE.r + 14, dv), smoothstep(LIGHT.r, LIGHT.r + 8, dl), smoothstep(CAVE.r, CAVE.r + 8, dc), smoothstep(BEACH.r * 0.8, BEACH.r + 10, db));
+  let { h, t } = natural(x, z, calm);
   for (const s of STACKS) {
     const d = Math.hypot(x - s.x, z - s.z);
     if (d < s.rad) {
@@ -61,6 +129,15 @@ export function heightAt(x, z) {
       h = Math.max(h, s.h * Math.pow(k, 0.6) + N(x * 0.3, z * 0.3) * 1.5);
     }
   }
+  // la Spiaggia Nera: sabbia scura che scende piano verso il mare
+  const wb = 1 - smoothstep(BEACH.r * 0.7, BEACH.r + 12, db);
+  if (wb > 0) h = lerp(h, Math.max(-2.5, Math.min(4, -0.8 + t * 24 * 0.16)), wb);
+  // gli spiazzi: il villaggio, il faro, la bocca delle grotte, le pietre
+  const coastFade = smoothstep(-0.12, 0.12, t);
+  h = lerp(h, VILLAGE.y, (1 - smoothstep(VILLAGE.r, VILLAGE.r + 16, dv)) * coastFade);
+  h = lerp(h, LIGHT.y, 1 - smoothstep(LIGHT.r, LIGHT.r + 14, dl));
+  h = lerp(h, CAVE.y, (1 - smoothstep(CAVE.r, CAVE.r + 10, dc)) * coastFade);
+  h = lerp(h, STONES_Y, 1 - smoothstep(STONES.r, STONES.r + 10, dst));
   // lo spiazzo di cemento intorno al silo, e la rampa verso il molo
   const ds = Math.hypot(x - SILO.x, z - SILO.z);
   const fl = 1 - smoothstep(SILO.r + 8, SILO.r + 26, ds);
@@ -69,7 +146,21 @@ export function heightAt(x, z) {
 }
 
 export function onPier(x, z) {
-  return Math.abs(x - PIER.x) < PIER.halfW && z > PIER.z0 - 2 && z < PIER.z1;
+  return (Math.abs(x - PIER.x) < PIER.halfW && z > PIER.z0 - 2 && z < PIER.z1) || onHarbor(x, z);
+}
+
+export function pierY(x, z) {
+  return onHarbor(x, z) ? HARBOR.y : PIER.y;
+}
+
+// la zona in cui sei (per gli incontri casuali): null dove si è al sicuro
+export function zoneAt(x, z) {
+  if (Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r + 12) return null;
+  if (Math.hypot(x - SILO.x, z - SILO.z) < SILO.r + 22 || onPier(x, z)) return null;
+  if (Math.hypot(x - BEACH.x, z - BEACH.z) < BEACH.r + 10) return 'spiaggia';
+  if (Math.hypot(x - LIGHT.x, z - LIGHT.z) < LIGHT.r + 4) return null;
+  if (Math.hypot(x - CAVE.x, z - CAVE.z) < CAVE.r + 2) return null;
+  return 'brughiera';
 }
 
 export function buildIsland(scene) {
@@ -113,7 +204,11 @@ export function buildIsland(scene) {
       pos.setY(i, h);
       const sl = Math.abs(heightAt(x + 1.5, z) - h) + Math.abs(heightAt(x, z + 1.5) - h);
       const v = N(x * 0.2, z * 0.2) * 0.04;
-      if (h < 1.2) c.set('#2a3036');
+      const pd = pathDist(x, z);
+      if (Math.hypot(x - BEACH.x, z - BEACH.z) < BEACH.r + 4 && h < 4.5) c.set('#3a3836');
+      else if (pd < 2.6 && h > 0.8) c.set('#6a5a46');
+      else if (Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r && h > 1) c.set('#5a5a50');
+      else if (h < 1.2) c.set('#2a3036');
       else if (sl > 1.6) c.set('#545a62');
       else if (Math.hypot(x - SILO.x, z - SILO.z) < SILO.r + 12) c.set('#6a6c6e');
       else c.set(sl > 0.8 ? '#62645e' : '#4a6040');
@@ -355,8 +450,10 @@ export function buildIsland(scene) {
       st.position.set(sx, 1.5, 0.4);
       plane.add(fl, st);
     }
-    plane.position.set(PLANE_SPOT.x + 4, 0, PLANE_SPOT.z);
-    plane.rotation.y = Math.PI;
+    // accanto alla punta del pontile del porto, il muso verso il mare
+    const pa = HARBOR.a + Math.PI / 2;
+    plane.position.set(PLANE_SPOT.x + Math.cos(pa) * 6.5, 0, PLANE_SPOT.z + Math.sin(pa) * 6.5);
+    plane.rotation.y = Math.atan2(Math.cos(HARBOR.a), Math.sin(HARBOR.a));
     root.add(plane);
   }
 
@@ -374,6 +471,139 @@ export function buildIsland(scene) {
     root.add(door, num);
   }
 
+  // ---------- Il pontile del porto di Porto Grigio ----------
+  {
+    const H = HARBOR;
+    const dx = H.x1 - H.x0;
+    const dz = H.z1 - H.z0;
+    const L = Math.hypot(dx, dz);
+    const ry = Math.atan2(dx, dz);
+    const deck = new THREE.Mesh(boxGeo, wood);
+    deck.scale.set(H.halfW * 2, 0.4, L + 3);
+    deck.position.set((H.x0 + H.x1) / 2 - (dx / L) * 1.5, H.y - 0.35, (H.z0 + H.z1) / 2 - (dz / L) * 1.5);
+    deck.rotation.y = ry;
+    root.add(deck);
+    for (let u = 2; u < L; u += 6) {
+      for (const sv of [-1, 1]) {
+        const px = H.x0 + (dx / L) * u + (dz / L) * sv * (H.halfW - 0.3);
+        const pz = H.z0 + (dz / L) * u - (dx / L) * sv * (H.halfW - 0.3);
+        const pile = new THREE.Mesh(track(new THREE.CylinderGeometry(0.25, 0.3, 8, 6)), wood);
+        pile.position.set(px, H.y - 4, pz);
+        root.add(pile);
+      }
+    }
+  }
+
+  // ---------- Il Faro Spento ----------
+  const lightTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = 64;
+    c.height = 256;
+    const g = c.getContext('2d');
+    for (let i = 0; i < 8; i++) {
+      g.fillStyle = i % 2 ? '#e8e4dc' : '#b83a2a';
+      g.fillRect(0, i * 32, 64, 32);
+    }
+    g.fillStyle = 'rgba(40,30,20,0.25)';
+    for (let i = 0; i < 40; i++) g.fillRect(Math.random() * 64, Math.random() * 256, 2, 10 + Math.random() * 30);
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return track(t);
+  })();
+  const LT = LIGHT;
+  const toCenter = Math.atan2(-LT.x, -LT.z); // la porta guarda verso l'interno dell'isola
+  const lightGroup = new THREE.Group();
+  lightGroup.position.set(LT.x, LT.y, LT.z);
+  root.add(lightGroup);
+  {
+    const tower = new THREE.Mesh(track(new THREE.CylinderGeometry(3, 4.2, 26, 24)), track(new THREE.MeshStandardMaterial({ map: lightTex, roughness: 0.8 })));
+    tower.position.y = 13;
+    const gallery = new THREE.Mesh(track(new THREE.CylinderGeometry(4.2, 4.2, 0.4, 24)), mat('#2a2a2e', { metalness: 0.6 }));
+    gallery.position.y = 26.2;
+    const roof = new THREE.Mesh(track(new THREE.ConeGeometry(3.2, 3, 16)), mat('#8a2a1e'));
+    roof.position.y = 31;
+    const base = new THREE.Mesh(track(new THREE.CylinderGeometry(5.5, 6, 1.2, 24)), mat('#5a5a58'));
+    base.position.y = 0.2;
+    lightGroup.add(tower, gallery, roof, base);
+    const door = new THREE.Mesh(boxGeo, mat('#3a2a1e'));
+    door.scale.set(1.5, 2.6, 0.3);
+    door.position.set(Math.sin(toCenter) * 4.05, 1.9, Math.cos(toCenter) * 4.05);
+    door.rotation.y = toCenter;
+    lightGroup.add(door);
+    colliders.push({ minX: LT.x - 4.4, maxX: LT.x + 4.4, minZ: LT.z - 4.4, maxZ: LT.z + 4.4 });
+  }
+  const lampMat = track(new THREE.MeshStandardMaterial({ color: '#4a4a48', emissive: '#ffe8a0', emissiveIntensity: 0, transparent: true, opacity: 0.8 }));
+  const lampRoom = new THREE.Mesh(track(new THREE.CylinderGeometry(2.6, 2.6, 3, 16)), lampMat);
+  lampRoom.position.y = 28;
+  lightGroup.add(lampRoom);
+  const lBeam = new THREE.Mesh(
+    track(new THREE.ConeGeometry(10, 130, 20, 1, true)),
+    track(new THREE.MeshBasicMaterial({ color: '#fff4c8', transparent: true, opacity: 0.09, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })),
+  );
+  lBeam.geometry.translate(0, -65, 0);
+  lBeam.geometry.rotateZ(Math.PI / 2);
+  const lBeamPivot = new THREE.Group();
+  lBeamPivot.position.y = 28;
+  lBeamPivot.add(lBeam);
+  lBeamPivot.visible = false;
+  lightGroup.add(lBeamPivot);
+  const lightDoor = new THREE.Vector3(LT.x + Math.sin(toCenter) * 6, LT.y, LT.z + Math.cos(toCenter) * 6);
+
+  // ---------- La bocca delle grotte, sotto la scogliera ----------
+  const CV = CAVE;
+  const caveIn = Math.atan2(-CV.x, -CV.z);
+  {
+    const rockMat = mat('#2a2c30', { roughness: 0.75, flatShading: true });
+    const g = new THREE.Group();
+    g.position.set(CV.x, CV.y, CV.z);
+    g.rotation.y = caveIn;
+    root.add(g);
+    const rk = track(new THREE.DodecahedronGeometry(1, 0));
+    for (const [x, y, z, sc] of [[-5, 2, -2, 4.5], [5, 2, -2, 4.6], [0, 7, -3, 5.5], [-3, 6, -4, 4], [3.5, 6.5, -4, 4.2], [0, 3, -7, 6]]) {
+      const r = new THREE.Mesh(rk, rockMat);
+      r.position.set(x, y, z);
+      r.scale.setScalar(sc);
+      r.rotation.set(x, y, z);
+      g.add(r);
+    }
+    const mouth = new THREE.Mesh(track(new THREE.CircleGeometry(2.8, 16)), track(new THREE.MeshBasicMaterial({ color: '#020304' })));
+    mouth.scale.set(1, 1.3, 1);
+    mouth.position.set(0, 2.6, 0.5);
+    g.add(mouth);
+  }
+  const caveMouth = new THREE.Vector3(CV.x + Math.sin(caveIn) * 3.5, CV.y, CV.z + Math.cos(caveIn) * 3.5);
+
+  // ---------- Le pietre che cantano ----------
+  const stoneSpots = [];
+  {
+    const ST = STONES;
+    const sm = mat('#5a5e60', { roughness: 0.9, flatShading: true });
+    const rune = track(new THREE.MeshStandardMaterial({ color: '#2a3a40', emissive: '#5ad8ff', emissiveIntensity: 0.6 }));
+    for (let i = 0; i < 7; i++) {
+      const a = (i / 7) * Math.PI * 2 + 0.3;
+      const x = ST.x + Math.cos(a) * 9;
+      const z = ST.z + Math.sin(a) * 9;
+      const y = heightAt(x, z);
+      const st = new THREE.Mesh(boxGeo, sm);
+      const h = 3.6 + (i % 3) * 0.8;
+      st.scale.set(1.3, h, 0.8);
+      st.position.set(x, y + h / 2 - 0.3, z);
+      st.rotation.set(0.05 * Math.sin(i), -a, 0.06 * Math.cos(i * 2));
+      root.add(st);
+      const r = new THREE.Mesh(boxGeo, rune);
+      r.scale.set(0.14, h * 0.6, 0.05);
+      r.position.set(0, 0, 0.53);
+      r.scale.divide(st.scale);
+      st.add(r);
+      colliders.push({ minX: x - 0.7, maxX: x + 0.7, minZ: z - 0.7, maxZ: z + 0.7 });
+      stoneSpots.push(new THREE.Vector3(x - Math.cos(a) * 1.4, y, z - Math.sin(a) * 1.4));
+    }
+    const altar = new THREE.Mesh(boxGeo, sm);
+    altar.scale.set(2.4, 1, 1.4);
+    altar.position.set(ST.x, heightAt(ST.x, ST.z) + 0.4, ST.z);
+    root.add(altar);
+  }
+
   // ---------- Rocce sparse sulla riva ----------
   {
     const rand = mulberry32(21);
@@ -389,6 +619,7 @@ export function buildIsland(scene) {
       const x = Math.cos(a) * r;
       const z = Math.sin(a) * r;
       if (Math.abs(x) < 10 && z > 80) continue;
+      if (Math.hypot(x - VILLAGE.x, z - VILLAGE.z) < VILLAGE.r + 8 || pathDist(x, z) < 4 || Math.hypot(x - BEACH.x, z - BEACH.z) < BEACH.r || Math.hypot(x - CAVE.x, z - CAVE.z) < 12) continue;
       const h = heightAt(x, z);
       if (h < -2 || h > 9) continue;
       const s = 0.8 + rand() * 3.5;
@@ -408,10 +639,19 @@ export function buildIsland(scene) {
     door: DOOR,
     planeSpot: PLANE_SPOT,
     door13: new THREE.Vector3(BUNKER.x, SILO.base, BUNKER.z + 3),
+    lightDoor,
+    caveMouth,
+    stoneSpots,
+    root,
+    setLighthouseLit(on) {
+      lampMat.emissiveIntensity = on ? 2.5 : 0;
+      lBeamPivot.visible = on;
+    },
     plane,
     update(t) {
       seaUniforms.uTime.value = t;
       beamPivot.rotation.y = t * 0.35;
+      lBeamPivot.rotation.y = -t * 0.5;
       const on = Math.floor(t * 1.2) % 2 === 0;
       for (const b of beacons) b.visible = on;
       lamps.forEach((l, i) => {

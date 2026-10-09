@@ -3,7 +3,7 @@ import { coastZ, coveAt, roadControl, BAY, STRIP as CSTRIP } from '../dreams/cos
 import { shoreR, M as ISLAND_M, TERRACES, LIGHT, ISLET, RUINS, PIER_X } from '../dreams/isola/terrain.js';
 import { TERMINALS } from '../dreams/digitale/terminal.js';
 import { gateOpen } from '../dreams/digitale/corruption.js';
-import { SILO, PIER as SILO_PIER, heightAt as siloHeight } from '../dreams/silo/island.js';
+import { SILO, PIER as SILO_PIER, heightAt as siloHeight, VILLAGE as S_VILLAGE, LIGHT as S_LIGHT, CAVE as S_CAVE, BEACH as S_BEACH, HARBOR as S_HARBOR } from '../dreams/silo/island.js';
 
 // La mappa del sogno, con M. Il mondo intorno all'hotel disegnato dalle altezze
 // vere del terreno (il campo, le montagne, la strada, il borgo, il centro
@@ -167,8 +167,10 @@ export class WorldMap {
         return s.mode === 'plane' ? { sheet: 'isola', x: s.plane.pos.x, z: s.plane.pos.z, yaw: s.plane.yaw, plane: true } : { sheet: 'isola', ...foot };
       case 'spiaggia':
         return { sheet: 'spiaggia', ...foot };
-      case 'silo':
-        return s.isInside ? { sheet: 'silo', x: SILO.x, z: SILO.z, yaw: null } : { sheet: 'silo', ...foot };
+      case 'silo': {
+        const at = { silo: SILO, faro: S_LIGHT, grotte: S_CAVE }[s.region];
+        return at ? { sheet: 'silo', x: at.x, z: at.z, yaw: null } : { sheet: 'silo', ...foot };
+      }
       default:
         return null;
     }
@@ -353,6 +355,7 @@ export class WorldMap {
     if (isl) bits.push(`Isola: pagine ${isl.pages?.length || 0}/5${isl.boss ? ' · gabbiano battuto' : ''}`);
     if (P.costa?.lain) bits.push('Spiaggia Grande: posto trovato');
     if (P.silo?.god) bits.push('Isola della Tempesta: il dio è stato cacciato');
+    else if (P.silo?.quests) bits.push(`Isola della Tempesta: livello ${P.silo.level}, sigilli ${(P.silo.keyItems?.sigillo1 ? 1 : 0) + (P.silo.keyItems?.sigillo2 ? 1 : 0)}/2`);
     g.textAlign = 'left';
     g.fillStyle = PAPER;
     g.font = '600 13px Inter, sans-serif';
@@ -667,6 +670,25 @@ export class WorldMap {
     g.fill();
     g.stroke();
     this.tiny(g, sx, sy + 4, 'silo');
+    // il porto e i luoghi della campagna
+    g.strokeStyle = '#3a3028';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(...m(S_HARBOR.x0, S_HARBOR.z0));
+    g.lineTo(...m(S_HARBOR.x1, S_HARBOR.z1));
+    g.stroke();
+    const dot = (P, col, label) => {
+      const [px, py] = m(P.x, P.z);
+      g.fillStyle = col;
+      g.beginPath();
+      g.arc(px, py, 3, 0, Math.PI * 2);
+      g.fill();
+      this.tiny(g, px, py - 5, label);
+    };
+    dot(S_VILLAGE, '#e8a23a', 'Porto Grigio');
+    dot(S_LIGHT, '#c83a2a', 'faro');
+    dot(S_CAVE, '#2a2a30', 'grotte');
+    dot(S_BEACH, '#3a3836', 'spiaggia nera');
     if (here) this.insetPos = m(here.x, here.z);
   }
 

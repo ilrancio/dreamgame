@@ -1,67 +1,151 @@
-// I dati del combattimento a turni nel silo: il gruppo, le abilità, gli
-// oggetti, le creature e il dio che dorme.
+// I dati della campagna dell'Isola della Tempesta: il gruppo, le abilità che
+// si imparano salendo di livello, l'equipaggiamento, gli oggetti, le creature
+// di ogni zona, i boss, le missioni.
 
 export const ELEM = { fuoco: 'Fuoco', fulmine: 'Fulmine', gelo: 'Gelo' };
+export const MONEY = 'conchiglie';
 
-// Il gruppo: tu, il tuo amico, e Scintilla uscita dalla chiavetta
+// ---------- Il gruppo ----------
+// learn: [livello, abilità]; Marta si unisce durante la storia
 export const PARTY = {
-  tu: { name: 'Tu', short: 'Tu', hp: 520, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', skills: ['colpo', 'rompi', 'provoca'], od: 'mareggiata' },
-  amico: { name: 'Il tuo amico', short: 'Amico', hp: 400, mp: 90, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', skills: ['fuoco', 'fulmine', 'gelo', 'cura', 'lentezza'], od: 'diluvio' },
-  scintilla: { name: 'Scintilla', short: 'Scintilla', hp: 330, mp: 50, str: 14, mag: 14, def: 10, mdef: 11, agi: 14, color: '#5af0ff', menu: 'Programmi', skills: ['scanner', 'raffica', 'rapidita'], od: 'overclock' },
+  tu: { name: 'Tu', short: 'Tu', hp: 520, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', learn: [[1, 'colpo'], [1, 'provoca'], [3, 'rompi'], [6, 'vento']], od: 'mareggiata', weapon: 'remo' },
+  amico: { name: 'Il tuo amico', short: 'Amico', hp: 400, mp: 90, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', learn: [[1, 'fuoco'], [1, 'fulmine'], [1, 'gelo'], [1, 'cura'], [4, 'lentezza'], [7, 'curatotale']], od: 'diluvio', weapon: 'ombrello' },
+  scintilla: { name: 'Scintilla', short: 'Scintilla', hp: 330, mp: 50, str: 14, mag: 14, def: 10, mdef: 11, agi: 14, color: '#5af0ff', menu: 'Programmi', learn: [[1, 'scanner'], [2, 'raffica'], [5, 'rapidita'], [8, 'barriera']], od: 'overclock', weapon: 'chiavetta2' },
+  marta: { name: 'Marta', short: 'Marta', hp: 470, mp: 44, str: 17, mag: 10, def: 12, mdef: 10, agi: 12, color: '#ff8a6a', menu: 'Mestiere', learn: [[1, 'arpione'], [1, 'rete'], [7, 'richiamo']], od: 'arpioni', weapon: 'arpione' },
 };
+export const PARTY_ORDER = ['tu', 'amico', 'scintilla', 'marta'];
 
 // rank: quanto pesa l'azione sul turno dopo (2 = torni prima, 4 = aspetti di più)
 export const SKILLS = {
   colpo: { name: 'Colpo rapido', mp: 4, rank: 2, target: 'enemy', kind: 'phys', power: 0.75, desc: 'Un colpo veloce: torni in turno prima del solito.' },
   rompi: { name: 'Rompiguardia', mp: 8, rank: 3, target: 'enemy', kind: 'phys', power: 0.9, status: 'armorBreak', desc: 'Spacca la corazza: da adesso la sua difesa non conta più.' },
   provoca: { name: 'Provocazione', mp: 4, rank: 2, target: 'enemy', kind: 'status', status: 'provoked', desc: 'Lo fai arrabbiare: se la prenderà solo con te.' },
+  vento: { name: 'Fendente del vento', mp: 12, rank: 3, target: 'allEnemies', kind: 'phys', power: 0.7, desc: 'Un colpo largo come una raffica: tutti i nemici.' },
   fuoco: { name: 'Fuoco', mp: 6, rank: 3, target: 'enemy', kind: 'mag', power: 1, elem: 'fuoco', desc: 'Una fiammata su un nemico.' },
   fulmine: { name: 'Fulmine', mp: 6, rank: 3, target: 'enemy', kind: 'mag', power: 1, elem: 'fulmine', desc: 'Un fulmine dall\'alto. Qui fuori, di fulmini, ce ne sono tanti.' },
   gelo: { name: 'Gelo', mp: 6, rank: 3, target: 'enemy', kind: 'mag', power: 1, elem: 'gelo', desc: 'Schegge di ghiaccio su un nemico.' },
   cura: { name: 'Cura', mp: 8, rank: 3, target: 'ally', kind: 'heal', power: 1, desc: 'Rimette in sesto un compagno.' },
+  curatotale: { name: 'Cura totale', mp: 22, rank: 3, target: 'allAllies', kind: 'heal', power: 0.75, desc: 'Cura tutto il gruppo insieme.' },
   lentezza: { name: 'Lentezza', mp: 10, rank: 3, target: 'enemy', kind: 'status', status: 'slow', desc: 'Il nemico agisce la metà delle volte, per un po\'.' },
   scanner: { name: 'Scanner', mp: 0, rank: 2, target: 'enemy', kind: 'scan', desc: 'Legge vita e punti deboli di un nemico.' },
   raffica: { name: 'Raffica', mp: 6, rank: 3, target: 'allEnemies', kind: 'mag', power: 0.55, desc: 'Colpi di energia su tutti i nemici.' },
   rapidita: { name: 'Rapidità', mp: 10, rank: 2, target: 'ally', kind: 'status', status: 'haste', desc: 'Un compagno agisce il doppio delle volte, per un po\'.' },
+  barriera: { name: 'Barriera', mp: 14, rank: 3, target: 'allAllies', kind: 'status', status: 'shield', desc: 'Uno scudo di dati: la magia nemica fa molto meno male a tutti.' },
+  arpione: { name: 'Arpione', mp: 6, rank: 3, target: 'enemy', kind: 'phys', power: 1.05, pierce: true, desc: 'Un colpo che passa attraverso qualunque corazza.' },
+  rete: { name: 'Rete', mp: 12, rank: 3, target: 'allEnemies', kind: 'status', status: 'slow', desc: 'Una rete su tutti: i nemici rallentano.' },
+  richiamo: { name: 'Richiamo del mare', mp: 10, rank: 2, target: 'allAllies', kind: 'status', status: 'might', desc: 'Un grido da pescatori: tutto il gruppo colpisce più forte.' },
 };
 
 export const OVERDRIVES = {
   mareggiata: { name: 'Mareggiata', kind: 'phys', target: 'randomEnemies', hits: 5, power: 0.95, desc: 'Cinque colpi, come onde contro gli scogli.' },
   diluvio: { name: 'Diluvio', kind: 'mag', target: 'allEnemies', hits: 1, power: 2.4, desc: 'Tutta la tempesta su tutti i nemici.' },
   overclock: { name: 'Overclock', kind: 'phys', target: 'enemy', hits: 4, power: 1.15, desc: 'Quattro colpi a velocità impossibile.' },
+  arpioni: { name: 'Pioggia di arpioni', kind: 'phys', target: 'randomEnemies', hits: 6, power: 0.85, pierce: true, desc: 'Sei arpioni, ognuno dove capita.' },
 };
 
+// ---------- Oggetti ----------
 export const ITEMS = {
-  pozione: { name: 'Pozione', target: 'ally', desc: 'Ridà 250 punti vita a un compagno.' },
-  etere: { name: 'Etere', target: 'ally', desc: 'Ridà 40 MP a un compagno.' },
-  fenice: { name: 'Coda di fenice', target: 'koAlly', desc: 'Rimette in piedi un compagno caduto.' },
+  pozione: { name: 'Pozione', target: 'ally', desc: 'Ridà 250 punti vita a un compagno.', price: 30 },
+  superpozione: { name: 'Granpozione', target: 'ally', desc: 'Ridà 800 punti vita a un compagno.', price: 110 },
+  etere: { name: 'Etere', target: 'ally', desc: 'Ridà 40 MP a un compagno.', price: 80 },
+  fenice: { name: 'Coda di fenice', target: 'koAlly', desc: 'Rimette in piedi un compagno caduto.', price: 120 },
+};
+// gli oggetti di missione (non si usano)
+export const KEY_ITEMS = {
+  filo: { name: 'Filo di medusa', desc: 'Sottile e fortissimo. A Beppe servono per le reti.' },
+  lanterna: { name: 'Lanterna di Ada', desc: 'Una lanterna vecchia, ancora tiepida.' },
+  sigillo1: { name: 'Sigillo della Luce', desc: 'Un disco di vetro caldo, preso in cima al Faro Spento.' },
+  sigillo2: { name: 'Sigillo dell\'Abisso', desc: 'Un disco di madreperla nera, dal fondo delle grotte.' },
 };
 
-// Le creature del silo
-export const ENEMIES = {
-  granchio: { name: 'Granchio di Ruggine', model: 'crab', hp: 420, str: 16, mag: 6, def: 60, mdef: 6, agi: 6, weak: ['fulmine'], xp: 40, drop: 'pozione', acts: [['chela', 3], ['guscio', 1]], info: 'Corazzato: i colpi fisici rimbalzano. Rompiguardia, o un fulmine.' },
-  medusa: { name: 'Medusa Temporalesca', model: 'jelly', hp: 260, str: 8, mag: 15, def: 10, mdef: 30, agi: 11, weak: ['fuoco'], absorb: ['fulmine'], xp: 36, drop: 'etere', acts: [['scossa', 3], ['velo', 1]], info: 'Si nutre di fulmini. Il fuoco la fa evaporare.' },
-  anguilla: { name: 'Anguilla Abissale', model: 'eel', hp: 300, str: 17, mag: 8, def: 14, mdef: 12, agi: 17, weak: ['gelo'], resist: ['fuoco'], xp: 38, drop: 'pozione', acts: [['morso', 3], ['avvinghia', 1]], info: 'Velocissima. Il gelo la intorpidisce.' },
-  fedele: { name: 'Fedele Annegato', model: 'devotee', hp: 340, str: 10, mag: 16, def: 16, mdef: 20, agi: 8, weak: ['fuoco'], xp: 44, drop: 'fenice', acts: [['preghiera', 2], ['salmodia', 3]], info: 'Prega per gli altri. Conviene farlo tacere per primo.' },
-  dio: { name: 'Il Dio Sopito', model: 'whale', hp: 2600, str: 24, mag: 22, def: 30, mdef: 34, agi: 7, weak: [], xp: 400, boss: true, acts: [['codata', 3], ['onda', 2]], info: 'Ogni tanto canta: quando il conto arriva a zero, il Canto degli Abissi colpisce tutti. Difendetevi.' },
+// ---------- Equipaggiamento ----------
+// who: per chi è l'arma; le armature vanno bene a tutti
+export const GEAR = {
+  remo: { name: 'Remo spezzato', slot: 'weapon', who: 'tu', str: 0, price: 0 },
+  sciabola: { name: 'Sciabola da marinaio', slot: 'weapon', who: 'tu', str: 8, price: 180 },
+  lama: { name: 'Lama di corallo', slot: 'weapon', who: 'tu', str: 18, price: 950 },
+  ombrello: { name: 'Ombrello rotto', slot: 'weapon', who: 'amico', mag: 0, price: 0 },
+  ambra: { name: 'Bastone d\'ambra', slot: 'weapon', who: 'amico', mag: 8, price: 180 },
+  perla: { name: 'Scettro di perla', slot: 'weapon', who: 'amico', mag: 18, price: 950 },
+  chiavetta2: { name: 'Chiavetta da 2 GB', slot: 'weapon', who: 'scintilla', str: 0, mag: 0, price: 0 },
+  chiavetta16: { name: 'Chiavetta da 16 GB', slot: 'weapon', who: 'scintilla', str: 6, mag: 6, price: 200 },
+  chiavetta1t: { name: 'Chiavetta da 1 TB', slot: 'weapon', who: 'scintilla', str: 14, mag: 14, price: 1000 },
+  arpione: { name: 'Arpione di legno', slot: 'weapon', who: 'marta', str: 4, price: 0 },
+  arpioneferro: { name: 'Arpione di ferro', slot: 'weapon', who: 'marta', str: 11, price: 320 },
+  arpioneavorio: { name: 'Arpione d\'avorio', slot: 'weapon', who: 'marta', str: 21, price: 1100 },
+  maglia: { name: 'Maglione', slot: 'armor', def: 0, mdef: 0, hp: 0, price: 0 },
+  impermeabile: { name: 'Impermeabile', slot: 'armor', def: 6, mdef: 4, hp: 40, price: 120 },
+  cerata: { name: 'Cerata rinforzata', slot: 'armor', def: 12, mdef: 8, hp: 90, price: 420 },
+  conchiglie: { name: 'Corazza di conchiglie', slot: 'armor', def: 20, mdef: 14, hp: 170, price: 1050 },
 };
+export const SHOP_GEAR = ['sciabola', 'ambra', 'chiavetta16', 'arpioneferro', 'impermeabile', 'cerata', 'lama', 'perla', 'chiavetta1t', 'arpioneavorio', 'conchiglie'];
+export const SHOP_ITEMS = ['pozione', 'superpozione', 'etere', 'fenice'];
+
+// ---------- Le creature ----------
+// valori al livello di zona 1; tier della zona li moltiplica (vedi scaleEnemy)
+export const ENEMIES = {
+  gabbiano: { name: 'Gabbiano Nero', model: 'bird', hp: 110, str: 13, mag: 6, def: 6, mdef: 8, agi: 15, weak: ['fulmine'], xp: 14, money: 12, acts: [['beccata', 3], ['picchiata', 1]], info: 'Veloce, ma le ali bagnate conducono la corrente.' },
+  riccio: { name: 'Riccio di Scoglio', model: 'urchin', hp: 160, str: 11, mag: 4, def: 45, mdef: 4, agi: 5, weak: ['fuoco'], xp: 16, money: 14, acts: [['aculei', 3], ['pungiglioni', 1]], info: 'Tutto spine: i colpi fisici rimbalzano. Bruciatelo.' },
+  granchio: { name: 'Granchio di Ruggine', model: 'crab', hp: 200, str: 13, mag: 4, def: 50, mdef: 6, agi: 6, weak: ['fulmine'], xp: 18, money: 16, acts: [['chela', 3], ['guscio', 1]], info: 'Corazzato: i colpi fisici rimbalzano. Rompiguardia, un arpione o un fulmine.' },
+  medusa: { name: 'Medusa Temporalesca', model: 'jelly', hp: 130, str: 6, mag: 12, def: 10, mdef: 26, agi: 11, weak: ['fuoco'], absorb: ['fulmine'], xp: 16, money: 14, drop: 'filo', acts: [['scossa', 3], ['velo', 1]], info: 'Si nutre di fulmini. Il fuoco la fa evaporare.' },
+  anguilla: { name: 'Anguilla Abissale', model: 'eel', hp: 150, str: 14, mag: 6, def: 14, mdef: 12, agi: 17, weak: ['gelo'], resist: ['fuoco'], xp: 17, money: 15, acts: [['morso', 3], ['avvinghia', 1]], info: 'Velocissima. Il gelo la intorpidisce.' },
+  fedele: { name: 'Fedele Annegato', model: 'devotee', hp: 170, str: 9, mag: 13, def: 16, mdef: 20, agi: 8, weak: ['fuoco'], xp: 20, money: 22, acts: [['preghiera', 2], ['salmodia', 3]], info: 'Prega per gli altri. Conviene farlo tacere per primo.' },
+  fatuo: { name: 'Fuoco Fatuo', model: 'wisp', hp: 120, str: 5, mag: 14, def: 8, mdef: 22, agi: 13, weak: ['gelo'], absorb: ['fuoco'], xp: 18, money: 18, acts: [['fiammella', 3], ['abbaglio', 1]], info: 'Una fiamma che non brucia niente. Il gelo la spegne; il fuoco la nutre.' },
+  cirripede: { name: 'Cirripede Vivente', model: 'barnacle', hp: 200, str: 10, mag: 10, def: 32, mdef: 14, agi: 6, weak: ['fuoco'], xp: 18, money: 18, acts: [['spruzzo', 3], ['incrosta', 1]], info: 'Si richiude e si ripara. Il fuoco lo stana.' },
+  // i boss
+  granchiore: { name: 'Granchio Re', model: 'crabking', hp: 2400, str: 30, mag: 12, def: 55, mdef: 20, agi: 7, weak: ['fulmine'], xp: 320, money: 400, boss: true, acts: [['chela', 3], ['tenaglia', 2], ['bolle', 2], ['guscio', 1]], info: 'Il guardiano del Faro Spento. La corazza è durissima: Rompiguardia prima di tutto.' },
+  anguillone: { name: 'L\'Anguillone', model: 'eelking', hp: 1800, str: 28, mag: 8, def: 18, mdef: 16, agi: 18, weak: ['gelo'], resist: ['fuoco'], xp: 260, money: 320, boss: true, acts: [['morso', 3], ['avvinghia', 2], ['risucchio', 2]], info: 'Il mostro della Spiaggia Nera. Veloce: Lentezza aiuta.' },
+  madre: { name: 'La Madre delle Meduse', model: 'jellymother', hp: 3600, str: 18, mag: 34, def: 20, mdef: 40, agi: 9, weak: ['fuoco'], absorb: ['fulmine'], xp: 560, money: 600, boss: true, acts: [['catena', 3], ['evoca', 2], ['velomadre', 1]], info: 'Assorbe i fulmini e chiama le sue figlie. Il fuoco la ferisce.' },
+  dio: { name: 'Il Dio Sopito', model: 'whale', hp: 5600, str: 40, mag: 38, def: 35, mdef: 38, agi: 8, weak: [], xp: 1500, money: 0, boss: true, countdown: true, acts: [['codata', 3], ['onda', 2]], info: 'Ogni tanto canta: quando il conto arriva a zero, il Canto degli Abissi colpisce tutti. Difendetevi.' },
+};
+
+export function scaleEnemy(id, tier = 1) {
+  const d = ENEMIES[id];
+  if (d.boss) return { ...d };
+  const h = Math.pow(tier, 1.3);
+  const a = Math.pow(tier, 0.8);
+  return { ...d, hp: Math.round(d.hp * h), str: d.str * a, mag: d.mag * a, def: d.def * (0.8 + tier * 0.2), mdef: d.mdef * (0.8 + tier * 0.2), xp: Math.round(d.xp * Math.pow(tier, 1.2)), money: Math.round(d.money * tier) };
+}
 
 export const ENEMY_ACTS = {
+  beccata: { name: 'Beccata', kind: 'phys', power: 1, target: 'one' },
+  picchiata: { name: 'Picchiata', kind: 'phys', power: 1.45, target: 'one' },
+  aculei: { name: 'Aculei', kind: 'phys', power: 1, target: 'one' },
+  pungiglioni: { name: 'Pioggia di aculei', kind: 'phys', power: 0.6, target: 'all' },
   chela: { name: 'Chela', kind: 'phys', power: 1, target: 'one' },
+  tenaglia: { name: 'Tenaglia', kind: 'phys', power: 1.8, target: 'one' },
+  bolle: { name: 'Bolle bollenti', kind: 'mag', power: 0.8, target: 'all' },
   guscio: { name: 'Guscio', kind: 'self', status: 'shell', target: 'self' },
   scossa: { name: 'Scossa', kind: 'mag', power: 1, elem: 'fulmine', target: 'one', status: 'slow', chance: 0.3 },
   velo: { name: 'Velo d\'acqua', kind: 'healAlly', power: 130, target: 'ally' },
   morso: { name: 'Morso', kind: 'phys', power: 1.1, target: 'one' },
   avvinghia: { name: 'Avvinghia', kind: 'phys', power: 0.7, target: 'one', status: 'delay' },
+  risucchio: { name: 'Risucchio', kind: 'phys', power: 1.2, target: 'one', drain: true },
   preghiera: { name: 'Preghiera', kind: 'healAll', power: 80, target: 'allies' },
   salmodia: { name: 'Salmodia', kind: 'mag', power: 0.95, target: 'one' },
+  fiammella: { name: 'Fiammella', kind: 'mag', power: 1, elem: 'fuoco', target: 'one' },
+  abbaglio: { name: 'Abbaglio', kind: 'mag', power: 0.4, target: 'all', status: 'delay' },
+  spruzzo: { name: 'Spruzzo salato', kind: 'mag', power: 1, target: 'one' },
+  incrosta: { name: 'Incrostazione', kind: 'self', status: 'shell', heal: 0.2, target: 'self' },
+  catena: { name: 'Scossa a catena', kind: 'mag', power: 0.75, elem: 'fulmine', target: 'all' },
+  evoca: { name: 'Richiamo delle figlie', kind: 'summon', summon: 'medusa', target: 'self' },
+  velomadre: { name: 'Velo materno', kind: 'healAll', power: 350, target: 'allies' },
   codata: { name: 'Codata', kind: 'phys', power: 1.35, target: 'one' },
   onda: { name: 'Onda nera', kind: 'mag', power: 0.7, target: 'all' },
   canto: { name: 'Canto degli Abissi', kind: 'mag', power: 1.7, target: 'all' },
   marea: { name: 'Marea', kind: 'mag', power: 1.05, target: 'all', status: 'delay' },
 };
 
-// I gruppi di creature che girano intorno alla statua (id, composizione, dove)
+// ---------- Le zone e i loro incontri ----------
+export const ZONES = {
+  brughiera: { name: 'La Brughiera', tier: 1, groups: [['gabbiano', 'gabbiano'], ['riccio', 'gabbiano'], ['anguilla'], ['riccio', 'riccio'], ['gabbiano', 'riccio', 'gabbiano']] },
+  spiaggia: { name: 'La Spiaggia Nera', tier: 1.35, groups: [['granchio'], ['granchio', 'medusa'], ['medusa', 'medusa'], ['riccio', 'granchio'], ['medusa', 'granchio', 'medusa']] },
+  faro: { name: 'Il Faro Spento', tier: 1.8, groups: [['fatuo', 'fatuo'], ['fedele', 'fatuo'], ['granchio', 'fatuo'], ['fatuo', 'fedele', 'fatuo']] },
+  grotte: { name: 'Le Grotte dei Cirripedi', tier: 2.5, groups: [['medusa', 'medusa'], ['anguilla', 'medusa'], ['cirripede', 'anguilla'], ['cirripede', 'medusa', 'cirripede'], ['anguilla', 'anguilla']] },
+  silo: { name: 'Il Silo', tier: 3.2 },
+};
+
+// I gruppi di creature che custodiscono la statua nel silo (id, composizione, dove)
 export const GROUPS = [
   { id: 'g1', foes: ['granchio', 'medusa'], angle: 0.4 },
   { id: 'g2', foes: ['anguilla', 'anguilla'], angle: 1.6 },
@@ -70,4 +154,91 @@ export const GROUPS = [
   { id: 'g5', foes: ['fedele', 'granchio', 'fedele'], angle: 5.1 },
 ];
 
-export const xpToNext = (level) => Math.round(90 * Math.pow(level, 1.4));
+export const xpToNext = (level) => Math.round(60 * Math.pow(level, 1.3));
+
+// le abilità che un personaggio conosce al suo livello
+export function knownSkills(id, level) {
+  return PARTY[id].learn.filter(([l]) => level >= l).map(([, s]) => s);
+}
+
+// ---------- Le missioni ----------
+// la storia: un passo dopo l'altro
+export const MAIN = [
+  { title: 'Il porto nella tempesta', text: 'Siete arrivati a Porto Grigio. Parla con Orsola, la capovillaggio: la sua casa è quella con la lanterna verde.' },
+  { title: 'Il Faro Spento', text: 'Il primo sigillo è in cima al Faro Spento, sul capo a est. Qualcosa lo custodisce.' },
+  { title: 'Ritorno da Orsola', text: 'Hai il Sigillo della Luce, e il faro è di nuovo acceso. Torna da Orsola a Porto Grigio.' },
+  { title: 'Le Grotte dei Cirripedi', text: 'Il secondo sigillo è nelle grotte sotto le scogliere a ovest. Marta ci è andata a cercare suo fratello Nilo: raggiungila all\'ingresso.' },
+  { title: 'Il fondo delle grotte', text: 'Trova Nilo e il Sigillo dell\'Abisso, nel fondo delle grotte.' },
+  { title: 'Il Silo', text: 'Hai i due sigilli. Il portone del silo, in fondo al molo a nord, aspetta.' },
+  { title: 'Il dio sopito', text: 'Dentro il silo: sconfiggi le creature che custodiscono la statua, poi sveglia il dio.' },
+  { title: 'La tempesta è passata', text: 'Il dio è stato cacciato. Porto Grigio festeggia.' },
+];
+
+export const SIDE = {
+  reti: { title: 'Le reti strappate', giver: 'Beppe', text: 'Beppe ha bisogno di 3 fili di medusa per rattoppare le reti. Le meduse si trovano alla Spiaggia Nera e nelle grotte.', reward: '150 conchiglie e 2 Eteri' },
+  lanterna: { title: 'La lanterna di Ada', giver: 'Ada', text: 'Ada ha perso la sua lanterna nella brughiera, vicino alle pietre che cantano, al centro dell\'isola.', reward: 'Cerata rinforzata e 2 Code di fenice' },
+  mostro: { title: 'Il mostro della Spiaggia Nera', giver: 'Gino', text: 'Qualcosa di enorme abita la Spiaggia Nera, a sud-est. Gino offre una ricompensa a chi lo caccia.', reward: 'Lama di corallo e 300 conchiglie' },
+};
+
+// le statistiche di un membro del gruppo: livello + equipaggiamento
+export function memberStats(state, id) {
+  const d = PARTY[id];
+  const lvl = state.level;
+  const k = 1 + (lvl - 1) * 0.1;
+  const hk = 1 + (lvl - 1) * 0.13;
+  const eq = state.equip?.[id] || {};
+  const w = GEAR[eq.weapon || d.weapon] || {};
+  const a = GEAR[eq.armor || 'maglia'] || {};
+  return {
+    maxHp: Math.round(d.hp * hk + (a.hp || 0)),
+    maxMp: Math.round(d.mp * (1 + (lvl - 1) * 0.08)),
+    str: d.str * k + (w.str || 0),
+    mag: d.mag * k + (w.mag || 0),
+    def: d.def * k + (a.def || 0),
+    mdef: d.mdef * k + (a.mdef || 0),
+    agi: d.agi + (lvl - 1) * 0.3,
+  };
+}
+
+// I forzieri sparsi per la campagna
+export const CHESTS = {
+  isola1: { money: 120 },
+  isola2: { items: { superpozione: 1 }, money: 80 },
+  isola3: { gear: 'impermeabile' },
+  isola4: { items: { etere: 2 } },
+  faro1: { items: { pozione: 3 } },
+  faro2: { gear: 'chiavetta16' },
+  grotte1: { gear: 'arpioneferro' },
+  grotte2: { gear: 'cerata' },
+  grotte3: { items: { fenice: 2, superpozione: 2 } },
+  silo1: { gear: 'conchiglie', money: 300 },
+};
+
+// lo stato della campagna, nuovo o aggiornato da un salvataggio vecchio
+export function initCampaign(sv) {
+  sv.level ??= 1;
+  sv.xp ??= 0;
+  sv.money ??= 100;
+  sv.members ??= ['tu', 'amico', 'scintilla'];
+  sv.party ??= {};
+  sv.equip ??= {};
+  sv.gear ??= { remo: 1, ombrello: 1, chiavetta2: 1, maglia: 4 };
+  sv.items ??= { pozione: 6, etere: 3, fenice: 3 };
+  sv.keyItems ??= {};
+  sv.quests ??= { main: 0, side: {} };
+  sv.chests ??= {};
+  sv.cleared ??= [];
+  sv.od ??= {};
+  sv.lastSave ??= 'villaggio';
+  // chi aveva già cacciato il dio con la versione di prima
+  if (sv.god && sv.quests.main < 7) {
+    sv.quests.main = 7;
+    sv.keyItems.sigillo1 = 1;
+    sv.keyItems.sigillo2 = 1;
+    sv.faroLit = true;
+    sv.niloSaved = true;
+    if (!sv.members.includes('marta')) sv.members.push('marta');
+    sv.gear.arpione ??= 1;
+  }
+  return sv;
+}

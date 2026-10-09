@@ -149,7 +149,7 @@ function onResize() {
 window.addEventListener('resize', onResize);
 
 // i pannelli che hanno già i loro tasti: lì la mappa non si apre
-const MODALS = '#battle, #coop-panel.show, #choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
+const MODALS = '#battle, .rpg, #coop-panel.show, #choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
 
 // il sogno condiviso: O apre il pannello
 const coop = new Coop(ctx, {
