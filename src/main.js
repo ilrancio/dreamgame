@@ -11,6 +11,7 @@ import { AirportDream } from './dreams/aeroporto/AirportDream.js';
 import { BeachDream } from './dreams/spiaggia/BeachDream.js';
 import { CoastDream } from './dreams/costa/CoastDream.js';
 import { IslandDream } from './dreams/isola/IslandDream.js';
+import { SiloDream } from './dreams/silo/SiloDream.js';
 import { placeById } from './core/places.js';
 import { WorldMap } from './core/worldmap.js';
 import { Coop } from './core/coop.js';
@@ -107,6 +108,7 @@ const CHAPTERS = [
   { id: 'spiaggia', create: (c) => new BeachDream(c), card: null, color: '#c8ccd0' },
   { id: 'costa', create: (c) => new CoastDream(c), card: null, color: '#e8f2f8' },
   { id: 'isola', create: (c) => new IslandDream(c), card: null, color: '#e8f8ff' },
+  { id: 'silo', create: (c) => new SiloDream(c), card: null, color: '#0a0e12' },
 ];
 
 let current = null;
@@ -147,7 +149,7 @@ function onResize() {
 window.addEventListener('resize', onResize);
 
 // i pannelli che hanno già i loro tasti: lì la mappa non si apre
-const MODALS = '#coop-panel.show, #choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
+const MODALS = '#battle, #coop-panel.show, #choice.show, #terminal.show, #gesture.show, #arcade.show, #elevator.show, #prizes.show, #bestiary.show';
 
 // il sogno condiviso: O apre il pannello
 const coop = new Coop(ctx, {
@@ -218,7 +220,7 @@ if (hasHotel) {
   title.addEventListener('click', () => {
     // scorciatoie di sviluppo: #hotel parte dall'arrivo in hotel, #esterno dal portone,
     // #centro dall'ingresso del centro commerciale
-    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3, '#aeroporto': 4, '#spiaggia': 5, '#costa': 6, '#isola': 7 }[location.hash] ?? 0);
+    begin({ '#hotel': 1, '#esterno': 2, '#centro': 3, '#aeroporto': 4, '#spiaggia': 5, '#costa': 6, '#isola': 7, '#silo': 8 }[location.hash] ?? 0);
   });
 }
 

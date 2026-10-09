@@ -14,6 +14,7 @@ const PA_LINES = [
   'Attenzione: il tapis roulant sta per terminare. Lo sta per terminare da molto tempo.',
   'Volo per la Spiaggia Grande: imbarco in corso al gate 4. In corso da sempre.',
   'Volo per la Spiaggia d\'Inverno: imbarco al gate 2. Si consiglia un maglione.',
+  'Volo per l\'Isola della Tempesta, gate 5: si avvisano i passeggeri che a destinazione dorme un dio.',
 ];
 const AGENT_LINES = [
   'Volo per la Spiaggia Grande, gate 4. È in imbarco da sempre. Laggiù è sempre agosto.',
@@ -82,7 +83,7 @@ export class AirportDream extends WalkScene {
     if (this.spawn === 'arrivi') this.later(1.2, () => ui.subtitle(FRIEND, 'La navetta ci ha lasciati agli arrivi. Non c\'è nessuno nemmeno qui.', 3.4));
     else if (this.firstVisit) {
       this.later(1.4, () => ui.subtitle(FRIEND, 'Un aeroporto. Vuoto. Le luci accese per nessuno.', 3.2));
-      this.later(5.5, () => ui.subtitle(FRIEND, 'Guarda il tabellone: ci sono posti che non esistono. E tre voli stanno imbarcando.', 3.8));
+      this.later(5.5, () => ui.subtitle(FRIEND, 'Guarda il tabellone: ci sono posti che non esistono. E quattro voli stanno imbarcando.', 3.8));
       this.later(13, () => {
         ui.popup('Una nuova porta: Aeroporto');
         audio.chime(784, 0.12);
@@ -97,7 +98,7 @@ export class AirportDream extends WalkScene {
   }
 
   updateObjective() {
-    this.ctx.ui.objective(this.saved.flown ? 'Il tabellone aspetta i prossimi sogni.' : 'Voli in imbarco: gate 4 Spiaggia Grande, gate 3 Isola, gate 2 Spiaggia d\'Inverno.');
+    this.ctx.ui.objective(this.saved.flown ? 'Il tabellone aspetta i prossimi sogni.' : 'Voli in imbarco: gate 4 Spiaggia Grande, gate 3 Isola, gate 2 Spiaggia d\'Inverno, gate 5 Isola della Tempesta.');
   }
 
   ceilingAt(x, z) {

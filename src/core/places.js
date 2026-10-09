@@ -9,6 +9,7 @@ export const PLACES = [
   { id: 'costa', name: 'Spiaggia Grande', sub: 'in jeep lungo la costa, piena di gente', chapter: 'costa', spawn: 'shortcut', color: '#2a8ab0' },
   { id: 'isola', name: 'L\'Isola', sub: 'monete, pagine, un aereo e un gabbiano di ferro', chapter: 'isola', spawn: 'shortcut', color: '#2aa86a' },
   { id: 'spiaggia', name: 'Spiaggia d\'Inverno', sub: 'uno stabilimento fuori stagione', chapter: 'spiaggia', spawn: 'shortcut', color: '#6a8a8a' },
+  { id: 'silo', name: 'Il Silo', sub: 'un\'isola nella tempesta, un dio che dorme', chapter: 'silo', spawn: 'shortcut', color: '#2a3a4a' },
 ];
 
 export function placeById(id) {

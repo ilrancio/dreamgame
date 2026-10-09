@@ -3,6 +3,7 @@ import { coastZ, coveAt, roadControl, BAY, STRIP as CSTRIP } from '../dreams/cos
 import { shoreR, M as ISLAND_M, TERRACES, LIGHT, ISLET, RUINS, PIER_X } from '../dreams/isola/terrain.js';
 import { TERMINALS } from '../dreams/digitale/terminal.js';
 import { gateOpen } from '../dreams/digitale/corruption.js';
+import { SILO, PIER as SILO_PIER, heightAt as siloHeight } from '../dreams/silo/island.js';
 
 // La mappa del sogno, con M. Il mondo intorno all'hotel disegnato dalle altezze
 // vere del terreno (il campo, le montagne, la strada, il borgo, il centro
@@ -166,6 +167,8 @@ export class WorldMap {
         return s.mode === 'plane' ? { sheet: 'isola', x: s.plane.pos.x, z: s.plane.pos.z, yaw: s.plane.yaw, plane: true } : { sheet: 'isola', ...foot };
       case 'spiaggia':
         return { sheet: 'spiaggia', ...foot };
+      case 'silo':
+        return s.isInside ? { sheet: 'silo', x: SILO.x, z: SILO.z, yaw: null } : { sheet: 'silo', ...foot };
       default:
         return null;
     }
@@ -191,14 +194,14 @@ export class WorldMap {
       S = Math.min(h - top - 58, (w - pad * 3) * 0.62);
       const ix = pad * 2 + S;
       const iw = Math.min(w - ix - pad, S * 0.62);
-      const ih = (S - pad * 2) / 3;
-      insets = [0, 1, 2].map((k) => ({ x: ix, y: top + k * (ih + pad), w: iw, h: ih }));
+      const ih = (S - pad * 3) / 4;
+      insets = [0, 1, 2, 3].map((k) => ({ x: ix, y: top + k * (ih + pad), w: iw, h: ih }));
     } else {
       S = Math.min(w - pad * 2, (h - top - 58) * 0.62);
       const iy = top + S + pad;
       const ih = Math.min(h - iy - 50, S * 0.4);
-      const iw = (S - pad * 2) / 3;
-      insets = [0, 1, 2].map((k) => ({ x: pad + k * (iw + pad), y: iy, w: iw, h: ih }));
+      const iw = (S - pad * 3) / 4;
+      insets = [0, 1, 2, 3].map((k) => ({ x: pad + k * (iw + pad), y: iy, w: iw, h: ih }));
     }
     const ox = wide ? pad : (w - S) / 2;
     const oy = top;
@@ -287,6 +290,7 @@ export class WorldMap {
       { id: 'costa', name: 'Spiaggia Grande', gate: 4, draw: (r, hh) => this.drawCoast(g, r, hh) },
       { id: 'isola', name: 'L\'Isola', gate: 3, draw: (r, hh) => this.drawIsland(g, r, hh) },
       { id: 'spiaggia', name: 'Spiaggia d\'Inverno', gate: 2, draw: (r, hh) => this.drawWinter(g, r, hh) },
+      { id: 'silo', name: 'Isola della Tempesta', gate: 5, draw: (r, hh) => this.drawSilo(g, r, hh) },
     ];
     flights.forEach((f, i) => {
       const r = insets[i];
@@ -340,7 +344,7 @@ export class WorldMap {
     this.insetPos = null;
 
     // ---------- In fondo: quanto hai visto ----------
-    const places = ['borgo', 'centro', 'aeroporto', 'costa', 'isola', 'spiaggia'];
+    const places = ['borgo', 'centro', 'aeroporto', 'costa', 'isola', 'spiaggia', 'silo'];
     const nSeen = places.filter((p) => (p === 'borgo' ? villageKnown : known(p))).length;
     const term = P.digitale?.found ? Object.keys(TERMINALS).filter((id) => P.digitale?.terminals?.[id]?.cleared).length : null;
     const isl = P.isola;
@@ -348,6 +352,7 @@ export class WorldMap {
     if (term !== null) bits.push(`Terminali liberati: ${term}/${Object.keys(TERMINALS).length}`);
     if (isl) bits.push(`Isola: pagine ${isl.pages?.length || 0}/5${isl.boss ? ' · gabbiano battuto' : ''}`);
     if (P.costa?.lain) bits.push('Spiaggia Grande: posto trovato');
+    if (P.silo?.god) bits.push('Isola della Tempesta: il dio è stato cacciato');
     g.textAlign = 'left';
     g.fillStyle = PAPER;
     g.font = '600 13px Inter, sans-serif';
@@ -620,6 +625,48 @@ export class WorldMap {
     g.lineTo(s1, t0);
     g.stroke();
     this.tiny(g, ...m(0, -37), 'navetta');
+    if (here) this.insetPos = m(here.x, here.z);
+  }
+
+  drawSilo(g, r, here) {
+    const m = this.sheet(r, -170, 170, -150, 290);
+    g.fillStyle = '#4a5a64';
+    g.fillRect(r.x, r.y, r.w, r.h);
+    // l'isola: la costa frastagliata
+    g.fillStyle = '#7a7a6a';
+    g.beginPath();
+    // il profilo della costa si calcola una volta sola
+    this.siloCoast ??= Array.from({ length: 91 }, (_, i) => {
+      const a = (i / 90) * Math.PI * 2;
+      for (let k = 0; k < 400; k += 4) if (siloHeight(Math.cos(a) * k, Math.sin(a) * k) < 0) return k;
+      return 150;
+    });
+    for (let i = 0; i <= 90; i++) {
+      const a = (i / 90) * Math.PI * 2;
+      const rr = this.siloCoast[i];
+      const [px, py] = m(Math.cos(a) * rr, Math.sin(a) * rr);
+      if (i) g.lineTo(px, py);
+      else g.moveTo(px, py);
+    }
+    g.closePath();
+    g.fill();
+    // il molo e il silo
+    g.strokeStyle = '#3a3028';
+    g.lineWidth = 3;
+    g.beginPath();
+    g.moveTo(...m(SILO_PIER.x, SILO_PIER.z0));
+    g.lineTo(...m(SILO_PIER.x, SILO_PIER.z1));
+    g.stroke();
+    const [sx, sy] = m(SILO.x, SILO.z);
+    const [ex] = m(SILO.x + SILO.r, SILO.z);
+    g.fillStyle = '#5a6066';
+    g.strokeStyle = INK;
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.arc(sx, sy, Math.abs(ex - sx), 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    this.tiny(g, sx, sy + 4, 'silo');
     if (here) this.insetPos = m(here.x, here.z);
   }
 

@@ -15,6 +15,7 @@ export const FLIGHTS = {
   4: { dest: 'Spiaggia Grande', chapter: 'costa', sea: 'Sotto le nuvole c\'è il mare. Azzurro, pieno di puntini: barche, gente.' },
   3: { dest: 'Isola', chapter: 'isola', sea: 'Sotto le nuvole c\'è un\'isola verde, con una montagna a gradini. E qualcosa di grosso che ci gira intorno.' },
   2: { dest: 'Spiaggia d\'Inverno', chapter: 'spiaggia', sea: 'Sotto le nuvole c\'è il mare. Grigio, calmissimo.' },
+  5: { dest: 'Isola della Tempesta', chapter: 'silo', sea: 'Sotto le nuvole è tutto nero. Fulmini sul mare. E fra gli scogli, una torre di metallo che sale fino a noi.' },
 };
 export const ACTIVE_GATE = 4; // il gate dove aspetta l'addetta
 export const BELTS = [
@@ -32,8 +33,9 @@ export const DEPARTURES = [
   { time: '--:--', dest: 'ALTROVE', gate: '—', status: 'IN ATTESA DI UN SOGNO' },
   { time: '--:--', dest: 'CASA', gate: '—', status: 'RITARDO ∞' },
   { time: '00:00', dest: 'IERI', gate: '1', status: 'CANCELLATO' },
+  { time: '04:44', dest: 'ISOLA DELLA TEMPESTA', gate: '5', status: 'IMBARCO · MARE MOSSO', open: true },
   { time: '--:--', dest: 'IL FONDO DEL MARE', gate: '—', status: 'IN ATTESA DI UN SOGNO' },
-  { time: '03:33', dest: 'SANT\'ONIRIO', gate: '5', status: 'ATTERRATO' },
+  { time: '03:33', dest: 'SANT\'ONIRIO', gate: '—', status: 'ATTERRATO' },
   { time: '--:--', dest: 'LA CITTÀ SENZA NOME', gate: '—', status: 'IN ATTESA DI UN SOGNO' },
 ];
 
