@@ -10,7 +10,7 @@ import { buildLighthouse, buildCaves, FARO, GROTTE } from './dungeons.js';
 import { buildChest, buildSaveLantern } from './props.js';
 import { Storm } from './storm.js';
 import { Battle } from './battle.js';
-import { monsterModel, sparkModel } from './monsters.js';
+import { monsterModel } from './monsters.js';
 import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats } from './data.js';
 import { Dialog, Shop, PartyMenu } from './rpgui.js';
 import { NPCS, talk } from './campaign.js';
@@ -69,10 +69,7 @@ export class SiloDream extends WalkScene {
     this.dialog = new Dialog(ctx);
     this.shop = new Shop(ctx);
     this.menu = new PartyMenu(ctx);
-    // il gruppo in combattimento: Scintilla esce dalla chiavetta, Marta ha l'arpione
-    this.spark = sparkModel();
-    this.spark.group.visible = false;
-    S.add(this.spark.group);
+    // il gruppo in combattimento: Marta, con il suo arpione, compare negli scontri
     this.marta = new Character(S, { ...NPCS.marta.look });
     this.marta.group.visible = false;
     // gli abitanti
@@ -135,7 +132,8 @@ export class SiloDream extends WalkScene {
     this.bossProxy = { group: new THREE.Object3D(), height: 16, hurt: () => (this.bossFlash = 0.3), update() {} };
     this.bossProxy.group.position.copy(this.inside.arena.boss);
     S.add(this.bossProxy.group);
-    this.inside.arena.party.push(this.inside.arena.party[2].clone().add(new THREE.Vector3(3.6, 0, -1)));
+    const ap = this.inside.arena.party;
+    this.inside.arena.party = [ap[0].clone().add(new THREE.Vector3(-2, 0, 0)), ap[1].clone().add(new THREE.Vector3(-2, 0, 0)), ap[1].clone().add(new THREE.Vector3(2, 0, 0)), ap[2].clone().add(new THREE.Vector3(2, 0, 0))];
     this.inside.arena.enemies.push(this.inside.arena.enemies[1].clone().add(new THREE.Vector3(0, 0, 3)));
     // il piccolo riquadro con la vita del gruppo
     this.hud = document.createElement('div');
@@ -313,7 +311,6 @@ export class SiloDream extends WalkScene {
     sv.gear.arpione = 1;
     const ms = memberStats(sv, 'marta');
     sv.party.marta = { hp: ms.maxHp, mp: ms.maxMp };
-    this.setMain(4);
     this.placeNpcs();
     this.ctx.audio.chime(784, 0.1);
     this.save();
@@ -570,7 +567,9 @@ export class SiloDream extends WalkScene {
     if (!this.saved.cavesSeen) {
       this.saved.cavesSeen = true;
       this.later(1.4, () => this.ctx.ui.subtitle(FRIEND, 'Cristalli che brillano da soli. E il rumore del mare, da qualche parte sotto i piedi.', 3.6));
+      this.later(5.4, () => this.ctx.ui.subtitle('Marta', 'Lo sentite? Qualcuno canta. Nilo è laggiù, in fondo.', 3.4));
     }
+    if (q.main === 3) this.later(1, () => this.setMain(4));
   }
 
   siloDoor() {
@@ -647,8 +646,6 @@ export class SiloDream extends WalkScene {
     ui.showHud(false);
     this.hud.style.display = 'none';
     this.battleInfo = { group, boss, onWin, pre: this.player.pos.clone(), preFriend: this.friend.pos.clone(), facing: this.player.facing };
-    this.spark.group.visible = true;
-    this.spark.revive();
     if (this.saved.members.includes('marta')) this.marta.group.visible = true;
     if (group) group.m.group.visible = false;
     if (boss && this.bosses[boss]) this.bosses[boss].group.visible = false;
@@ -662,7 +659,7 @@ export class SiloDream extends WalkScene {
       ctx: this.ctx,
       arena,
       tier: this.region === 'silo' ? ZONES.silo.tier : tier,
-      partyModels: { tu: this.player, amico: this.friend, scintilla: this.spark, marta: this.marta },
+      partyModels: { tu: this.player, amico: this.friend, marta: this.marta },
       foes,
       state: this.saved,
       bossModel: this.bossProxy,
@@ -683,7 +680,6 @@ export class SiloDream extends WalkScene {
     this.battle = null;
     ui.showHud(true);
     this.hud.style.display = '';
-    this.spark.group.visible = false;
     this.marta.group.visible = false;
     this.marta.lying = false;
     this.player.lying = false;
@@ -965,7 +961,6 @@ export class SiloDream extends WalkScene {
     this.inside.dispose();
     this.faro.dispose();
     this.grotte.dispose();
-    this.spark.dispose();
     this.marta.dispose();
     for (const n of Object.values(this.npcs)) n.c.dispose();
     for (const m of Object.values(this.bosses)) m.dispose();

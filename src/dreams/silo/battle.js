@@ -64,6 +64,58 @@ function injectStyle() {
   document.head.appendChild(s);
 }
 
+// le armi in mano: un remo, una sciabola, un ombrello, un bastone, un arpione
+function makeWeapon(who, gear) {
+  const g = new THREE.Group();
+  const M = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.6, ...o });
+  const B = (w, h, d, m, x, y, z) => {
+    const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    o.position.set(x, y, z);
+    o.castShadow = true;
+    g.add(o);
+    return o;
+  };
+  if (who === 'tu') {
+    if (gear === 'remo') {
+      B(0.05, 0.05, 1.3, M('#8a6a4a'), 0, 0, 0.45);
+      B(0.2, 0.04, 0.45, M('#a8845a'), 0, 0, 1.2);
+    } else {
+      const blade = gear === 'lama' ? M('#ff8a8a', { emissive: '#ff4a6a', emissiveIntensity: 0.4 }) : M('#d8dce0', { metalness: 0.8, roughness: 0.25 });
+      B(0.05, 0.05, 0.22, M('#3a2a1e'), 0, 0, 0.02);
+      B(0.2, 0.05, 0.04, M('#c8a040', { metalness: 0.7 }), 0, 0, 0.14);
+      B(0.07, 0.02, 0.9, blade, 0, 0, 0.6);
+    }
+  } else if (who === 'amico') {
+    if (gear === 'ombrello') {
+      B(0.035, 0.035, 1, M('#2a2a2e'), 0, 0, 0.35);
+      const c = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.7, 8), M('#2a3a6a'));
+      c.rotation.x = Math.PI / 2;
+      c.position.z = 0.6;
+      g.add(c);
+    } else {
+      B(0.045, 0.045, 1.3, M('#6a4a2a'), 0, 0, 0.4);
+      const orb = new THREE.Mesh(new THREE.SphereGeometry(0.11, 12, 8), M(gear === 'perla' ? '#f4f0ff' : '#ffb040', { emissive: gear === 'perla' ? '#c8d8ff' : '#ff8a20', emissiveIntensity: 1.2 }));
+      orb.position.z = 1.1;
+      g.add(orb);
+    }
+  } else {
+    // l'arpione di Marta
+    const pole = gear === 'arpioneavorio' ? '#f0e8d8' : gear === 'arpioneferro' ? '#5a5e64' : '#7a5a3a';
+    B(0.05, 0.05, 2, M(pole), 0, 0, 0.55);
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.07, 0.32, 6), M('#c8ccd0', { metalness: 0.8, roughness: 0.3 }));
+    tip.rotation.x = Math.PI / 2;
+    tip.position.z = 1.7;
+    g.add(tip);
+    for (const s of [-1, 1]) {
+      const barb = B(0.02, 0.02, 0.16, M('#c8ccd0', { metalness: 0.8 }), s * 0.05, 0, 1.5);
+      barb.rotation.y = s * 0.6;
+    }
+  }
+  // nella mano: in fondo al braccio
+  g.position.set(0, -0.76, 0.04);
+  return g;
+}
+
 export class Battle {
   // opts: { scene, camera, ctx, arena, partyModels: { tu, amico, scintilla }, foes: ['granchio',...], boss, state, onEnd, bossModel }
   constructor(opts) {
@@ -82,13 +134,16 @@ export class Battle {
     const st0 = this.state;
     this.tier = opts.tier || 1;
     // il gruppo: chi c'è in questo momento, con la vita e gli MP che aveva
+    const AP = opts.arena.party;
+    const n0 = st0.members.length;
+    const homes = n0 === 3 && AP.length >= 4 ? [AP[0], AP[1].clone().lerp(AP[2], 0.5), AP[3]] : AP;
     this.party = st0.members.map((id, i) => {
       const d = PARTY[id];
       const ms = memberStats(st0, id);
       const saved = st0.party?.[id] || {};
       const u = {
         side: 'party', id, name: d.name, short: d.short, color: d.color, data: d, ...ms,
-        od: st0.od?.[id] || 0, st: {}, model: opts.partyModels[id], home: opts.arena.party[i].clone(), facing: Math.PI,
+        od: st0.od?.[id] || 0, st: {}, model: opts.partyModels[id], home: homes[i].clone(), facing: Math.PI,
         weak: [], absorb: [], resist: [],
       };
       u.hp = Math.min(u.maxHp, saved.hp ?? u.maxHp);
@@ -99,6 +154,14 @@ export class Battle {
       }
       return u;
     });
+    // in mano, l'arma equipaggiata
+    this.weapons = [];
+    for (const p of this.party) {
+      if (!p.model.armR) continue;
+      const w = makeWeapon(p.id, st0.equip?.[p.id]?.weapon || PARTY[p.id].weapon);
+      p.model.armR.add(w);
+      this.weapons.push(w);
+    }
     // le creature (o il dio)
     this.enemies = [];
     opts.foes.forEach((fid) => this.addEnemy(fid, opts.foes.length));
@@ -186,6 +249,72 @@ export class Battle {
     }
     this.enemies.push(u);
     return u;
+  }
+
+  // un'animazione su un combattente (anche sulle creature)
+  anim(u, kind, dur) {
+    u.anim = { kind, t: 0, dur };
+    u.model.act?.(kind === 'slash' ? 'attack' : kind);
+  }
+
+  // la posa di un personaggio: braccia, busto, un passo indietro se colpito
+  poseHuman(p, dt) {
+    const m = p.model;
+    const a = p.anim;
+    if (!a || p.hp <= 0) return;
+    a.t += dt;
+    const k = Math.min(1, a.t / a.dur);
+    const ease = (x) => x * x * (3 - 2 * x);
+    const sk = Math.sin(k * Math.PI);
+    if (a.kind === 'attack' || a.kind === 'slash') {
+      const w0 = a.kind === 'attack' ? 0.58 : 0.35;
+      const w1 = a.kind === 'attack' ? 0.75 : 0.6;
+      let ax;
+      let lean;
+      if (k < w0) {
+        const q = ease(k / w0);
+        ax = -2.9 * q;
+        lean = -0.12 * q;
+      } else if (k < w1) {
+        const q = ease((k - w0) / (w1 - w0));
+        ax = -2.9 + 3.6 * q;
+        lean = -0.12 + 0.42 * q;
+      } else {
+        const q = ease((k - w1) / (1 - w1));
+        ax = 0.7 * (1 - q);
+        lean = 0.3 * (1 - q);
+      }
+      m.armR.rotation.set(ax, 0, -0.25);
+      m.armL.rotation.set(-0.5 - 0.4 * sk, 0, 0.25);
+      m.body.rotation.x = lean;
+    } else if (a.kind === 'cast') {
+      const up = ease(Math.min(1, k * 3)) * (k > 0.85 ? (1 - k) / 0.15 : 1);
+      m.armL.rotation.set(-2.7 * up + Math.sin(this.t * 9) * 0.15 * up, 0, 0.4 * up);
+      m.armR.rotation.set(-2.7 * up - Math.sin(this.t * 9) * 0.15 * up, 0, -0.4 * up);
+      m.body.rotation.x = -0.12 * up;
+      if (Math.random() < 0.5 * up) {
+        const pp = this.posOf(p);
+        this.fx.emit(pp.x + rnd(-0.4, 0.4), pp.y + 2.1, pp.z + rnd(-0.4, 0.4), 0, rnd(0.5, 1.5), 0, { color: [0.6, 0.9, 1], size: 0.18, endSize: 0.02, life: 0.5 });
+      }
+    } else if (a.kind === 'item') {
+      m.armR.rotation.set(-1.6 * sk, 0, -0.1);
+      m.body.rotation.x = 0.1 * sk;
+    } else if (a.kind === 'hurt') {
+      m.body.rotation.x = -0.45 * sk;
+      m.armL.rotation.set(-0.6 * sk, 0, 0.5 * sk);
+      m.armR.rotation.set(-0.6 * sk, 0, -0.5 * sk);
+      m.group.position.z += 0.35 * sk;
+    } else if (a.kind === 'win') {
+      const w = Math.sin(this.t * 8);
+      m.armR.rotation.set(-2.8 + w * 0.3, 0, -0.3);
+      m.armL.rotation.set(-2.8 - w * 0.3, 0, 0.3);
+      m.group.position.y += Math.abs(Math.sin(this.t * 5)) * 0.18;
+    }
+    m.poseFigure?.();
+    if (a.t >= a.dur && a.kind !== 'win') {
+      p.anim = null;
+      m.body.rotation.x = 0;
+    }
   }
 
   // ---------- utilità ----------
@@ -530,6 +659,10 @@ export class Battle {
     } else if (u.side === 'party') this.camShot = { kind: 'act', u, t: targets[0] };
     else this.camShot = { kind: 'enemy', u, t: targets[0] };
     const start = this.posOf(u).clone();
+    // l'animazione: si carica il colpo andando, si cala arrivando; la magia a braccia alzate
+    if (physical) this.anim(u, melee ? 'attack' : 'slash', melee ? 0.62 : 0.45);
+    else if (action.type === 'item') this.anim(u, 'item', 0.8);
+    else if (action.type !== 'defend' && action.type !== 'flee') this.anim(u, 'cast', 1.05);
     // si va verso il bersaglio (corpo a corpo) o si alza le mani (magia)
     if (melee) {
       const tgt = this.posOf(targets[0]);
@@ -545,6 +678,7 @@ export class Battle {
     // l'effetto, colpo per colpo
     for (let h = 0; h < hits; h++) {
       this.wait(h === 0 ? 0.05 : 0.26, () => {
+        if (h < hits - 1 && physical) this.anim(u, 'slash', 0.3);
         let tg = targets;
         if (def?.target === 'randomEnemies') {
           const al = this.alive('enemy');
@@ -723,6 +857,7 @@ export class Battle {
     this.pop(t, `${dmg}`);
     if (tag) this.pop(t, tag, 'tag', 0.45);
     t.model.hurt?.();
+    this.anim(t, 'hurt', 0.4);
     this.shake = Math.max(this.shake, t.whale ? 0.15 : kind === 'phys' ? 0.25 : 0.15);
     audio[kind === 'phys' ? 'thud' : 'pop'](kind === 'phys' ? 0.25 : 0.18);
     // la barra dell'Overdrive: si riempie prendendo colpi
@@ -843,6 +978,7 @@ export class Battle {
     st.party ??= {};
     for (const p of this.party) st.party[p.id] = { hp: result === 'lost' ? p.hp : Math.max(1, Math.round(p.hp)), mp: Math.round(p.mp) };
     if (result === 'won') {
+      for (const p of this.party) if (p.hp > 0) p.anim = { kind: 'win', t: 0, dur: 99 };
       const xp = this.enemies.reduce((s, e) => s + e.data.xp, 0);
       const money = this.enemies.reduce((s, e) => s + (e.data.money || 0), 0);
       st.xp += xp;
@@ -961,12 +1097,9 @@ export class Battle {
       } else if (mdl.pos && p.hp > 0) mdl.facing = Math.PI;
       if (mdl.pos) {
         mdl.animate(dt, speed);
-        // le braccia: in alto per la magia, avanti per difendersi
-        if (this.cast?.u === p) {
-          mdl.armL.rotation.set(-2.6, 0, 0.3);
-          mdl.armR.rotation.set(-2.6, 0, -0.3);
-          mdl.poseFigure?.();
-        } else if (p.st.defend && p.hp > 0) {
+        // le braccia: le animazioni d'attacco e di magia, o avanti per difendersi
+        if (p.anim) this.poseHuman(p, dt);
+        else if (p.st.defend && p.hp > 0) {
           mdl.armL.rotation.set(-1.4, 0, -0.5);
           mdl.armR.rotation.set(-1.4, 0, 0.5);
           mdl.poseFigure?.();
@@ -981,10 +1114,22 @@ export class Battle {
     }
     for (const e of this.enemies) {
       if (e.whale) continue;
+      const g = e.model.group;
       if (this.lunge && this.lunge.u === e) {
         const L = this.lunge;
         L.t += dt;
-        e.model.group.position.lerpVectors(L.from, L.to, Math.min(1, L.t / L.dur));
+        g.position.lerpVectors(L.from, L.to, Math.min(1, L.t / L.dur));
+      } else if (e.hp > 0 && !e.model.dying) {
+        // colpito: un sobbalzo all'indietro
+        g.position.copy(e.home);
+        g.rotation.x = 0;
+        if (e.anim?.kind === 'hurt') {
+          e.anim.t += dt;
+          const sk = Math.sin(Math.min(1, e.anim.t / e.anim.dur) * Math.PI);
+          g.position.z -= 0.45 * sk * (e.boss ? 1.6 : 1);
+          g.rotation.x = -0.28 * sk;
+          if (e.anim.t >= e.anim.dur) e.anim = null;
+        }
       }
       e.model.update(dt);
     }
@@ -1092,6 +1237,14 @@ export class Battle {
   }
 
   dispose() {
+    for (const w of this.weapons || []) {
+      w.parent?.remove(w);
+      w.traverse((o) => {
+        o.geometry?.dispose();
+        o.material?.dispose();
+      });
+    }
+    for (const p of this.party) if (p.model.body) p.model.body.rotation.x = 0;
     this.el.remove();
     this.scene.remove(this.cursor);
     this.cursor.geometry.dispose();

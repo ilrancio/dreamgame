@@ -223,12 +223,17 @@ export class AirportDream extends WalkScene {
         const C = this.cabin;
         this.player.pos.copy(C.seat);
         this.player.pos.y = 0.12;
-        this.player.facing = -Math.PI / 2;
+        // seduti guardando avanti, come in aereo; solo la testa si gira verso l'oblò
+        this.player.facing = Math.PI;
         this.player.sitting = true;
+        this.player.head.rotation.y = 0.85;
+        this.player.seatHeight = 0.62;
         this.friend.pos.copy(C.seat2);
         this.friend.pos.y = 0.12;
-        this.friend.facing = -Math.PI / 2;
+        this.friend.facing = Math.PI;
         this.friend.sitting = true;
+        this.friend.head.rotation.y = 0.6;
+        this.friend.seatHeight = 0.62;
         this.camPos.copy(C.cam);
         this.camLook.copy(C.look);
         audio.loop('volo', true, { freq: 180, q: 0.4, vol: 0.06, type: 'lowpass' });

@@ -26,6 +26,17 @@ function base(height) {
     hurt() {
       this.flashT = 0.3;
     },
+    // un gesto: 'attack', 'cast' (o 'hurt', che fa il combattimento)
+    act(kind) {
+      if (kind === 'hurt') return;
+      this.actKind = kind;
+      this.actT = 0;
+    },
+    // quanto del gesto è fatto (0 → 1 → 0): il colpo arriva a metà
+    actK(kind) {
+      if (this.actKind !== kind) return 0;
+      return Math.sin(Math.min(1, this.actT / 0.65) * Math.PI);
+    },
     die() {
       this.dying = 0.0001;
     },
@@ -36,6 +47,10 @@ function base(height) {
     },
     step(dt) {
       this.t += dt;
+      if (this.actKind) {
+        this.actT += dt;
+        if (this.actT > 0.65) this.actKind = null;
+      }
       if (this.flashT > 0) this.flashT -= dt;
       const f = this.flashT > 0 && Math.floor(this.flashT * 30) % 2 === 0;
       for (const m of flashMats) {
@@ -107,8 +122,12 @@ function crab() {
   }
   m.update = function (dt) {
     this.step(dt);
-    legs.forEach((l, i) => (l.rotation.z = -0.7 + Math.sin(this.t * 3 + i) * 0.12));
-    claws.forEach((c, i) => (c.rotation.x = Math.sin(this.t * 2 + i * 2) * 0.15));
+    const at = this.actK('attack');
+    const ca = this.actK('cast');
+    legs.forEach((l, i) => (l.rotation.z = -0.7 + Math.sin(this.t * (3 + at * 20) + i) * (0.12 + at * 0.2)));
+    // la chela si alza e si abbatte
+    claws.forEach((c, i) => (c.rotation.x = Math.sin(this.t * 2 + i * 2) * 0.15 - at * (i ? 1.4 : 0.6) + ca * 0.6));
+    shell.rotation.x = at * 0.35;
   };
   return m;
 }
@@ -137,11 +156,15 @@ function jelly() {
   }
   m.update = function (dt) {
     this.step(dt);
-    if (this.dying <= 0) holder.position.y = 2.2 + Math.sin(this.t * 1.6) * 0.25;
-    dome.scale.y = 0.8 + Math.sin(this.t * 3) * 0.08;
+    const at = Math.max(this.actK('attack'), this.actK('cast'));
+    if (this.dying <= 0) holder.position.y = 2.2 + Math.sin(this.t * 1.6) * 0.25 - at * 0.6;
+    dome.scale.y = 0.8 + Math.sin(this.t * 3) * 0.08 - at * 0.25;
+    dome.scale.x = dome.scale.z = 1 + at * 0.3;
+    // i tentacoli si aprono a frusta
     tents.forEach((t, i) => {
-      t.rotation.x = Math.sin(this.t * 2.4 + i) * 0.25;
-      t.rotation.z = Math.cos(this.t * 2 + i * 1.3) * 0.25;
+      const a = (i / tents.length) * Math.PI * 2;
+      t.rotation.x = Math.sin(this.t * 2.4 + i) * 0.25 + Math.sin(a) * at * 1.2;
+      t.rotation.z = Math.cos(this.t * 2 + i * 1.3) * 0.25 - Math.cos(a) * at * 1.2;
     });
   };
   return m;
@@ -171,10 +194,13 @@ function eel() {
   head.add(jaw);
   m.update = function (dt) {
     this.step(dt);
+    const at = Math.max(this.actK('attack'), this.actK('cast') * 0.6);
     segs.forEach((s, i) => {
       const k = i / (segs.length - 1);
-      s.position.set(Math.sin(this.t * 2.2 - i * 0.6) * 0.5 * (1 - k * 0.5), 0.3 + k * 3, Math.sin(this.t * 1.4 - i * 0.4) * 0.3 + k * k * 0.6);
+      // all'attacco la testa scatta in avanti e in basso
+      s.position.set(Math.sin(this.t * (2.2 + at * 6) - i * 0.6) * 0.5 * (1 - k * 0.5), 0.3 + k * 3 - at * k * k * 1.6, Math.sin(this.t * 1.4 - i * 0.4) * 0.3 + k * k * 0.6 + at * k * k * 2.4);
     });
+    jaw.rotation.x = at * 0.8;
   };
   return m;
 }
@@ -204,8 +230,12 @@ function devotee() {
   m.group.add(arm);
   m.update = function (dt) {
     this.step(dt);
+    const at = Math.max(this.actK('attack'), this.actK('cast'));
     m.group.rotation.z = Math.sin(this.t * 0.9) * 0.04;
-    arm.rotation.z = Math.sin(this.t * 1.3) * 0.15;
+    // alza la lanterna, e la lanterna si accende
+    arm.rotation.z = Math.sin(this.t * 1.3) * 0.15 + at * 2.2;
+    lantern.material.emissiveIntensity = 2 + at * 4;
+    hood.rotation.x = -at * 0.3;
   };
   return m;
 }
@@ -270,8 +300,12 @@ function bird() {
   }
   m.update = function (dt) {
     this.step(dt);
-    if (this.dying <= 0) holder.position.y = 1.8 + Math.sin(this.t * 3) * 0.2;
-    for (const [w, sx] of wings) w.rotation.z = sx * Math.sin(this.t * 12) * 0.6;
+    const at = this.actK('attack');
+    // in picchiata: giù col becco, ali chiuse
+    if (this.dying <= 0) holder.position.y = 1.8 + Math.sin(this.t * 3) * 0.2 - at * 1.1;
+    holder.rotation.x = at * 0.9;
+    holder.position.z = at * 0.6;
+    for (const [w, sx] of wings) w.rotation.z = sx * (Math.sin(this.t * 12) * 0.6 * (1 - at) - at * 0.9);
   };
   return m;
 }
@@ -299,8 +333,10 @@ function urchin() {
   }
   m.update = function (dt) {
     this.step(dt);
-    core.rotation.y += dt * 0.6;
-    core.scale.setScalar(1 + Math.sin(this.t * 4) * 0.04);
+    const at = this.actK('attack');
+    core.rotation.y += dt * (0.6 + at * 14);
+    core.position.y = 0.6 + at * 1.1;
+    core.scale.setScalar(1 + Math.sin(this.t * 4) * 0.04 + at * 0.25);
   };
   return m;
 }
@@ -323,7 +359,9 @@ function wisp() {
   m.update = function (dt) {
     this.step(dt);
     if (this.dying <= 0) holder.position.y = 1.7 + Math.sin(this.t * 2) * 0.3;
-    halo.scale.setScalar(1 + Math.sin(this.t * 7) * 0.12);
+    const at = Math.max(this.actK('attack'), this.actK('cast'));
+    halo.scale.setScalar(1 + Math.sin(this.t * 7) * 0.12 + at * 1.4);
+    core.scale.setScalar(1 + at * 0.6);
     tail.forEach((t, i) => t.position.set(Math.sin(this.t * 3 - i) * 0.15, -0.25 - i * 0.18, Math.cos(this.t * 2 - i) * 0.1 - 0.1));
   };
   return m;
@@ -352,9 +390,11 @@ function barnacle() {
   }
   m.update = function (dt) {
     this.step(dt);
+    const at = Math.max(this.actK('attack'), this.actK('cast'));
     cones.forEach((f, i) => {
-      f.scale.y = Math.max(0.05, Math.sin(this.t * 2 + i) * 1.2);
-      f.rotation.z = Math.sin(this.t * 5 + i) * 0.4;
+      f.scale.y = Math.max(0.05, Math.sin(this.t * 2 + i) * 1.2) + at * 3;
+      f.rotation.z = Math.sin(this.t * (5 + at * 20) + i) * (0.4 + at * 0.4);
+      f.rotation.x = at * 0.8;
     });
   };
   return m;

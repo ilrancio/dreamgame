@@ -8,12 +8,11 @@ export const MONEY = 'conchiglie';
 // ---------- Il gruppo ----------
 // learn: [livello, abilità]; Marta si unisce durante la storia
 export const PARTY = {
-  tu: { name: 'Tu', short: 'Tu', hp: 520, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', learn: [[1, 'colpo'], [1, 'provoca'], [3, 'rompi'], [6, 'vento']], od: 'mareggiata', weapon: 'remo' },
-  amico: { name: 'Il tuo amico', short: 'Amico', hp: 400, mp: 90, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', learn: [[1, 'fuoco'], [1, 'fulmine'], [1, 'gelo'], [1, 'cura'], [4, 'lentezza'], [7, 'curatotale']], od: 'diluvio', weapon: 'ombrello' },
-  scintilla: { name: 'Scintilla', short: 'Scintilla', hp: 330, mp: 50, str: 14, mag: 14, def: 10, mdef: 11, agi: 14, color: '#5af0ff', menu: 'Programmi', learn: [[1, 'scanner'], [2, 'raffica'], [5, 'rapidita'], [8, 'barriera']], od: 'overclock', weapon: 'chiavetta2' },
-  marta: { name: 'Marta', short: 'Marta', hp: 470, mp: 44, str: 17, mag: 10, def: 12, mdef: 10, agi: 12, color: '#ff8a6a', menu: 'Mestiere', learn: [[1, 'arpione'], [1, 'rete'], [7, 'richiamo']], od: 'arpioni', weapon: 'arpione' },
+  tu: { name: 'Tu', short: 'Tu', hp: 540, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', learn: [[1, 'colpo'], [1, 'provoca'], [2, 'scanner'], [3, 'rompi'], [6, 'vento']], od: 'mareggiata', weapon: 'remo' },
+  amico: { name: 'Il tuo amico', short: 'Amico', hp: 420, mp: 96, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', learn: [[1, 'fuoco'], [1, 'fulmine'], [1, 'gelo'], [1, 'cura'], [4, 'lentezza'], [5, 'rapidita'], [7, 'curatotale'], [9, 'barriera']], od: 'diluvio', weapon: 'ombrello' },
+  marta: { name: 'Marta', short: 'Marta', hp: 480, mp: 44, str: 17, mag: 10, def: 12, mdef: 10, agi: 12, color: '#ff8a6a', menu: 'Mestiere', learn: [[1, 'arpione'], [1, 'rete'], [4, 'richiamo']], od: 'arpioni', weapon: 'arpione' },
 };
-export const PARTY_ORDER = ['tu', 'amico', 'scintilla', 'marta'];
+export const PARTY_ORDER = ['tu', 'amico', 'marta'];
 
 // rank: quanto pesa l'azione sul turno dopo (2 = torni prima, 4 = aspetti di più)
 export const SKILLS = {
@@ -27,10 +26,10 @@ export const SKILLS = {
   cura: { name: 'Cura', mp: 8, rank: 3, target: 'ally', kind: 'heal', power: 1, desc: 'Rimette in sesto un compagno.' },
   curatotale: { name: 'Cura totale', mp: 22, rank: 3, target: 'allAllies', kind: 'heal', power: 0.75, desc: 'Cura tutto il gruppo insieme.' },
   lentezza: { name: 'Lentezza', mp: 10, rank: 3, target: 'enemy', kind: 'status', status: 'slow', desc: 'Il nemico agisce la metà delle volte, per un po\'.' },
-  scanner: { name: 'Scanner', mp: 0, rank: 2, target: 'enemy', kind: 'scan', desc: 'Legge vita e punti deboli di un nemico.' },
+  scanner: { name: 'Osserva', mp: 0, rank: 2, target: 'enemy', kind: 'scan', desc: 'Studi il nemico: quanta vita gli resta, i suoi punti deboli.' },
   raffica: { name: 'Raffica', mp: 6, rank: 3, target: 'allEnemies', kind: 'mag', power: 0.55, desc: 'Colpi di energia su tutti i nemici.' },
   rapidita: { name: 'Rapidità', mp: 10, rank: 2, target: 'ally', kind: 'status', status: 'haste', desc: 'Un compagno agisce il doppio delle volte, per un po\'.' },
-  barriera: { name: 'Barriera', mp: 14, rank: 3, target: 'allAllies', kind: 'status', status: 'shield', desc: 'Uno scudo di dati: la magia nemica fa molto meno male a tutti.' },
+  barriera: { name: 'Barriera', mp: 14, rank: 3, target: 'allAllies', kind: 'status', status: 'shield', desc: 'Un velo d\'acqua su tutti: la magia nemica fa molto meno male.' },
   arpione: { name: 'Arpione', mp: 6, rank: 3, target: 'enemy', kind: 'phys', power: 1.05, pierce: true, desc: 'Un colpo che passa attraverso qualunque corazza.' },
   rete: { name: 'Rete', mp: 12, rank: 3, target: 'allEnemies', kind: 'status', status: 'slow', desc: 'Una rete su tutti: i nemici rallentano.' },
   richiamo: { name: 'Richiamo del mare', mp: 10, rank: 2, target: 'allAllies', kind: 'status', status: 'might', desc: 'Un grido da pescatori: tutto il gruppo colpisce più forte.' },
@@ -78,7 +77,7 @@ export const GEAR = {
   cerata: { name: 'Cerata rinforzata', slot: 'armor', def: 12, mdef: 8, hp: 90, price: 420 },
   conchiglie: { name: 'Corazza di conchiglie', slot: 'armor', def: 20, mdef: 14, hp: 170, price: 1050 },
 };
-export const SHOP_GEAR = ['sciabola', 'ambra', 'chiavetta16', 'arpioneferro', 'impermeabile', 'cerata', 'lama', 'perla', 'chiavetta1t', 'arpioneavorio', 'conchiglie'];
+export const SHOP_GEAR = ['sciabola', 'ambra', 'arpioneferro', 'impermeabile', 'cerata', 'lama', 'perla', 'arpioneavorio', 'conchiglie'];
 export const SHOP_ITEMS = ['pozione', 'superpozione', 'etere', 'fenice'];
 
 // ---------- Le creature ----------
@@ -165,9 +164,9 @@ export function knownSkills(id, level) {
 // la storia: un passo dopo l'altro
 export const MAIN = [
   { title: 'Il porto nella tempesta', text: 'Siete arrivati a Porto Grigio. Parla con Orsola, la capovillaggio: la sua casa è quella con la lanterna verde.' },
-  { title: 'Il Faro Spento', text: 'Il primo sigillo è in cima al Faro Spento, sul capo a est. Qualcosa lo custodisce.' },
+  { title: 'Il Faro Spento', text: 'Il primo sigillo è in cima al Faro Spento, sul capo a est. Marta viene con voi. Qualcosa custodisce il faro.' },
   { title: 'Ritorno da Orsola', text: 'Hai il Sigillo della Luce, e il faro è di nuovo acceso. Torna da Orsola a Porto Grigio.' },
-  { title: 'Le Grotte dei Cirripedi', text: 'Il secondo sigillo è nelle grotte sotto le scogliere a ovest. Marta ci è andata a cercare suo fratello Nilo: raggiungila all\'ingresso.' },
+  { title: 'Le Grotte dei Cirripedi', text: 'Il secondo sigillo è nelle grotte sotto le scogliere a ovest. È lì che si è perso Nilo, il fratello di Marta.' },
   { title: 'Il fondo delle grotte', text: 'Trova Nilo e il Sigillo dell\'Abisso, nel fondo delle grotte.' },
   { title: 'Il Silo', text: 'Hai i due sigilli. Il portone del silo, in fondo al molo a nord, aspetta.' },
   { title: 'Il dio sopito', text: 'Dentro il silo: sconfiggi le creature che custodiscono la statua, poi sveglia il dio.' },
@@ -207,7 +206,7 @@ export const CHESTS = {
   isola3: { gear: 'impermeabile' },
   isola4: { items: { etere: 2 } },
   faro1: { items: { pozione: 3 } },
-  faro2: { gear: 'chiavetta16' },
+  faro2: { gear: 'ambra' },
   grotte1: { gear: 'arpioneferro' },
   grotte2: { gear: 'cerata' },
   grotte3: { items: { fenice: 2, superpozione: 2 } },
@@ -219,7 +218,9 @@ export function initCampaign(sv) {
   sv.level ??= 1;
   sv.xp ??= 0;
   sv.money ??= 100;
-  sv.members ??= ['tu', 'amico', 'scintilla'];
+  sv.members ??= ['tu', 'amico'];
+  // un gruppo di soli umani: Scintilla torna nella chiavetta
+  sv.members = sv.members.filter((m) => m !== 'scintilla');
   sv.party ??= {};
   sv.equip ??= {};
   sv.gear ??= { remo: 1, ombrello: 1, chiavetta2: 1, maglia: 4 };
@@ -230,6 +231,11 @@ export function initCampaign(sv) {
   sv.cleared ??= [];
   sv.od ??= {};
   sv.lastSave ??= 'villaggio';
+  // Marta si unisce appena parli con Orsola
+  if (sv.quests.main >= 1 && !sv.members.includes('marta')) {
+    sv.members.push('marta');
+    sv.gear.arpione ??= 1;
+  }
   // chi aveva già cacciato il dio con la versione di prima
   if (sv.god && sv.quests.main < 7) {
     sv.quests.main = 7;

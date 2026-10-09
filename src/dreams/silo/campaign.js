@@ -38,10 +38,14 @@ export function talk(s, id) {
           L('Da quando il dio si è addormentato dentro il silo, la tempesta non finisce più. Lui sogna male, e il mare sogna con lui.'),
           L('Il portone del silo si apre solo con due sigilli. Uno è in cima al Faro Spento, sul capo a est. L\'altro è giù nelle grotte, sotto la scogliera a ovest.'),
           L('Cominciate dal faro. Ma prima passate dall\'Emporio di Rina, e riposate alla locanda di Gino. La brughiera non è più sicura.'),
-          L('Prendete. Non è molto, ma qui non c\'è altro da comprare che coraggio.'),
+          L('E prendete con voi Marta, la pescatrice. Suo fratello Nilo è sparito vicino alle grotte, e lei non riesce a stare ferma. Con l\'arpione è la migliore dell\'isola.'),
+          L('Prendete anche questi. Non è molto, ma qui non c\'è altro da comprare che coraggio.'),
+          { who: 'Marta', text: 'Allora è deciso: vengo con voi. Prima il faro, poi le grotte. E poi riporto a casa quello stupido di mio fratello.' },
+          { who: null, text: 'Marta si unisce al gruppo!' },
         ],
         () => {
           s.giveMoney(150);
+          s.recruitMarta();
           s.setMain(1);
         },
       );
@@ -50,12 +54,12 @@ export function talk(s, id) {
       D(
         [
           L('Il faro... è di nuovo acceso! L\'ho visto dalla finestra. Avete il Sigillo della Luce.'),
-          L('Ora le grotte. Marta, la figlia del vecchio pescatore, ci è scesa stamattina a cercare suo fratello Nilo. Dice che sente cantare, là sotto.'),
-          L('Raggiungetela all\'ingresso delle grotte, sotto la scogliera a ovest. Insieme sarete più forti.'),
+          L('Ora le grotte, sotto la scogliera a ovest. Marta, è lì che è sceso tuo fratello. Diceva di sentire cantare, là sotto.'),
+          { who: 'Marta', text: 'Lo so. Andiamo a prenderlo.' },
         ],
         () => s.setMain(3),
       );
-    } else if (q.main <= 4) D([L('Le grotte sono a ovest, sotto la scogliera. Trovate Marta, e riportatemi quei due ragazzi.')]);
+    } else if (q.main <= 4) D([L('Le grotte sono a ovest, sotto la scogliera. Riportatemi quei due ragazzi.')]);
     else if (q.main === 5) D([L('Nilo è a casa, grazie a voi. E avete i due sigilli.'), L('Il silo vi aspetta, in fondo al molo, a nord. Quando aprirete il portone... non abbiate fretta di svegliarlo.')]);
     else if (q.main === 6) D([L('Il dio dorme ancora. Sveglialo, e lascialo andare. È tutto quello che chiediamo.')]);
     else D([L('La tempesta è finita. Il mare è di nuovo il mare. Porto Grigio non dimenticherà.')]);
@@ -126,7 +130,7 @@ export function talk(s, id) {
         ],
         () => s.recruitMarta(),
       );
-    } else D([L('Mio fratello Nilo dice che nelle grotte qualcuno canta. Io non ci credo. Ma se ci va, io vado a riprenderlo.')]);
+    } else D([L('Mio fratello Nilo è sparito vicino alle grotte. Dice che là sotto qualcuno canta. Parlate con Orsola: se andate verso il silo, vengo con voi.')]);
     return;
   }
   if (id === 'nilo') {

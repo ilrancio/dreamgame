@@ -88,8 +88,8 @@ export class Storm {
       const cx = camera.position.x;
       const cy = camera.position.y - h * 0.4;
       const cz = camera.position.z;
-      const wx = this.wind.x * 0.06;
-      const wz = this.wind.y * 0.06;
+      const wx = this.wind.x * (0.9 / 34);
+      const wz = this.wind.y * (0.9 / 34);
       for (let i = 0; i < this.n; i++) {
         d[i * 3 + 1] -= 34 * dt;
         d[i * 3] += this.wind.x * dt;
@@ -104,9 +104,10 @@ export class Storm {
         p[i * 6] = x;
         p[i * 6 + 1] = y;
         p[i * 6 + 2] = z;
-        p[i * 6 + 3] = x + wx;
+        // la coda della goccia sta dietro, contro il vento da cui arriva
+        p[i * 6 + 3] = x - wx;
         p[i * 6 + 4] = y + 0.9;
-        p[i * 6 + 5] = z + wz;
+        p[i * 6 + 5] = z - wz;
       }
       this.rainAttr.needsUpdate = true;
     }
