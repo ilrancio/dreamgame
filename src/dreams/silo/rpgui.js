@@ -1,4 +1,4 @@
-import { PARTY, GEAR, ITEMS, KEY_ITEMS, SKILLS, MAIN, SIDE, MONEY, memberStats, knownSkills, xpToNext, SHOP_GEAR, SHOP_ITEMS } from './data.js';
+import { PARTY, GEAR, ITEMS, KEY_ITEMS, SKILLS, MAIN, SIDE, MONEY, memberStats, knownSkills, xpToNext, TREES, PASSIVES, STAT_NAMES, spFree, nodeBlock, nodeLabel, unlockNode, SHOP_GEAR, SHOP_ITEMS } from './data.js';
 
 // Le finestre della campagna, nello stile blu di FFX: i dialoghi, il negozio,
 // il menu del gruppo (stato, equipaggiamento, oggetti, missioni).
@@ -38,6 +38,20 @@ function injectStyle() {
   .rpg .q { margin: 6px 0 10px; } .rpg .q b { color: #ffe8a0; } .rpg .q.done { opacity: 0.5; }
   .rpg .keys { margin-top: 10px; font-size: 12px; opacity: 0.7; }
   .rpg .bar { height: 4px; background: rgba(0,0,0,0.5); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+  .rpg .tree { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .rpg .tree .br { display: flex; flex-direction: column; align-items: stretch; }
+  .rpg .tree .bn { text-align: center; color: #ffe8a0; font: 700 18px "Cormorant Garamond", serif; margin-bottom: 4px; }
+  .rpg .tree .nd { position: relative; padding: 6px 8px; border-radius: 6px; font-size: 13px; text-align: center; border: 1px solid rgba(255,255,255,0.25); background: rgba(0,0,40,0.45); opacity: 0.55; cursor: pointer; }
+  .rpg .tree .nd + .nd { margin-top: 16px; }
+  .rpg .tree .nd + .nd::before { content: ''; position: absolute; left: 50%; top: -17px; height: 16px; border-left: 2px solid rgba(255,255,255,0.3); }
+  .rpg .tree .nd.own + .nd::before { border-color: #8aff9a; }
+  .rpg .tree .nd.ok { opacity: 1; border-color: #ffe8a0; }
+  .rpg .tree .nd.own { opacity: 1; border-color: #8aff9a; background: rgba(40,120,70,0.45); }
+  .rpg .tree .nd.on { outline: 2px solid #fff; box-shadow: 0 0 10px rgba(255,232,160,0.7); }
+  .rpg .tree .nd .k { font-size: 10px; opacity: 0.75; letter-spacing: 0.05em; text-transform: uppercase; }
+  .rpg .tree .nd .c { position: absolute; right: 5px; top: 3px; font-size: 10px; color: #ffe8a0; }
+  .rpg .det { margin-top: 12px; background: rgba(0,0,40,0.35); border-radius: 6px; padding: 8px 12px; min-height: 44px; }
+  .rpg .sp { color: #8af8ff; }
   .rpg .bar i { display: block; height: 100%; background: linear-gradient(90deg,#4aff8a,#c8ffd0); }
   `;
   document.head.appendChild(s);
@@ -249,7 +263,7 @@ export class Shop {
 }
 
 // ---------- Il menu del gruppo ----------
-const TABS = ['Gruppo', 'Equipaggia', 'Oggetti', 'Missioni'];
+const TABS = ['Gruppo', 'Equipaggia', 'Oggetti', 'Missioni', 'Albero'];
 
 export class PartyMenu {
   constructor(ctx) {
@@ -285,7 +299,7 @@ export class PartyMenu {
       <div class="row"><span>Vita ${hp} / ${ms.maxHp}</span><span>MP ${mp} / ${ms.maxMp}</span></div><div class="bar"><i style="width:${(100 * hp) / ms.maxHp}%"></i></div>
       <div class="st"><span>For ${Math.round(ms.str)}</span><span>Mag ${Math.round(ms.mag)}</span><span>Agi ${Math.round(ms.agi)}</span><span>Dif ${Math.round(ms.def)}</span><span>DifM ${Math.round(ms.mdef)}</span></div>
       <div class="sm" style="margin-top:4px">${GEAR[eq.weapon || PARTY[id].weapon].name} · ${GEAR[eq.armor || 'maglia'].name}</div>
-      <div class="sm">${knownSkills(id, st.level).map((s) => SKILLS[s].name).join(', ')}</div>${extra}</div>`;
+      <div class="sm">${knownSkills(id, st).map((s) => SKILLS[s].name).join(', ')}</div>${spFree(st, id) > 0 ? `<div class="sm sp">${spFree(st, id)} punti abilità da spendere</div>` : ''}${extra}</div>`;
   }
 
   render() {
@@ -331,6 +345,14 @@ export class PartyMenu {
         body = `<div class="sm" style="margin-bottom:8px">${ITEMS[this.sub.item].name}: su chi?</div><div class="cols">${st.members.map((id, i) => this.memberCard(id, i === this.sel)).join('')}</div>`;
         keys = '<b>W</b>/<b>S</b> scegli · <b>Invio</b> usa · <b>Esc</b> indietro';
       }
+    } else if (this.tab === 4) {
+      if (!this.sub) {
+        body = `<div class="sm" style="margin-bottom:8px">Di chi vuoi vedere l'albero? Ogni livello dà 2 punti abilità a testa.</div><div class="cols">${st.members.map((id, i) => this.memberCard(id, i === this.sel)).join('')}</div>`;
+        keys = '<b>W</b>/<b>S</b> scegli · <b>Invio</b> conferma · ' + keys;
+      } else {
+        body = this.treeView();
+        keys = '<b>WASD</b> muovi · <b>Invio</b> sblocca · <b>R</b> azzera l\'albero · <b>Esc</b> indietro';
+      }
     } else {
       const q = st.quests;
       const main = MAIN.slice(0, q.main + 1);
@@ -354,6 +376,42 @@ export class PartyMenu {
         this.render();
       };
     });
+    this.el.querySelectorAll('.tree .nd').forEach((d) => {
+      d.onclick = () => {
+        const same = this.sub.c === +d.dataset.c && this.sub.r === +d.dataset.r;
+        this.sub.c = +d.dataset.c;
+        this.sub.r = +d.dataset.r;
+        if (same) this.confirm();
+        else this.render();
+      };
+    });
+  }
+
+  treeView() {
+    const st = this.state;
+    const { id, c, r } = this.sub;
+    const T = TREES[id];
+    const have = st.tree?.[id] || [];
+    const kind = (n) => (n.skill ? 'abilità' : n.pass ? 'talento' : 'statistiche');
+    const cols = T.branches
+      .map((b, bi) => `<div class="br"><div class="bn">${b.name}</div>${b.nodes
+        .map((n, ni) => {
+          const cls = have.includes(n.id) ? 'own' : nodeBlock(st, id, n.id) ? '' : 'ok';
+          return `<div class="nd ${cls} ${bi === c && ni === r ? 'on' : ''}" data-c="${bi}" data-r="${ni}"><span class="c">${have.includes(n.id) ? '✓' : `${n.cost}●`}</span><div class="k">${kind(n)}</div>${nodeLabel(id, n.id)}</div>`;
+        })
+        .join('')}</div>`)
+      .join('');
+    const n = T.branches[c].nodes[r];
+    let desc = '';
+    if (n.skill) desc = `${SKILLS[n.skill].desc} <span class="sm">(${SKILLS[n.skill].mp} MP)</span>`;
+    else if (n.pass) desc = PASSIVES[n.pass].desc;
+    else desc = Object.entries(n.stat).map(([k, v]) => `${STAT_NAMES[k]} +${v}`).join(', ') + ', per sempre.';
+    const why = nodeBlock(st, id, n.id);
+    const state = have.includes(n.id) ? '<span class="up">Sbloccato</span>' : why ? `<span class="dn">Bloccato: ${why}</span>` : `<span class="up">Invio per sbloccare (${n.cost} punti)</span>`;
+    return `<div class="row" style="margin-bottom:8px"><span style="color:#ffe8a0;font-size:17px">${PARTY[id].name}</span><span class="sp">Punti abilità: ${spFree(st, id)}</span></div>
+      <div class="sm" style="margin-bottom:10px">Sempre conosciute: ${T.innate.map((q) => SKILLS[q].name).join(', ')}</div>
+      <div class="tree">${cols}</div>
+      <div class="det"><div class="row"><b>${nodeLabel(id, n.id)}</b>${state}</div><div class="sm" style="margin-top:3px">${desc}</div></div>`;
   }
 
   gearOptions(id) {
@@ -387,6 +445,30 @@ export class PartyMenu {
         if (p) p.hp = Math.min(p.hp, ms.maxHp);
         this.ctx.audio.chime(1175, 0.06);
         this.msg = `${PARTY[this.sub.id].short}: ${GEAR[o.gid].name}.`;
+      }
+    } else if (this.tab === 4) {
+      if (!this.sub) {
+        this.sub = { id: st.members[this.sel], c: 0, r: 0 };
+        this.sel = 0;
+      } else {
+        const { id, c, r } = this.sub;
+        const n = TREES[id].branches[c].nodes[r];
+        const why = nodeBlock(st, id, n.id);
+        if (why) {
+          this.ctx.audio.thud(0.1);
+          this.msg = why === 'già tuo' ? `${nodeLabel(id, n.id)}: già sbloccato.` : `Non ancora: ${why}.`;
+        } else {
+          unlockNode(st, id, n.id);
+          // più vita o MP massimi: la differenza arriva subito
+          const p = st.party[id];
+          const ms = memberStats(st, id);
+          if (p && n.stat?.hp && p.hp > 0) p.hp = Math.min(ms.maxHp, p.hp + n.stat.hp);
+          if (p && n.stat?.mp) p.mp = Math.min(ms.maxMp, p.mp + n.stat.mp);
+          this.ctx.audio.chime(1568, 0.08);
+          setTimeout(() => this.ctx.audio.chime(2093, 0.06), 120);
+          this.msg = `${PARTY[id].short} impara: ${nodeLabel(id, n.id)}!`;
+          this.resetArm = false;
+        }
       }
     } else if (this.tab === 2) {
       const items = Object.keys(ITEMS).filter((id) => st.items[id]);
@@ -434,11 +516,57 @@ export class PartyMenu {
     if (this.t < 0.2) return;
     const k = nav(this.ctx.input);
     const st = this.state;
+    // nell'albero ci si muove in due direzioni
+    if (this.tab === 4 && this.sub) {
+      const T = TREES[this.sub.id].branches;
+      const s = this.sub;
+      let moved = false;
+      if (k.left || k.right) {
+        s.c = (s.c + (k.right ? 1 : T.length - 1)) % T.length;
+        s.r = Math.min(s.r, T[s.c].nodes.length - 1);
+        moved = true;
+      }
+      if (k.up || k.down) {
+        const m = T[s.c].nodes.length;
+        s.r = (s.r + (k.down ? 1 : m - 1)) % m;
+        moved = true;
+      }
+      if (this.ctx.input.wasPressed('KeyR')) {
+        const sp = st.tree?.[s.id] || [];
+        if (!sp.length) this.msg = 'Non c\'è niente da azzerare.';
+        else if (!this.resetArm) {
+          this.resetArm = true;
+          this.msg = 'Premi di nuovo <b>R</b> per riprendere tutti i punti di questo albero.';
+        } else {
+          st.tree[s.id] = [];
+          this.resetArm = false;
+          const ms = memberStats(st, s.id);
+          const p = st.party[s.id];
+          if (p) {
+            p.hp = Math.min(p.hp, ms.maxHp);
+            p.mp = Math.min(p.mp, ms.maxMp);
+          }
+          this.ctx.audio.whoosh(0.2);
+          this.msg = `L'albero di ${PARTY[s.id].short} è di nuovo spoglio. I punti sono tornati.`;
+        }
+        moved = true;
+      }
+      if (moved) this.render();
+      if (k.ok) this.confirm();
+      if (k.back || this.ctx.input.wasPressed('KeyG')) {
+        this.sub = null;
+        this.sel = 0;
+        this.msg = '';
+        this.render();
+      }
+      return;
+    }
     let n = 1;
     if (this.tab === 1) n = this.sub ? this.gearOptions(this.sub.id).length : st.members.length;
     if (this.tab === 2) n = this.sub ? st.members.length : Object.keys(ITEMS).filter((id) => st.items[id]).length;
+    if (this.tab === 4) n = st.members.length;
     if ((k.left || k.right) && !this.sub) {
-      this.tab = (this.tab + (k.right ? 1 : 3)) % 4;
+      this.tab = (this.tab + (k.right ? 1 : TABS.length - 1)) % TABS.length;
       this.sel = 0;
       this.msg = '';
       this.render();

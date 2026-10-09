@@ -11,7 +11,7 @@ import { buildChest, buildSaveLantern } from './props.js';
 import { Storm } from './storm.js';
 import { Battle } from './battle.js';
 import { monsterModel } from './monsters.js';
-import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats } from './data.js';
+import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree } from './data.js';
 import { Dialog, Shop, PartyMenu } from './rpgui.js';
 import { NPCS, talk } from './campaign.js';
 
@@ -900,7 +900,7 @@ export class SiloDream extends WalkScene {
           const hp = Math.max(0, Math.round(sv.party[id]?.hp ?? ms.maxHp));
           return `<div style="display:flex;justify-content:space-between;gap:10px"><span>${PARTY[id].short}</span><span style="color:${hp <= 0 ? '#ff8a8a' : hp < ms.maxHp * 0.3 ? '#ffd060' : '#fff'}">${hp}/${ms.maxHp}</span></div>`;
         })
-        .join('')}<div style="opacity:.6;margin-top:3px">G: gruppo e missioni</div>`;
+        .join('')}${sv.members.some((id) => spFree(sv, id) > 0) ? '<div style="color:#8af8ff;margin-top:3px">Punti abilità da spendere!</div>' : ''}<div style="opacity:.6;margin-top:3px">G: gruppo, albero, missioni</div>`;
     }
     // gli incontri casuali, camminando fuori dai posti sicuri
     const p = this.player;

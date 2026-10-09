@@ -1,12 +1,12 @@
 // I dati della campagna dell'Isola della Tempesta: il gruppo, le abilità che
-// si imparano salendo di livello, l'equipaggiamento, gli oggetti, le creature
+// si imparano dall'albero di ogni personaggio, l'equipaggiamento, gli oggetti, le creature
 // di ogni zona, i boss, le missioni.
 
 export const ELEM = { fuoco: 'Fuoco', fulmine: 'Fulmine', gelo: 'Gelo' };
 export const MONEY = 'conchiglie';
 
 // ---------- Il gruppo ----------
-// learn: [livello, abilità]; Marta si unisce durante la storia
+// le abilità si imparano dall'albero (TREES, più sotto); Marta si unisce durante la storia
 export const PARTY = {
   tu: { name: 'Tu', short: 'Tu', hp: 540, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', learn: [[1, 'colpo'], [1, 'provoca'], [2, 'scanner'], [3, 'rompi'], [6, 'vento']], od: 'mareggiata', weapon: 'remo' },
   amico: { name: 'Il tuo amico', short: 'Amico', hp: 420, mp: 96, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', learn: [[1, 'fuoco'], [1, 'fulmine'], [1, 'gelo'], [1, 'cura'], [4, 'lentezza'], [5, 'rapidita'], [7, 'curatotale'], [9, 'barriera']], od: 'diluvio', weapon: 'ombrello' },
@@ -27,11 +27,17 @@ export const SKILLS = {
   curatotale: { name: 'Cura totale', mp: 22, rank: 3, target: 'allAllies', kind: 'heal', power: 0.75, desc: 'Cura tutto il gruppo insieme.' },
   lentezza: { name: 'Lentezza', mp: 10, rank: 3, target: 'enemy', kind: 'status', status: 'slow', desc: 'Il nemico agisce la metà delle volte, per un po\'.' },
   scanner: { name: 'Osserva', mp: 0, rank: 2, target: 'enemy', kind: 'scan', desc: 'Studi il nemico: quanta vita gli resta, i suoi punti deboli.' },
-  raffica: { name: 'Raffica', mp: 6, rank: 3, target: 'allEnemies', kind: 'mag', power: 0.55, desc: 'Colpi di energia su tutti i nemici.' },
+  raffica: { name: 'Raffica', mp: 10, rank: 3, target: 'allEnemies', kind: 'mag', power: 0.55, desc: 'Raffiche di vento salato su tutti i nemici.' },
   rapidita: { name: 'Rapidità', mp: 10, rank: 2, target: 'ally', kind: 'status', status: 'haste', desc: 'Un compagno agisce il doppio delle volte, per un po\'.' },
   barriera: { name: 'Barriera', mp: 14, rank: 3, target: 'allAllies', kind: 'status', status: 'shield', desc: 'Un velo d\'acqua su tutti: la magia nemica fa molto meno male.' },
   arpione: { name: 'Arpione', mp: 6, rank: 3, target: 'enemy', kind: 'phys', power: 1.05, pierce: true, desc: 'Un colpo che passa attraverso qualunque corazza.' },
   rete: { name: 'Rete', mp: 12, rank: 3, target: 'allEnemies', kind: 'status', status: 'slow', desc: 'Una rete su tutti: i nemici rallentano.' },
+  taglioonda: { name: 'Taglio dell\'onda', mp: 16, rank: 4, target: 'enemy', kind: 'phys', power: 1.9, desc: 'Un colpo solo, lento e enorme, come un\'onda che si rompe.' },
+  sentinella: { name: 'Sentinella', mp: 8, rank: 2, target: 'allEnemies', kind: 'status', status: 'provoked', desc: 'Ti pianti davanti a tutti: i nemici se la prendono con te.' },
+  tempesta: { name: 'Tempesta', mp: 24, rank: 4, target: 'allEnemies', kind: 'mag', power: 0.95, elem: 'fulmine', desc: 'Fulmini su tutti i nemici. La tempesta, per una volta, dalla vostra parte.' },
+  doppio: { name: 'Doppio arpione', mp: 10, rank: 3, target: 'enemy', kind: 'phys', power: 0.62, hits: 2, pierce: true, desc: 'Due colpi di fila che passano ogni corazza.' },
+  strattone: { name: 'Strattone', mp: 6, rank: 2, target: 'enemy', kind: 'phys', power: 0.6, status: 'delay', desc: 'Tiri la cima: il nemico perde l\'equilibrio e il turno slitta.' },
+  fiocina: { name: 'Fiocina del capodoglio', mp: 18, rank: 4, target: 'enemy', kind: 'phys', power: 1.7, pierce: true, status: 'armorBreak', desc: 'Il colpo dei vecchi balenieri: trapassa e spacca la corazza.' },
   richiamo: { name: 'Richiamo del mare', mp: 10, rank: 2, target: 'allAllies', kind: 'status', status: 'might', desc: 'Un grido da pescatori: tutto il gruppo colpisce più forte.' },
 };
 
@@ -155,10 +161,156 @@ export const GROUPS = [
 
 export const xpToNext = (level) => Math.round(60 * Math.pow(level, 1.3));
 
-// le abilità che un personaggio conosce al suo livello
-export function knownSkills(id, level) {
-  return PARTY[id].learn.filter(([l]) => level >= l).map(([, s]) => s);
+// ---------- L'albero delle abilità ----------
+// Ogni personaggio ha tre rami. Un nodo si sblocca spendendo punti abilità,
+// solo se è sbloccato quello prima nello stesso ramo (e, se c'è, il nodo req
+// di un altro ramo). lv: il livello minimo. I nodi danno un'abilità (skill),
+// statistiche (stat) o un talento passivo (pass).
+export const PASSIVES = {
+  critico: { name: 'Occhio per i punti deboli', desc: 'I colpi critici arrivano molto più spesso.' },
+  tenace: { name: 'Tenacia', desc: 'Una volta per battaglia, un colpo che ti abbatterebbe ti lascia a 1 di vita.' },
+  svelto: { name: 'Primo a muoversi', desc: 'All\'inizio della battaglia agisci quasi subito.' },
+  furia: { name: 'Furia', desc: 'La barra dell\'Overdrive si riempie il 50% più in fretta.' },
+  sorgente: { name: 'Sorgente', desc: 'Le tue cure guariscono il 30% in più.' },
+  eco: { name: 'Eco', desc: 'Le abilità costano un quarto di MP in meno.' },
+  quiete: { name: 'Quiete', desc: 'A ogni tuo turno recuperi 3 MP.' },
+};
+
+export const TREES = {
+  tu: {
+    innate: ['colpo', 'provoca'],
+    branches: [
+      { name: 'Lama', nodes: [
+        { id: 't_rompi', skill: 'rompi', cost: 1 },
+        { id: 't_for1', stat: { str: 3 }, cost: 1 },
+        { id: 't_vento', skill: 'vento', cost: 2, lv: 4 },
+        { id: 't_crit', pass: 'critico', cost: 2 },
+        { id: 't_onda', skill: 'taglioonda', cost: 3, lv: 7 },
+      ] },
+      { name: 'Scoglio', nodes: [
+        { id: 't_hp1', stat: { hp: 80 }, cost: 1 },
+        { id: 't_def1', stat: { def: 4 }, cost: 1 },
+        { id: 't_sent', skill: 'sentinella', cost: 2 },
+        { id: 't_hp2', stat: { hp: 150, mdef: 4 }, cost: 2 },
+        { id: 't_tenace', pass: 'tenace', cost: 3, lv: 6 },
+      ] },
+      { name: 'Occhio', nodes: [
+        { id: 't_scan', skill: 'scanner', cost: 1 },
+        { id: 't_agi1', stat: { agi: 2 }, cost: 1 },
+        { id: 't_mp1', stat: { mp: 12 }, cost: 1 },
+        { id: 't_svelto', pass: 'svelto', cost: 2 },
+        { id: 't_furia', pass: 'furia', cost: 2, req: 't_for1' },
+      ] },
+    ],
+  },
+  amico: {
+    innate: ['fuoco', 'cura'],
+    branches: [
+      { name: 'Elementi', nodes: [
+        { id: 'a_fulmine', skill: 'fulmine', cost: 1 },
+        { id: 'a_gelo', skill: 'gelo', cost: 1 },
+        { id: 'a_mag1', stat: { mag: 3 }, cost: 1 },
+        { id: 'a_raffica', skill: 'raffica', cost: 2, lv: 3 },
+        { id: 'a_tempesta', skill: 'tempesta', cost: 3, lv: 8 },
+      ] },
+      { name: 'Marea', nodes: [
+        { id: 'a_mp1', stat: { mp: 16 }, cost: 1 },
+        { id: 'a_sorgente', pass: 'sorgente', cost: 2 },
+        { id: 'a_curatot', skill: 'curatotale', cost: 2, lv: 5 },
+        { id: 'a_barriera', skill: 'barriera', cost: 2, lv: 6 },
+        { id: 'a_eco', pass: 'eco', cost: 3, req: 'a_mag1' },
+      ] },
+      { name: 'Vento', nodes: [
+        { id: 'a_lent', skill: 'lentezza', cost: 1 },
+        { id: 'a_agi1', stat: { agi: 2 }, cost: 1 },
+        { id: 'a_rapid', skill: 'rapidita', cost: 2, lv: 4 },
+        { id: 'a_hp1', stat: { hp: 60, mdef: 5 }, cost: 1 },
+        { id: 'a_quiete', pass: 'quiete', cost: 2 },
+      ] },
+    ],
+  },
+  marta: {
+    innate: ['arpione'],
+    branches: [
+      { name: 'Arpione', nodes: [
+        { id: 'm_for1', stat: { str: 3 }, cost: 1 },
+        { id: 'm_doppio', skill: 'doppio', cost: 2 },
+        { id: 'm_crit', pass: 'critico', cost: 2 },
+        { id: 'm_fiocina', skill: 'fiocina', cost: 3, lv: 7 },
+      ] },
+      { name: 'Reti', nodes: [
+        { id: 'm_rete', skill: 'rete', cost: 1 },
+        { id: 'm_strat', skill: 'strattone', cost: 1 },
+        { id: 'm_hp1', stat: { hp: 80, def: 4 }, cost: 2 },
+        { id: 'm_tenace', pass: 'tenace', cost: 3, lv: 6 },
+      ] },
+      { name: 'Mare', nodes: [
+        { id: 'm_agi1', stat: { agi: 2 }, cost: 1 },
+        { id: 'm_richiamo', skill: 'richiamo', cost: 2, lv: 3 },
+        { id: 'm_svelto', pass: 'svelto', cost: 2 },
+        { id: 'm_mp1', stat: { mp: 12 }, cost: 1 },
+        { id: 'm_furia', pass: 'furia', cost: 2, req: 'm_for1' },
+      ] },
+    ],
+  },
+};
+
+export const STAT_NAMES = { hp: 'Vita', mp: 'MP', str: 'For', mag: 'Mag', def: 'Dif', mdef: 'DifM', agi: 'Agi' };
+
+export function treeNode(id, nid) {
+  for (const b of TREES[id].branches) {
+    const i = b.nodes.findIndex((n) => n.id === nid);
+    if (i >= 0) return { node: b.nodes[i], branch: b, prev: b.nodes[i - 1] };
+  }
+  return null;
 }
+
+const unlocked = (state, id) => state.tree?.[id] || [];
+
+// i punti: 2 al primo livello, 2 a ogni livello in più
+export const spEarned = (level) => 2 + (level - 1) * 2;
+export function spFree(state, id) {
+  return spEarned(state.level) - unlocked(state, id).reduce((s, nid) => s + (treeNode(id, nid)?.node.cost || 0), 0);
+}
+
+// si può sbloccare? null se sì, altrimenti il motivo
+export function nodeBlock(state, id, nid) {
+  const t = treeNode(id, nid);
+  const have = unlocked(state, id);
+  if (have.includes(nid)) return 'già tuo';
+  if (t.prev && !have.includes(t.prev.id)) return 'serve il nodo prima';
+  if (t.node.req && !have.includes(t.node.req)) return `serve ${nodeLabel(id, t.node.req)}`;
+  if (t.node.lv && state.level < t.node.lv) return `livello ${t.node.lv}`;
+  if (spFree(state, id) < t.node.cost) return 'punti insufficienti';
+  return null;
+}
+
+export function nodeLabel(id, nid) {
+  const n = treeNode(id, nid).node;
+  if (n.skill) return SKILLS[n.skill].name;
+  if (n.pass) return PASSIVES[n.pass].name;
+  return Object.entries(n.stat).map(([k, v]) => `${STAT_NAMES[k]} +${v}`).join(' ');
+}
+
+export function unlockNode(state, id, nid) {
+  if (nodeBlock(state, id, nid)) return false;
+  state.tree ??= {};
+  (state.tree[id] ??= []).push(nid);
+  return true;
+}
+
+// le abilità che un personaggio conosce: quelle di partenza più l'albero
+export function knownSkills(id, state) {
+  const out = [...TREES[id].innate];
+  for (const nid of unlocked(state, id)) {
+    const s = treeNode(id, nid)?.node.skill;
+    if (s && !out.includes(s)) out.push(s);
+  }
+  return out;
+}
+
+// quanto costa davvero un'abilità (il talento Eco fa risparmiare)
+export const mpCost = (u, sid) => (u.pass?.eco ? Math.ceil(SKILLS[sid].mp * 0.75) : SKILLS[sid].mp);
 
 // ---------- Le missioni ----------
 // la storia: un passo dopo l'altro
@@ -188,14 +340,24 @@ export function memberStats(state, id) {
   const eq = state.equip?.[id] || {};
   const w = GEAR[eq.weapon || d.weapon] || {};
   const a = GEAR[eq.armor || 'maglia'] || {};
+  // quello che dà l'albero
+  const b = { hp: 0, mp: 0, str: 0, mag: 0, def: 0, mdef: 0, agi: 0 };
+  const pass = {};
+  for (const nid of unlocked(state, id)) {
+    const n = treeNode(id, nid)?.node;
+    if (!n) continue;
+    if (n.stat) for (const [s, v] of Object.entries(n.stat)) b[s] += v;
+    if (n.pass) pass[n.pass] = true;
+  }
   return {
-    maxHp: Math.round(d.hp * hk + (a.hp || 0)),
-    maxMp: Math.round(d.mp * (1 + (lvl - 1) * 0.08)),
-    str: d.str * k + (w.str || 0),
-    mag: d.mag * k + (w.mag || 0),
-    def: d.def * k + (a.def || 0),
-    mdef: d.mdef * k + (a.mdef || 0),
-    agi: d.agi + (lvl - 1) * 0.3,
+    maxHp: Math.round(d.hp * hk + (a.hp || 0) + b.hp),
+    maxMp: Math.round(d.mp * (1 + (lvl - 1) * 0.08) + b.mp),
+    str: d.str * k + (w.str || 0) + b.str,
+    mag: d.mag * k + (w.mag || 0) + b.mag,
+    def: d.def * k + (a.def || 0) + b.def,
+    mdef: d.mdef * k + (a.mdef || 0) + b.mdef,
+    agi: d.agi + (lvl - 1) * 0.3 + b.agi,
+    pass,
   };
 }
 
@@ -231,6 +393,23 @@ export function initCampaign(sv) {
   sv.cleared ??= [];
   sv.od ??= {};
   sv.lastSave ??= 'villaggio';
+  // i salvataggi di prima dell'albero: le abilità che si avevano per livello
+  // diventano nodi sbloccati, finché bastano i punti
+  if (!sv.tree) {
+    sv.tree = {};
+    const OLD = { tu: [[2, 't_scan'], [3, 't_rompi'], [6, 't_vento']], amico: [[1, 'a_fulmine'], [1, 'a_gelo'], [4, 'a_lent'], [5, 'a_rapid'], [7, 'a_curatot'], [9, 'a_barriera']], marta: [[1, 'm_rete'], [4, 'm_richiamo']] };
+    for (const [id, list] of Object.entries(OLD)) {
+      for (const [l, nid] of list) {
+        if (sv.level < l) continue;
+        // prima i nodi che servono per arrivarci
+        const t = treeNode(id, nid);
+        for (const n of t.branch.nodes) {
+          unlockNode(sv, id, n.id);
+          if (n.id === nid) break;
+        }
+      }
+    }
+  }
   // Marta si unisce appena parli con Orsola
   if (sv.quests.main >= 1 && !sv.members.includes('marta')) {
     sv.members.push('marta');

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PARTY, SKILLS, OVERDRIVES, ITEMS, ENEMIES, ENEMY_ACTS, ELEM, KEY_ITEMS, xpToNext, knownSkills, scaleEnemy, memberStats } from './data.js';
+import { PARTY, SKILLS, OVERDRIVES, ITEMS, ENEMIES, ENEMY_ACTS, ELEM, KEY_ITEMS, xpToNext, knownSkills, scaleEnemy, memberStats, mpCost, spFree } from './data.js';
 import { monsterModel } from './monsters.js';
 import { Particles } from '../../core/particles.js';
 
@@ -176,7 +176,7 @@ export class Battle {
       }
     }
     this.units = [...this.party, ...this.enemies];
-    for (const u of this.units) u.ct = baseDelay(u.agi) * rnd(0.55, 1);
+    for (const u of this.units) u.ct = baseDelay(u.agi) * rnd(0.55, 1) * (u.pass?.svelto ? 0.25 : 1);
     this.whaleFight = this.enemies.some((e) => e.whale);
     for (const p of this.party) this.placeParty(p);
     // l'interfaccia
@@ -425,6 +425,7 @@ export class Battle {
     if (u.st.shell) u.st.shell = false;
     // gli effetti a tempo si consumano a ogni turno di chi li ha
     for (const k of ['haste', 'slow', 'shield', 'might']) if (u.st[k] > 0) u.st[k]--;
+    if (u.pass?.quiete && u.mp < u.maxMp) u.mp = Math.min(u.maxMp, u.mp + 3);
     this.renderParty();
     this.renderCtb();
     if (u.side === 'party') this.openMenu(u);
@@ -444,7 +445,7 @@ export class Battle {
     this.camShot = { kind: 'over', u };
     const items = [{ label: 'Attacca', key: 'attack', rank: 3, desc: 'Un colpo semplice a un nemico.' }];
     if (u.od >= 100) items.unshift({ label: 'Overdrive', key: 'od', rank: 3, od: true, desc: OVERDRIVES[u.data.od].desc });
-    items.push({ label: u.data.menu, key: 'skills', rank: 3, desc: knownSkills(u.id, this.state.level).map((s) => SKILLS[s].name).join(' · ') });
+    items.push({ label: u.data.menu, key: 'skills', rank: 3, desc: knownSkills(u.id, this.state).map((s) => SKILLS[s].name).join(' · ') });
     items.push({ label: 'Difendi', key: 'defend', rank: 2, desc: 'Ti ripari: dimezzi i danni fino al tuo prossimo turno.' });
     const nItems = Object.values(this.state.items).reduce((a, b) => a + b, 0);
     items.push({ label: 'Oggetti', key: 'items', rank: 2, off: !nItems, desc: nItems ? 'Pozioni, eteri, code di fenice.' : 'Non è rimasto niente.' });
@@ -519,9 +520,10 @@ export class Battle {
     this.ctx.audio.chime(1320, 0.04);
     const u = m.u;
     if (it.key === 'skills') {
-      this.submenu(u.data.menu, knownSkills(u.id, this.state.level).map((sid) => {
+      this.submenu(u.data.menu, knownSkills(u.id, this.state).map((sid) => {
         const s = SKILLS[sid];
-        return { label: s.name, right: s.mp ? `${s.mp} MP` : '', key: 'skill', skill: sid, rank: s.rank, off: u.mp < s.mp, desc: s.desc };
+        const c = mpCost(u, sid);
+        return { label: s.name, right: c ? `${c} MP` : '', key: 'skill', skill: sid, rank: s.rank, off: u.mp < c, desc: s.desc };
       }));
     } else if (it.key === 'items') {
       this.submenu('Oggetti', Object.entries(ITEMS).map(([iid, d]) => ({ label: d.name, right: `×${this.state.items[iid] || 0}`, key: 'item', item: iid, rank: 2, off: !this.state.items[iid] || (iid === 'fenice' && !this.party.some((p) => p.hp <= 0)), desc: d.desc })));
@@ -643,7 +645,7 @@ export class Battle {
     if (name) this.help(name, 1.6);
     else this.help(null);
     if (u.side === 'party') {
-      if (action.type === 'skill') u.mp -= def.mp;
+      if (action.type === 'skill') u.mp -= mpCost(u, action.id);
       if (action.type === 'item') this.state.items[action.id]--;
       if (action.type === 'od') u.od = 0;
     }
@@ -759,7 +761,7 @@ export class Battle {
           }
         }
       } else if (def.kind === 'heal') {
-        this.heal(t, (u.mag * 12 + 80) * (def.power || 1));
+        this.heal(t, (u.mag * 12 + 80) * (def.power || 1) * (u.pass?.sorgente ? 1.3 : 1));
       } else if (def.kind === 'status') {
         if (def.status === 'provoked') {
           t.st.provokedBy = u;
@@ -847,13 +849,19 @@ export class Battle {
       }
       this.element(t, elem);
     } else if (kind === 'mag') this.sparkle(t, u.side === 'party' ? [0.6, 0.9, 1] : [0.5, 0.3, 1]);
-    if (kind === 'phys' && Math.random() < 0.06) {
+    if (kind === 'phys' && Math.random() < (u.pass?.critico ? 0.2 : 0.06)) {
       dmg *= 1.5;
       tag = 'Critico!';
     }
     if (t.st.defend) dmg *= 0.5;
     dmg = Math.max(1, Math.round(dmg));
     t.hp -= dmg;
+    // Tenacia: una volta per battaglia si resta in piedi
+    if (t.hp <= 0 && t.pass?.tenace && !t.st.tenaceUsed && t.hp + dmg > 1) {
+      t.st.tenaceUsed = true;
+      t.hp = 1;
+      this.pop(t, 'Tenacia!', 'tag', 0.6);
+    }
     this.pop(t, `${dmg}`);
     if (tag) this.pop(t, tag, 'tag', 0.45);
     t.model.hurt?.();
@@ -861,8 +869,8 @@ export class Battle {
     this.shake = Math.max(this.shake, t.whale ? 0.15 : kind === 'phys' ? 0.25 : 0.15);
     audio[kind === 'phys' ? 'thud' : 'pop'](kind === 'phys' ? 0.25 : 0.18);
     // la barra dell'Overdrive: si riempie prendendo colpi
-    if (t.side === 'party') t.od = Math.min(100, t.od + (dmg / t.maxHp) * 130);
-    else if (u.side === 'party') u.od = Math.min(100, u.od + 3);
+    if (t.side === 'party') t.od = Math.min(100, t.od + (dmg / t.maxHp) * 130 * (t.pass?.furia ? 1.5 : 1));
+    else if (u.side === 'party') u.od = Math.min(100, u.od + 3 * (u.pass?.furia ? 1.5 : 1));
     if (t.hp <= 0) this.ko(t);
     // il dio si sveglia del tutto a metà vita
     if (t.whale && !t.phase2 && t.hp < t.maxHp * 0.5 && t.hp > 0) {
@@ -983,7 +991,6 @@ export class Battle {
       const money = this.enemies.reduce((s, e) => s + (e.data.money || 0), 0);
       st.xp += xp;
       st.money = (st.money || 0) + money;
-      const before = Object.fromEntries(st.members.map((id) => [id, knownSkills(id, st.level)]));
       let ups = 0;
       while (st.xp >= xpToNext(st.level)) {
         st.xp -= xpToNext(st.level);
@@ -1007,14 +1014,8 @@ export class Battle {
           names[ITEMS[it].name] = (names[ITEMS[it].name] || 0) + 1;
         }
       }
-      // chi ha imparato qualcosa
-      const learned = [];
-      for (const id of st.members) {
-        const now = knownSkills(id, st.level).filter((q) => !before[id].includes(q));
-        for (const q of now) learned.push(`${PARTY[id].short}: ${SKILLS[q].name}`);
-      }
       if (ups) for (const p of this.party) st.party[p.id] = { hp: memberStats(st, p.id).maxHp, mp: memberStats(st, p.id).maxMp };
-      box.innerHTML = `<h3>Vittoria!</h3><p>+${xp} esperienza · +${money} conchiglie</p>${ups ? `<p style="color:#ffe060">Livello ${st.level}! Tutti in forze.</p>` : ''}${learned.length ? `<p style="color:#8af8ff">Nuove abilità: ${learned.join(', ')}</p>` : ''}${loot.length ? `<p>Trovato: ${Object.entries(names).map(([n, k]) => `${n} ×${k}`).join(', ')}</p>` : ''}<div class="k">Invio per continuare</div>`;
+      box.innerHTML = `<h3>Vittoria!</h3><p>+${xp} esperienza · +${money} conchiglie</p>${ups ? `<p style="color:#ffe060">Livello ${st.level}! Tutti in forze.</p>` : ''}${ups ? `<p style="color:#8af8ff">+${ups * 2} punti abilità a testa: spendili nell'albero (<b>G</b> → Albero). ${st.members.map((id) => `${PARTY[id].short} ${spFree(st, id)}`).join(' · ')}</p>` : ''}${loot.length ? `<p>Trovato: ${Object.entries(names).map(([n, k]) => `${n} ×${k}`).join(', ')}</p>` : ''}<div class="k">Invio per continuare</div>`;
       this.ctx.audio.ding(0.15);
       setTimeout(() => this.ctx.audio.chime(1046, 0.1), 200);
       setTimeout(() => this.ctx.audio.chime(1568, 0.1), 420);
