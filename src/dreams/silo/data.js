@@ -199,8 +199,8 @@ export const ENEMY_ACTS = {
 
 // ---------- Le zone e i loro incontri ----------
 export const ZONES = {
-  brughiera: { name: 'La Brughiera', tier: 1, groups: [['gabbiano', 'gabbiano'], ['riccio', 'gabbiano'], ['anguilla'], ['riccio', 'riccio'], ['gabbiano', 'riccio', 'gabbiano']] },
-  spiaggia: { name: 'La Spiaggia Nera', tier: 1.35, groups: [['granchio'], ['granchio', 'medusa'], ['medusa', 'medusa'], ['riccio', 'granchio'], ['medusa', 'granchio', 'medusa']] },
+  brughiera: { name: 'La Brughiera', tier: 1, night: [['fatuo', 'fatuo'], ['fatuo', 'gabbiano', 'fatuo'], ['fatuonero', 'riccio'], ['fatuo', 'anguilla']], groups: [['gabbiano', 'gabbiano'], ['riccio', 'gabbiano'], ['anguilla'], ['riccio', 'riccio'], ['gabbiano', 'riccio', 'gabbiano']] },
+  spiaggia: { name: 'La Spiaggia Nera', tier: 1.35, night: [['medusa', 'medusa', 'medusa'], ['medusanera', 'granchio'], ['anguillasogno', 'medusa']], groups: [['granchio'], ['granchio', 'medusa'], ['medusa', 'medusa'], ['riccio', 'granchio'], ['medusa', 'granchio', 'medusa']] },
   faro: { name: 'Il Faro Spento', tier: 1.8, groups: [['fatuo', 'fatuo'], ['fedele', 'fatuo'], ['granchio', 'fatuo'], ['fatuo', 'fedele', 'fatuo']] },
   grotte: { name: 'Le Grotte dei Cirripedi', tier: 2.5, groups: [['medusa', 'medusa'], ['anguilla', 'medusa'], ['cirripede', 'anguilla'], ['cirripede', 'medusa', 'cirripede'], ['anguilla', 'anguilla']] },
   silo: { name: 'Il Silo', tier: 3.2 },
@@ -442,6 +442,9 @@ export const CHESTS = {
   grotte2: { gear: 'cerata' },
   grotte3: { items: { fenice: 2, superpozione: 2 } },
   silo1: { gear: 'conchiglie', money: 300 },
+  // sugli isolotti che escono con la bassa marea
+  scoglio1: { gear: 'arpioneavorio', money: 200 },
+  scoglio2: { items: { fenice: 2, superpozione: 2, etere: 2 }, money: 300 },
 };
 
 // lo stato della campagna, nuovo o aggiornato da un salvataggio vecchio

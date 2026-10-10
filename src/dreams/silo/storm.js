@@ -42,6 +42,8 @@ export class Storm {
     this.flash = 0;
     this.indoor = false;
     this.wind = new THREE.Vector2(-9, 4);
+    // il colore dell'orizzonte senza lampi (cambia col giorno e la notte)
+    this.horizon = new THREE.Color('#3a434c');
     audio.loop('pioggia', true, { freq: 2400, q: 0.3, vol: 0.07, type: 'highpass' });
     audio.loop('vento', true, { freq: 300, q: 1.2, vol: 0.05, type: 'bandpass' });
     audio.loop('mare', true, { freq: 260, q: 0.4, vol: 0.08, type: 'lowpass' });
@@ -126,12 +128,12 @@ export class Storm {
       this.flash = Math.max(0, this.flash - dt * 3.2);
       const f = this.flash * (0.6 + Math.random() * 0.4);
       for (const L of this.lights) L.light.intensity = L.base + f * (this.indoor ? 1.2 : 3.2);
-      if (this.sky) this.sky.uniforms.horizon.value.setRGB(0.23 + f * 0.6, 0.26 + f * 0.6, 0.3 + f * 0.65);
+      if (this.sky) this.sky.uniforms.horizon.value.setRGB(this.horizon.r + f * 0.6, this.horizon.g + f * 0.6, this.horizon.b + f * 0.65);
       this.bolt.visible = this.flash > 0.5 && Math.random() < 0.8;
     } else {
       this.bolt.visible = false;
       for (const L of this.lights) L.light.intensity = L.base;
-      if (this.sky) this.sky.uniforms.horizon.value.set('#3a434c');
+      if (this.sky) this.sky.uniforms.horizon.value.copy(this.horizon);
     }
   }
 

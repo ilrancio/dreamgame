@@ -227,6 +227,7 @@ export function buildIsland(scene) {
 
   // ---------- Il mare in tempesta: onde nel vertex shader, creste bianche ----------
   const seaUniforms = { uTime: { value: 0 } };
+  let seaMesh = null;
   {
     const geo = new THREE.PlaneGeometry(1800, 1800, 220, 220);
     geo.rotateX(-Math.PI / 2);
@@ -247,7 +248,7 @@ export function buildIsland(scene) {
         .replace('#include <common>', '#include <common>\nvarying float vCrest;')
         .replace('#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.68, 0.7), smoothstep(2.2, 3.1, vCrest));');
     };
-    const sea = new THREE.Mesh(track(geo), m);
+    const sea = (seaMesh = new THREE.Mesh(track(geo), m));
     sea.position.y = -0.4;
     root.add(sea);
   }
@@ -637,6 +638,7 @@ export function buildIsland(scene) {
   return {
     colliders,
     seaUniforms,
+    sea: seaMesh,
     door: DOOR,
     planeSpot: PLANE_SPOT,
     door13: new THREE.Vector3(BUNKER.x, SILO.base, BUNKER.z + 3),

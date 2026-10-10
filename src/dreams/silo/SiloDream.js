@@ -10,6 +10,7 @@ import { buildLighthouse, buildCaves, FARO, GROTTE } from './dungeons.js';
 import { buildChest, buildSaveLantern } from './props.js';
 import { buildAbyss, ABISSO } from './abyss.js';
 import { Fishing } from './fishing.js';
+import { buildTide } from './tide.js';
 import { glowTexture } from '../../core/textures.js';
 import { Storm } from './storm.js';
 import { Battle } from './battle.js';
@@ -59,6 +60,7 @@ export class SiloDream extends WalkScene {
     this.faro = buildLighthouse(S);
     this.grotte = buildCaves(S);
     this.abyss = buildAbyss(S);
+    this.tide = buildTide(S, heightAt);
     this.colliders = this.island.colliders.concat(this.village.colliders);
     this.storm = new Storm(S, { lights: [{ light: this.hemi, base: this.hemi.intensity }], sky: this.calm ? null : this.sky, audio: ctx.audio });
     if (this.calm) {
@@ -95,6 +97,7 @@ export class SiloDream extends WalkScene {
       ...this.faro.spots.chests,
       ...this.grotte.spots.chests,
       { id: 'silo1', pos: this.inside.center.clone().add(new THREE.Vector3(-26, 0, 22)) },
+      ...this.tide.paths.map((P) => ({ id: P.id, pos: new THREE.Vector3(P.islet.x, -1.75, P.islet.z) })),
     ];
     for (const c of chestSpots) {
       const ch = buildChest(S, c.pos, Math.random() * 6);
@@ -156,6 +159,14 @@ export class SiloDream extends WalkScene {
     this.shellSpots = [
       [60.5, 4.1], [BEACH.x + Math.cos(BEACH.a) * 6, BEACH.z + Math.sin(BEACH.a) * 6], [CAVE.x - Math.cos(CAVE.a) * 16, CAVE.z - Math.sin(CAVE.a) * 16 + 6], [-40, 60], [VILLAGE.x + 34, VILLAGE.z + 22],
     ].map(([x, z], i) => ({ id: `c${i}`, pos: this.groundV(x, z), mark: mark(this.groundV(x, z).add(new THREE.Vector3(0, 0.35, 0)), '#ffb8e0', 1.1) }));
+    // il giorno e la notte, e le pause della tempesta (con la bassa marea)
+    this.clock = sv.clock ?? 0.35;
+    this.lullIn = 45 + Math.random() * 30;
+    this.lullOn = false;
+    this.lullK = 0;
+    this.tideK = this.calm ? 1 : 0;
+    this.dayK = 1;
+    this.skyCol = { top: new THREE.Color(), hor: new THREE.Color(), fog: new THREE.Color(), a: new THREE.Color(), b: new THREE.Color() };
     // le creature che girano intorno alla statua
     this.roamers = [];
     for (const g of GROUPS) {
@@ -249,7 +260,125 @@ export class SiloDream extends WalkScene {
     }
   }
 
+  // ---------- il giorno, la notte, la tempesta che a volte si ferma ----------
+  skyTick(dt) {
+    const c = this.clock;
+    const sunH = Math.sin((c - 0.25) * Math.PI * 2);
+    const smooth = (a, b, x) => {
+      const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+      return t * t * (3 - 2 * t);
+    };
+    const day = smooth(-0.25, 0.3, sunH);
+    const dusk = Math.max(0, 1 - Math.abs(sunH) / 0.3);
+    this.dayK = day;
+    const L = this.lullK;
+    const C = this.skyCol;
+    const mix = (out, n, d, dl, k) => out.set(n).lerp(C.a.set(d).lerp(C.b.set(dl), k), day);
+    let hemi;
+    let dir;
+    if (this.calm) {
+      mix(C.top, '#060a18', '#3a5a8a', '#3a5a8a', 0);
+      mix(C.hor, '#182030', '#a8c0d8', '#a8c0d8', 0);
+      mix(C.fog, '#101828', '#8a96a0', '#8a96a0', 0);
+      C.hor.lerp(C.a.set('#e8906a'), dusk * 0.6);
+      C.fog.lerp(C.a.set('#b88a78'), dusk * 0.3);
+      hemi = 0.45 + day * 1.15;
+      dir = 0.08 + day * 1.3;
+      this.sky.uniforms.sunDir.value.set(-0.5, Math.max(0.05, sunH), 0.8).normalize();
+    } else {
+      mix(C.top, '#020306', '#0e1216', '#2a3a52', L);
+      mix(C.hor, '#0c1014', '#3a434c', '#6a7480', L);
+      mix(C.fog, '#0a0d10', '#3a434c', '#5a646e', L);
+      C.hor.lerp(C.a.set('#8a5a4a'), dusk * 0.25);
+      hemi = 0.35 + day * (1.15 + L * 0.3);
+      dir = 0.05 + day * (0.75 + L * 0.4);
+    }
+    const u = this.sky.uniforms;
+    u.top.value.copy(C.top);
+    if (this.storm.sky) this.storm.horizon.copy(C.hor);
+    else u.horizon.value.copy(C.hor);
+    this.dir.color.set(this.calm ? '#ffc890' : '#b8c8e0').lerp(C.a.set('#ff9a6a'), dusk * 0.5);
+    if (this.region === 'isola') {
+      this.scene.fog.color.copy(C.fog);
+      this.scene.background.copy(C.fog);
+      this.scene.fog.far = (this.calm ? 700 : 420 + L * 200) * (0.6 + day * 0.4);
+      this.hemi.intensity = hemi;
+      this.storm.lights[0].base = hemi;
+      this.dir.intensity = dir;
+    }
+  }
+
+  // la tempesta ogni tanto si ferma: il mare si ritira e compaiono gli scogli
+  lullTick(dt) {
+    const { ui, audio } = this.ctx;
+    const out = this.region === 'isola';
+    if (!this.calm && out && !this.battle) {
+      if (!this.lullOn) {
+        this.lullIn -= dt;
+        if (this.lullIn <= 0) {
+          this.lullOn = true;
+          this.lullT = 80;
+          this.lullWarned = false;
+          ui.subtitle(null, 'La pioggia si ferma, di colpo. Il vento cade. Il mare si ritira, e lascia scoperti gli scogli.', 4);
+          if (!this.saved.lullSeen) {
+            this.saved.lullSeen = true;
+            this.later(4.5, () => ui.subtitle(FRIEND, 'Guarda la costa: sono comparse delle file di scogli piatti, verso il largo. Durerà poco: sbrighiamoci!', 4));
+          }
+        }
+      } else {
+        this.lullT -= dt;
+        if (this.lullT < 14 && !this.lullWarned) {
+          this.lullWarned = true;
+          ui.subtitle(FRIEND, 'Il vento riprende. Il mare sta risalendo: torniamo a riva!', 3);
+          audio.whoosh(0.3);
+        }
+        if (this.lullT <= 0) {
+          this.lullOn = false;
+          this.lullIn = 150 + Math.random() * 100;
+        }
+      }
+    }
+    const k = 1 - Math.exp(-dt / 5);
+    this.lullK += ((this.lullOn ? 1 : 0) - this.lullK) * k;
+    this.tideK += ((this.calm ? 1 : this.lullOn && this.lullT > 6 ? 1 : 0) - this.tideK) * (1 - Math.exp(-dt / 6));
+    this.tide.update(this.tideK);
+    this.island.sea.position.y = -0.4 - this.tideK * 0.55;
+    for (const c of this.chests) {
+      if (!c.id.startsWith('scoglio')) continue;
+      c.group.position.y = this.tide.top;
+      c.pos.y = this.tide.top;
+    }
+    if (!this.calm) {
+      this.storm.rain.material.opacity = 0.45 * (1 - this.lullK);
+      this.rainT = (this.rainT || 0) - dt;
+      if (out && this.rainT <= 0) {
+        this.rainT = 0.3;
+        audio.loopVolume?.('pioggia', 0.07 * (1 - this.lullK));
+        audio.loopVolume?.('vento', 0.05 * (1 - this.lullK * 0.7));
+      }
+    }
+    // chi resta sugli scogli quando l'acqua sale: un'onda lo riporta a riva
+    const p = this.player.pos;
+    if (out && !this.busy() && this.tideK < 0.55 && this.tide.on(p.x, p.z) && heightAt(p.x, p.z) < -0.8) {
+      const sh = this.tide.shoreNear(p.x, p.z);
+      ui.subtitle(null, 'Un\'onda vi prende in pieno e vi riporta a riva, fradici.', 3);
+      audio.boom(0.2);
+      this.teleport('isola', new THREE.Vector3(sh.x, 0, sh.z), Math.atan2(-sh.x, -sh.z));
+    }
+  }
+
+  get night() {
+    return this.dayK < 0.35;
+  }
+
+  clockLabel() {
+    const h = Math.floor(this.clock * 24);
+    const m = Math.floor((this.clock * 24 - h) * 60);
+    return `${this.night ? '☾' : '☀'} ${String(h).padStart(2, '0')}:${String(Math.floor(m / 10) * 10).padStart(2, '0')}`;
+  }
+
   save() {
+    this.saved.clock = this.clock;
     // un Overdrive nuovo? si annuncia una volta sola
     const sv = this.saved;
     for (const id of sv.members) {
@@ -333,6 +462,7 @@ export class SiloDream extends WalkScene {
     }
     sv.money -= price;
     this.healAll();
+    this.clock = 0.29;
     this.ctx.ui.fade(1, 500, '#000').then(() => {
       this.later(0.6, () => this.ctx.ui.fade(0, 1200, '#000'));
     });
@@ -395,6 +525,7 @@ export class SiloDream extends WalkScene {
     this.scene.fog.color.set(fog);
     this.scene.background.set(fog);
     this.sky.mesh.visible = out;
+    if (out && this.skyCol) this.skyTick(0);
     this.music();
     this.updateObjective();
   }
@@ -418,6 +549,8 @@ export class SiloDream extends WalkScene {
   groundAt(x, z) {
     if (x > INSIDE.x - 200 || x < FARO.x + 200 || z < GROTTE.z + 200 || z > ABISSO.z - 400) return 0;
     if (onPier(x, z)) return pierY(x, z);
+    const tg = this.tideK > 0.6 ? this.tide.groundAt(x, z) : null;
+    if (tg !== null) return Math.max(tg, heightAt(x, z));
     return Math.max(heightAt(x, z), -0.9);
   }
 
@@ -441,6 +574,7 @@ export class SiloDream extends WalkScene {
     if (r === 'grotte') return this.grotte.blocked(x, z);
     if (r === 'abisso') return this.abyss.blocked(x, z);
     if (onPier(x, z)) return false;
+    if (this.tideK > 0.6 && this.tide.groundAt(x, z) !== null) return false;
     return heightAt(x, z) < -0.8 || Math.hypot(x, z) > 300;
   }
 
@@ -1094,7 +1228,10 @@ export class SiloDream extends WalkScene {
     for (const c of this.abyss.chests) c.update(dt);
     this.abyssBossM?.update(dt);
     this.sky.update(this.camera, dt);
-    this.storm.update(dt, this.camera, !this.calm && this.region === 'isola');
+    if (!this.battle) this.clock = (this.clock + dt / 600) % 1;
+    this.lullTick(dt);
+    if (this.region === 'isola') this.skyTick(dt);
+    this.storm.update(dt, this.camera, !this.calm && this.region === 'isola' && this.lullK < 0.2);
     for (const c of this.chests) c.update(dt);
     for (const L of this.lanterns) L.l.update(t);
     for (const [id, m] of Object.entries(this.bosses)) {
@@ -1146,7 +1283,7 @@ export class SiloDream extends WalkScene {
     if (this.hudT <= 0) {
       this.hudT = 0.4;
       const sv = this.saved;
-      this.hud.innerHTML = `<div style="opacity:.8;margin-bottom:3px">Liv. ${sv.level} · ${sv.money} conchiglie</div>${sv.members
+      this.hud.innerHTML = `<div style="opacity:.8;margin-bottom:3px">Liv. ${sv.level} · ${sv.money} conchiglie · ${this.clockLabel()}</div>${sv.members
         .map((id) => {
           const ms = memberStats(sv, id);
           const hp = Math.max(0, Math.round(sv.party[id]?.hp ?? ms.maxHp));
@@ -1167,7 +1304,8 @@ export class SiloDream extends WalkScene {
         this.encounterIn -= sp * dt;
         if (this.encounterIn <= 0) {
           const Z = ZONES[zone];
-          const foes = Z.groups[Math.floor(Math.random() * Z.groups.length)];
+          const G = this.night && Z.night && this.region === 'isola' ? Z.night : Z.groups;
+          const foes = G[Math.floor(Math.random() * G.length)];
           this.startBattle(foes, { tier: zone === 'abisso' ? abyssTier(this.abyss.floor) : Z.tier });
           return;
         }
@@ -1221,6 +1359,7 @@ export class SiloDream extends WalkScene {
     this.faro.dispose();
     this.grotte.dispose();
     this.abyss.dispose();
+    this.tide.dispose();
     this.abyssBossM?.dispose();
     this.marta.dispose();
     for (const n of Object.values(this.npcs)) n.c.dispose();
