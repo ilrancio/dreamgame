@@ -12,7 +12,7 @@ import { buildAbyss, ABISSO } from './abyss.js';
 import { Storm } from './storm.js';
 import { Battle } from './battle.js';
 import { monsterModel } from './monsters.js';
-import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree, abyssTier, abyssBoss } from './data.js';
+import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree, abyssTier, abyssBoss, knownOverdrives, OVERDRIVES } from './data.js';
 import { Dialog, Shop, PartyMenu } from './rpgui.js';
 import { NPCS, talk } from './campaign.js';
 
@@ -216,6 +216,18 @@ export class SiloDream extends WalkScene {
   }
 
   save() {
+    // un Overdrive nuovo? si annuncia una volta sola
+    const sv = this.saved;
+    for (const id of sv.members) {
+      for (const o of knownOverdrives(id, sv)) {
+        if (sv.odSeen.includes(o)) continue;
+        sv.odSeen.push(o);
+        this.later(1.5, () => {
+          this.ctx.ui.popup(`${PARTY[id].short} impara un Overdrive: ${OVERDRIVES[o].name}`);
+          this.ctx.audio.chime(1760, 0.1);
+        });
+      }
+    }
     this.ctx.progress.silo = this.saved;
     this.ctx.saveProgress(this.ctx.progress);
   }

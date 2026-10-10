@@ -8,9 +8,9 @@ export const MONEY = 'conchiglie';
 // ---------- Il gruppo ----------
 // le abilità si imparano dall'albero (TREES, più sotto); Marta si unisce durante la storia
 export const PARTY = {
-  tu: { name: 'Tu', short: 'Tu', hp: 540, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', learn: [[1, 'colpo'], [1, 'provoca'], [2, 'scanner'], [3, 'rompi'], [6, 'vento']], od: 'mareggiata', weapon: 'remo' },
-  amico: { name: 'Il tuo amico', short: 'Amico', hp: 420, mp: 96, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', learn: [[1, 'fuoco'], [1, 'fulmine'], [1, 'gelo'], [1, 'cura'], [4, 'lentezza'], [5, 'rapidita'], [7, 'curatotale'], [9, 'barriera']], od: 'diluvio', weapon: 'ombrello' },
-  marta: { name: 'Marta', short: 'Marta', hp: 480, mp: 44, str: 17, mag: 10, def: 12, mdef: 10, agi: 12, color: '#ff8a6a', menu: 'Mestiere', learn: [[1, 'arpione'], [1, 'rete'], [4, 'richiamo']], od: 'arpioni', weapon: 'arpione' },
+  tu: { name: 'Tu', short: 'Tu', hp: 540, mp: 36, str: 18, mag: 8, def: 14, mdef: 8, agi: 10, color: '#6a9aff', menu: 'Abilità', od: 'mareggiata', weapon: 'remo' },
+  amico: { name: 'Il tuo amico', short: 'Amico', hp: 420, mp: 96, str: 11, mag: 19, def: 9, mdef: 15, agi: 9, color: '#ffc84a', menu: 'Magia', od: 'diluvio', weapon: 'ombrello' },
+  marta: { name: 'Marta', short: 'Marta', hp: 480, mp: 44, str: 17, mag: 10, def: 12, mdef: 10, agi: 12, color: '#ff8a6a', menu: 'Mestiere', od: 'arpioni', weapon: 'arpione' },
 };
 export const PARTY_ORDER = ['tu', 'amico', 'marta'];
 
@@ -46,6 +46,13 @@ export const OVERDRIVES = {
   diluvio: { name: 'Diluvio', kind: 'mag', target: 'allEnemies', hits: 1, power: 2.4, desc: 'Tutta la tempesta su tutti i nemici.' },
   overclock: { name: 'Overclock', kind: 'phys', target: 'enemy', hits: 4, power: 1.15, desc: 'Quattro colpi a velocità impossibile.' },
   arpioni: { name: 'Pioggia di arpioni', kind: 'phys', target: 'randomEnemies', hits: 6, power: 0.85, pierce: true, desc: 'Sei arpioni, ognuno dove capita.' },
+  // quelli che si imparano andando avanti (how: come si sbloccano)
+  colpodelfaro: { name: 'Colpo del faro', kind: 'phys', target: 'enemy', hits: 1, power: 3.6, pierce: true, status: 'armorBreak', desc: 'Un colpo solo, con tutta la luce del faro dietro: trapassa la corazza e la spacca.' },
+  scogliera: { name: 'Scogliera', kind: 'status', target: 'allAllies', status: ['shield', 'might'], desc: 'Il gruppo diventa uno scoglio: barriera contro la magia e colpi più forti per tutti.' },
+  arcobaleno: { name: 'Arcobaleno', kind: 'heal', target: 'allAllies', power: 2.2, status: 'haste', desc: 'Dopo la pioggia: cura tutto il gruppo e lo rende rapido.' },
+  zeroassoluto: { name: 'Zero assoluto', kind: 'mag', target: 'enemy', hits: 1, power: 5.5, elem: 'gelo', desc: 'Il mare che gela in un istante, tutto su un nemico solo.' },
+  retedimare: { name: 'Rete di Beppe', kind: 'phys', target: 'allEnemies', hits: 2, power: 0.8, status: 'slow', desc: 'La rete rattoppata coi fili di medusa: due colpi su tutti, e rallentano.' },
+  balena: { name: 'Caccia alla balena', kind: 'phys', target: 'enemy', hits: 3, power: 1.6, pierce: true, desc: 'Tre arpioni nello stesso punto, come facevano i vecchi di Porto Grigio.' },
 };
 
 // ---------- Oggetti ----------
@@ -323,6 +330,16 @@ export function unlockNode(state, id, nid) {
   return true;
 }
 
+// gli Overdrive: uno all'inizio, gli altri si sbloccano con la storia e le missioni
+export const OD_LIST = {
+  tu: [['mareggiata'], ['colpodelfaro', (sv) => !!sv.keyItems?.sigillo1, 'Sconfiggi il Granchio Re in cima al faro'], ['scogliera', (sv) => sv.quests?.side?.mostro === 'done', 'Caccia l\'Anguillone per Gino']],
+  amico: [['diluvio'], ['arcobaleno', (sv) => sv.quests?.side?.lanterna === 'done', 'Riporta la lanterna ad Ada'], ['zeroassoluto', (sv) => sv.abyss?.won?.includes(5), 'Sconfiggi il guardiano del quinto piano dell\'Abisso']],
+  marta: [['arpioni'], ['retedimare', (sv) => sv.quests?.side?.reti === 'done', 'Aiuta Beppe con le reti'], ['balena', (sv) => sv.abyss?.won?.includes(10), 'Sconfiggi il Sogno del Dio, nel decimo piano dell\'Abisso']],
+};
+export function knownOverdrives(id, sv) {
+  return (OD_LIST[id] || [[PARTY[id].od]]).filter(([, req]) => !req || req(sv)).map(([o]) => o);
+}
+
 // le abilità che un personaggio conosce: quelle di partenza più l'albero
 export function knownSkills(id, state) {
   const out = [...TREES[id].innate];
@@ -418,6 +435,7 @@ export function initCampaign(sv) {
   sv.od ??= {};
   sv.lastSave ??= 'villaggio';
   sv.abyss ??= { best: 0, won: [], runs: 0 };
+  sv.odSeen ??= PARTY_ORDER.flatMap((id) => knownOverdrives(id, sv));
   // i salvataggi di prima dell'albero: le abilità che si avevano per livello
   // diventano nodi sbloccati, finché bastano i punti
   if (!sv.tree) {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PARTY, SKILLS, OVERDRIVES, ITEMS, ENEMIES, ENEMY_ACTS, ELEM, KEY_ITEMS, xpToNext, knownSkills, scaleEnemy, memberStats, mpCost, spFree } from './data.js';
+import { PARTY, SKILLS, OVERDRIVES, ITEMS, ENEMIES, ENEMY_ACTS, ELEM, KEY_ITEMS, xpToNext, knownSkills, knownOverdrives, scaleEnemy, memberStats, mpCost, spFree } from './data.js';
 import { monsterModel } from './monsters.js';
 import { Particles } from '../../core/particles.js';
 
@@ -444,7 +444,11 @@ export class Battle {
   openMenu(u) {
     this.camShot = { kind: 'over', u };
     const items = [{ label: 'Attacca', key: 'attack', rank: 3, desc: 'Un colpo semplice a un nemico.' }];
-    if (u.od >= 100) items.unshift({ label: 'Overdrive', key: 'od', rank: 3, od: true, desc: OVERDRIVES[u.data.od].desc });
+    if (u.od >= 100) {
+      const ods = knownOverdrives(u.id, this.state);
+      if (ods.length > 1) items.unshift({ label: 'Overdrive', key: 'odmenu', rank: 3, od: true, desc: ods.map((o) => OVERDRIVES[o].name).join(' · ') });
+      else items.unshift({ label: 'Overdrive', key: 'od', odId: ods[0], rank: 3, od: true, desc: OVERDRIVES[ods[0]].desc });
+    }
     items.push({ label: u.data.menu, key: 'skills', rank: 3, desc: knownSkills(u.id, this.state).map((s) => SKILLS[s].name).join(' · ') });
     items.push({ label: 'Difendi', key: 'defend', rank: 2, desc: 'Ti ripari: dimezzi i danni fino al tuo prossimo turno.' });
     const nItems = Object.values(this.state.items).reduce((a, b) => a + b, 0);
@@ -519,7 +523,9 @@ export class Battle {
     }
     this.ctx.audio.chime(1320, 0.04);
     const u = m.u;
-    if (it.key === 'skills') {
+    if (it.key === 'odmenu') {
+      this.submenu('Overdrive', knownOverdrives(u.id, this.state).map((o) => ({ label: OVERDRIVES[o].name, key: 'od', odId: o, rank: 3, od: true, desc: OVERDRIVES[o].desc })));
+    } else if (it.key === 'skills') {
       this.submenu(u.data.menu, knownSkills(u.id, this.state).map((sid) => {
         const s = SKILLS[sid];
         const c = mpCost(u, sid);
@@ -540,7 +546,7 @@ export class Battle {
       let kind = 'enemy';
       if (it.key === 'skill') kind = SKILLS[it.skill].target;
       if (it.key === 'item') kind = ITEMS[it.item].target;
-      if (it.key === 'od') kind = OVERDRIVES[u.data.od].target;
+      if (it.key === 'od') kind = OVERDRIVES[it.odId].target;
       if (kind === 'allEnemies' || kind === 'randomEnemies' || kind === 'allAllies') {
         this.startTarget(it, kind === 'allAllies' ? 'allAllies' : 'allEnemies');
         return;
@@ -589,7 +595,7 @@ export class Battle {
     if (it.key === 'attack') this.perform(u, { type: 'attack' }, targets, 3);
     else if (it.key === 'skill') this.perform(u, { type: 'skill', id: it.skill }, targets, SKILLS[it.skill].rank);
     else if (it.key === 'item') this.perform(u, { type: 'item', id: it.item }, targets, 2);
-    else if (it.key === 'od') this.perform(u, { type: 'od', id: u.data.od }, targets, 3);
+    else if (it.key === 'od') this.perform(u, { type: 'od', id: it.odId }, targets, 3);
   }
 
   // ---------- i nemici ----------
@@ -762,30 +768,9 @@ export class Battle {
         }
       } else if (def.kind === 'heal') {
         this.heal(t, (u.mag * 12 + 80) * (def.power || 1) * (u.pass?.sorgente ? 1.3 : 1));
+        if (def.status) this.applyStatus(u, t, def);
       } else if (def.kind === 'status') {
-        if (def.status === 'provoked') {
-          t.st.provokedBy = u;
-          this.pop(t, 'Provocato', 'tag');
-        } else if (def.status === 'slow') {
-          if (t.boss && Math.random() < 0.4) this.pop(t, 'Immune', 'tag');
-          else {
-            t.st.slow = 3;
-            t.ct *= 1.6;
-            this.pop(t, 'Lentezza', 'tag');
-          }
-        } else if (def.status === 'haste') {
-          t.st.haste = 4;
-          t.ct *= 0.6;
-          this.pop(t, 'Rapidità', 'tag');
-        } else if (def.status === 'shield') {
-          t.st.shield = 4;
-          this.pop(t, 'Barriera', 'tag');
-        } else if (def.status === 'might') {
-          t.st.might = 4;
-          this.pop(t, 'Forza', 'tag');
-        }
-        this.sparkle(t, def.status === 'haste' || def.status === 'might' ? [1, 0.9, 0.4] : def.status === 'shield' ? [0.4, 0.9, 1] : [0.8, 0.5, 1]);
-        audio.chime(990, 0.06);
+        this.applyStatus(u, t, def);
       } else if (def.kind === 'scan') {
         t.st.scanned = true;
         this.pop(t, 'Scansionato', 'tag');
@@ -817,6 +802,37 @@ export class Battle {
       }
     }
     this.renderParty();
+  }
+
+  // gli effetti di un'abilità (anche più d'uno: status può essere una lista)
+  applyStatus(u, t, def) {
+    const list = [].concat(def.status);
+    for (const st of list) {
+      if (st === 'provoked') {
+        t.st.provokedBy = u;
+        this.pop(t, 'Provocato', 'tag');
+      } else if (st === 'slow') {
+        if (t.boss && Math.random() < 0.4) this.pop(t, 'Immune', 'tag');
+        else {
+          t.st.slow = 3;
+          t.ct *= 1.6;
+          this.pop(t, 'Lentezza', 'tag');
+        }
+      } else if (st === 'haste') {
+        t.st.haste = 4;
+        t.ct *= 0.6;
+        this.pop(t, 'Rapidità', 'tag');
+      } else if (st === 'shield') {
+        t.st.shield = 4;
+        this.pop(t, 'Barriera', 'tag', 0.3);
+      } else if (st === 'might') {
+        t.st.might = 4;
+        this.pop(t, 'Forza', 'tag', 0.6);
+      }
+    }
+    const s0 = list[0];
+    this.sparkle(t, s0 === 'haste' || s0 === 'might' ? [1, 0.9, 0.4] : s0 === 'shield' ? [0.4, 0.9, 1] : [0.8, 0.5, 1]);
+    this.ctx.audio.chime(990, 0.06);
   }
 
   damage(u, t, kind, power, elem, lvl, pierce = false) {

@@ -1,4 +1,4 @@
-import { PARTY, GEAR, ITEMS, KEY_ITEMS, SKILLS, MAIN, SIDE, MONEY, memberStats, knownSkills, xpToNext, TREES, PASSIVES, STAT_NAMES, spFree, nodeBlock, nodeLabel, unlockNode, SHOP_GEAR, SHOP_ITEMS } from './data.js';
+import { PARTY, GEAR, ITEMS, KEY_ITEMS, SKILLS, MAIN, SIDE, MONEY, memberStats, knownSkills, knownOverdrives, OD_LIST, OVERDRIVES, xpToNext, TREES, PASSIVES, STAT_NAMES, spFree, nodeBlock, nodeLabel, unlockNode, SHOP_GEAR, SHOP_ITEMS } from './data.js';
 
 // Le finestre della campagna, nello stile blu di FFX: i dialoghi, il negozio,
 // il menu del gruppo (stato, equipaggiamento, oggetti, missioni).
@@ -299,7 +299,7 @@ export class PartyMenu {
       <div class="row"><span>Vita ${hp} / ${ms.maxHp}</span><span>MP ${mp} / ${ms.maxMp}</span></div><div class="bar"><i style="width:${(100 * hp) / ms.maxHp}%"></i></div>
       <div class="st"><span>For ${Math.round(ms.str)}</span><span>Mag ${Math.round(ms.mag)}</span><span>Agi ${Math.round(ms.agi)}</span><span>Dif ${Math.round(ms.def)}</span><span>DifM ${Math.round(ms.mdef)}</span></div>
       <div class="sm" style="margin-top:4px">${GEAR[eq.weapon || PARTY[id].weapon].name} · ${GEAR[eq.armor || 'maglia'].name}</div>
-      <div class="sm">${knownSkills(id, st).map((s) => SKILLS[s].name).join(', ')}</div>${spFree(st, id) > 0 ? `<div class="sm sp">${spFree(st, id)} punti abilità da spendere</div>` : ''}${extra}</div>`;
+      <div class="sm">${knownSkills(id, st).map((s) => SKILLS[s].name).join(', ')}</div><div class="sm" style="color:#ffd060">Overdrive: ${knownOverdrives(id, st).map((o) => OVERDRIVES[o].name).join(', ')}</div>${spFree(st, id) > 0 ? `<div class="sm sp">${spFree(st, id)} punti abilità da spendere</div>` : ''}${extra}</div>`;
   }
 
   render() {
@@ -308,6 +308,9 @@ export class PartyMenu {
     let keys = '<b>A</b>/<b>D</b> scheda · <b>Esc</b> chiudi';
     if (this.tab === 0) {
       body = `<div class="sm" style="margin-bottom:8px">Esperienza: ${st.xp} / ${xpToNext(st.level)} per il livello ${st.level + 1}</div><div class="cols">${st.members.map((id) => this.memberCard(id)).join('')}</div>`;
+      // gli Overdrive ancora da scoprire, e come
+      const todo = st.members.flatMap((id) => (OD_LIST[id] || []).filter(([, req]) => req && !req(st)).map(([, , how]) => `<div class="sm">${PARTY[id].short}: ??? — ${how}</div>`));
+      if (todo.length) body += `<div style="margin-top:12px;color:#ffd060">Overdrive da scoprire</div>${todo.join('')}`;
     } else if (this.tab === 1) {
       if (!this.sub) {
         body = `<div class="sm" style="margin-bottom:8px">Scegli chi equipaggiare.</div><div class="cols">${st.members.map((id, i) => this.memberCard(id, i === this.sel)).join('')}</div>`;
