@@ -78,10 +78,14 @@ export const GEAR = {
   arpione: { name: 'Arpione di legno', slot: 'weapon', who: 'marta', str: 4, price: 0 },
   arpioneferro: { name: 'Arpione di ferro', slot: 'weapon', who: 'marta', str: 11, price: 320 },
   arpioneavorio: { name: 'Arpione d\'avorio', slot: 'weapon', who: 'marta', str: 21, price: 1100 },
+  remosogno: { name: 'Remo del Sogno', slot: 'weapon', who: 'tu', str: 30, price: 0 },
+  ombrellosogno: { name: 'Ombrello stellato', slot: 'weapon', who: 'amico', mag: 30, str: 4, price: 0 },
+  arpionesogno: { name: 'Arpione di stelle', slot: 'weapon', who: 'marta', str: 31, price: 0 },
   maglia: { name: 'Maglione', slot: 'armor', def: 0, mdef: 0, hp: 0, price: 0 },
   impermeabile: { name: 'Impermeabile', slot: 'armor', def: 6, mdef: 4, hp: 40, price: 120 },
   cerata: { name: 'Cerata rinforzata', slot: 'armor', def: 12, mdef: 8, hp: 90, price: 420 },
   conchiglie: { name: 'Corazza di conchiglie', slot: 'armor', def: 20, mdef: 14, hp: 170, price: 1050 },
+  scaglie: { name: 'Manto di scaglie di balena', slot: 'armor', def: 28, mdef: 24, hp: 260, price: 0 },
 };
 export const SHOP_GEAR = ['sciabola', 'ambra', 'arpioneferro', 'impermeabile', 'cerata', 'lama', 'perla', 'arpioneavorio', 'conchiglie'];
 export const SHOP_ITEMS = ['pozione', 'superpozione', 'etere', 'fenice'];
@@ -101,12 +105,27 @@ export const ENEMIES = {
   granchiore: { name: 'Granchio Re', model: 'crabking', hp: 2400, str: 30, mag: 12, def: 55, mdef: 20, agi: 7, weak: ['fulmine'], xp: 320, money: 400, boss: true, acts: [['chela', 3], ['tenaglia', 2], ['bolle', 2], ['guscio', 1]], info: 'Il guardiano del Faro Spento. La corazza è durissima: Rompiguardia prima di tutto.' },
   anguillone: { name: 'L\'Anguillone', model: 'eelking', hp: 1800, str: 28, mag: 8, def: 18, mdef: 16, agi: 18, weak: ['gelo'], resist: ['fuoco'], xp: 260, money: 320, boss: true, acts: [['morso', 3], ['avvinghia', 2], ['risucchio', 2]], info: 'Il mostro della Spiaggia Nera. Veloce: Lentezza aiuta.' },
   madre: { name: 'La Madre delle Meduse', model: 'jellymother', hp: 3600, str: 18, mag: 34, def: 20, mdef: 40, agi: 9, weak: ['fuoco'], absorb: ['fulmine'], xp: 560, money: 600, boss: true, acts: [['catena', 3], ['evoca', 2], ['velomadre', 1]], info: 'Assorbe i fulmini e chiama le sue figlie. Il fuoco la ferisce.' },
+  // l'Abisso, sotto la statua: le creature del sogno del dio
+  granchioombra: { name: 'Granchio d\'Ombra', model: 'crabshade', hp: 210, str: 14, mag: 8, def: 52, mdef: 14, agi: 7, weak: ['fuoco'], xp: 20, money: 18, acts: [['chela', 3], ['guscio', 1], ['incubo', 1]], info: 'Il ricordo di un granchio. La corazza tiene, ma il fuoco la scioglie.' },
+  medusanera: { name: 'Medusa Nera', model: 'jellyshade', hp: 140, str: 6, mag: 15, def: 10, mdef: 30, agi: 12, weak: ['fulmine'], absorb: ['gelo'], xp: 19, money: 16, acts: [['buio', 3], ['velo', 1]], info: 'Al contrario di quelle di sopra: il fulmine la spezza, il gelo la nutre.' },
+  anguillasogno: { name: 'Anguilla del Sogno', model: 'eelshade', hp: 160, str: 16, mag: 8, def: 16, mdef: 14, agi: 19, weak: ['fuoco'], resist: ['gelo'], xp: 19, money: 17, acts: [['morso', 3], ['risucchio', 1], ['avvinghia', 1]], info: 'Nuota nell\'aria. Il fuoco la fa scappare.' },
+  sognatore: { name: 'Sognatore Annegato', model: 'devshade', hp: 180, str: 9, mag: 16, def: 16, mdef: 24, agi: 9, weak: ['fulmine'], xp: 22, money: 24, acts: [['preghiera', 2], ['incubo', 2], ['salmodia', 2]], info: 'Dorme e prega insieme. Svegliatelo con un fulmine.' },
+  fatuonero: { name: 'Fuoco Nero', model: 'wispshade', hp: 130, str: 5, mag: 17, def: 8, mdef: 24, agi: 14, weak: ['fuoco'], absorb: ['gelo'], xp: 20, money: 20, acts: [['buio', 3], ['abbaglio', 1]], info: 'Una fiamma che brucia al contrario. Il fuoco vero la spegne.' },
+  riccionero: { name: 'Riccio dell\'Abisso', model: 'urchinshade', hp: 170, str: 13, mag: 6, def: 48, mdef: 8, agi: 6, weak: ['gelo'], xp: 18, money: 16, acts: [['aculei', 3], ['pungiglioni', 2]], info: 'Spine nere. Il gelo le rende fragili.' },
+  // i guardiani dell'Abisso: crescono con la profondità (deep = il livello di zona di riferimento)
+  colosso: { name: 'Il Cirripede Colosso', model: 'barnaclelord', hp: 4200, str: 34, mag: 30, def: 50, mdef: 30, agi: 8, weak: ['fuoco'], xp: 900, money: 900, boss: true, deep: 4, acts: [['spruzzo', 2], ['incrosta', 1], ['ondata', 2], ['evocaombre', 1]], info: 'Il guardiano del quinto piano. Si richiude e chiama i suoi figli d\'ombra. Il fuoco lo stana.' },
+  sognodio: { name: 'Il Sogno del Dio', model: 'dreamwhale', hp: 9000, str: 46, mag: 46, def: 38, mdef: 42, agi: 10, weak: [], xp: 3000, money: 2000, boss: true, deep: 5, countdown: true, acts: [['codata', 3], ['onda', 2], ['incubo', 2]], info: 'Quello che il dio sognava, mentre dormiva. Quando il conto arriva a zero canta: difendetevi.' },
   dio: { name: 'Il Dio Sopito', model: 'whale', hp: 5600, str: 40, mag: 38, def: 35, mdef: 38, agi: 8, weak: [], xp: 1500, money: 0, boss: true, countdown: true, acts: [['codata', 3], ['onda', 2]], info: 'Ogni tanto canta: quando il conto arriva a zero, il Canto degli Abissi colpisce tutti. Difendetevi.' },
 };
 
 export function scaleEnemy(id, tier = 1) {
   const d = ENEMIES[id];
-  if (d.boss) return { ...d };
+  if (d.boss && !d.deep) return { ...d };
+  // i guardiani dell'Abisso: più si scende, più sono forti
+  if (d.boss) {
+    const k = Math.max(1, tier / d.deep);
+    return { ...d, hp: Math.round(d.hp * Math.pow(k, 1.4)), str: d.str * Math.pow(k, 0.9), mag: d.mag * Math.pow(k, 0.9), def: d.def * k, mdef: d.mdef * k, xp: Math.round(d.xp * k), money: Math.round(d.money * k) };
+  }
   const h = Math.pow(tier, 1.3);
   const a = Math.pow(tier, 0.8);
   return { ...d, hp: Math.round(d.hp * h), str: d.str * a, mag: d.mag * a, def: d.def * (0.8 + tier * 0.2), mdef: d.mdef * (0.8 + tier * 0.2), xp: Math.round(d.xp * Math.pow(tier, 1.2)), money: Math.round(d.money * tier) };
@@ -138,6 +157,10 @@ export const ENEMY_ACTS = {
   codata: { name: 'Codata', kind: 'phys', power: 1.35, target: 'one' },
   onda: { name: 'Onda nera', kind: 'mag', power: 0.7, target: 'all' },
   canto: { name: 'Canto degli Abissi', kind: 'mag', power: 1.7, target: 'all' },
+  buio: { name: 'Buio', kind: 'mag', power: 1.05, target: 'one' },
+  incubo: { name: 'Incubo', kind: 'mag', power: 0.55, target: 'all', status: 'delay' },
+  ondata: { name: 'Ondata nera', kind: 'mag', power: 0.85, target: 'all' },
+  evocaombre: { name: 'Richiamo dal fondo', kind: 'summon', summon: 'granchioombra', target: 'self' },
   marea: { name: 'Marea', kind: 'mag', power: 1.05, target: 'all', status: 'delay' },
 };
 
@@ -148,6 +171,7 @@ export const ZONES = {
   faro: { name: 'Il Faro Spento', tier: 1.8, groups: [['fatuo', 'fatuo'], ['fedele', 'fatuo'], ['granchio', 'fatuo'], ['fatuo', 'fedele', 'fatuo']] },
   grotte: { name: 'Le Grotte dei Cirripedi', tier: 2.5, groups: [['medusa', 'medusa'], ['anguilla', 'medusa'], ['cirripede', 'anguilla'], ['cirripede', 'medusa', 'cirripede'], ['anguilla', 'anguilla']] },
   silo: { name: 'Il Silo', tier: 3.2 },
+  abisso: { name: 'L\'Abisso', tier: 3.4, groups: [['granchioombra', 'medusanera'], ['anguillasogno', 'anguillasogno'], ['sognatore', 'fatuonero', 'sognatore'], ['riccionero', 'medusanera', 'riccionero'], ['fatuonero', 'fatuonero'], ['granchioombra', 'anguillasogno', 'granchioombra'], ['medusanera', 'sognatore', 'medusanera'], ['riccionero', 'fatuonero']] },
 };
 
 // I gruppi di creature che custodiscono la statua nel silo (id, composizione, dove)
@@ -393,6 +417,7 @@ export function initCampaign(sv) {
   sv.cleared ??= [];
   sv.od ??= {};
   sv.lastSave ??= 'villaggio';
+  sv.abyss ??= { best: 0, won: [], runs: 0 };
   // i salvataggi di prima dell'albero: le abilità che si avevano per livello
   // diventano nodi sbloccati, finché bastano i punti
   if (!sv.tree) {
@@ -426,4 +451,22 @@ export function initCampaign(sv) {
     sv.gear.arpione ??= 1;
   }
   return sv;
+}
+
+// ---------- L'Abisso ----------
+// il livello delle creature a un piano dell'Abisso
+export const abyssTier = (floor) => 3.3 + floor * 0.22;
+// chi custodisce il vortice: ogni cinque piani un guardiano
+export function abyssBoss(floor) {
+  if (floor % 5) return null;
+  return floor % 10 === 0 ? 'sognodio' : 'colosso';
+}
+// cosa c'è nei forzieri dell'Abisso, più ricchi più si scende
+export function abyssChest(floor, rand) {
+  const r = rand();
+  if (r < 0.3) return { money: Math.round(120 + floor * 40 + rand() * 100) };
+  if (r < 0.55) return { items: { superpozione: 1 + Math.floor(floor / 6) } };
+  if (r < 0.75) return { items: { etere: 1 + Math.floor(floor / 8) } };
+  if (r < 0.9) return { items: { fenice: 1 } };
+  return { items: { superpozione: 1, etere: 1 }, money: 100 + floor * 20 };
 }

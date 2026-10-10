@@ -8,10 +8,11 @@ import { buildInterior, INSIDE } from './interior.js';
 import { buildVillage } from './village.js';
 import { buildLighthouse, buildCaves, FARO, GROTTE } from './dungeons.js';
 import { buildChest, buildSaveLantern } from './props.js';
+import { buildAbyss, ABISSO } from './abyss.js';
 import { Storm } from './storm.js';
 import { Battle } from './battle.js';
 import { monsterModel } from './monsters.js';
-import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree } from './data.js';
+import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree, abyssTier, abyssBoss } from './data.js';
 import { Dialog, Shop, PartyMenu } from './rpgui.js';
 import { NPCS, talk } from './campaign.js';
 
@@ -55,6 +56,7 @@ export class SiloDream extends WalkScene {
     this.inside = buildInterior(S);
     this.faro = buildLighthouse(S);
     this.grotte = buildCaves(S);
+    this.abyss = buildAbyss(S);
     this.colliders = this.island.colliders.concat(this.village.colliders);
     this.storm = new Storm(S, { lights: [{ light: this.hemi, base: this.hemi.intensity }], sky: this.calm ? null : this.sky, audio: ctx.audio });
     if (this.calm) {
@@ -321,6 +323,7 @@ export class SiloDream extends WalkScene {
     if (x > INSIDE.x - 200) return 'silo';
     if (x < FARO.x + 200) return 'faro';
     if (z < GROTTE.z + 200) return 'grotte';
+    if (z > ABISSO.z - 400) return 'abisso';
     return 'isola';
   }
 
@@ -336,12 +339,13 @@ export class SiloDream extends WalkScene {
     this.inside.setLit(r === 'silo');
     this.faro.setLit(r === 'faro');
     this.grotte.setLit(r === 'grotte');
-    this.hemi.intensity = out ? 1.5 : r === 'silo' ? 0.7 : r === 'faro' ? 0.55 : 0.35;
+    this.abyss.setLit(r === 'abisso');
+    this.hemi.intensity = out ? 1.5 : r === 'silo' ? 0.7 : r === 'faro' ? 0.55 : r === 'abisso' ? 0.5 : 0.35;
     this.storm.lights[0].base = this.hemi.intensity;
     this.dir.intensity = out ? (this.calm ? 1.4 : 0.8) : 0.05;
-    const fog = out ? (this.calm ? '#8a8a90' : '#3a434c') : r === 'grotte' ? '#04080a' : '#0a0e10';
-    this.scene.fog.near = out ? 30 : r === 'faro' ? 10 : 18;
-    this.scene.fog.far = out ? (this.calm ? 700 : 420) : r === 'faro' ? 60 : 90;
+    const fog = out ? (this.calm ? '#8a8a90' : '#3a434c') : r === 'grotte' ? '#04080a' : r === 'abisso' ? '#05040e' : '#0a0e10';
+    this.scene.fog.near = out ? 30 : r === 'faro' ? 10 : r === 'abisso' ? 12 : 18;
+    this.scene.fog.far = out ? (this.calm ? 700 : 420) : r === 'faro' ? 60 : r === 'abisso' ? 62 : 90;
     this.scene.fog.color.set(fog);
     this.scene.background.set(fog);
     this.sky.mesh.visible = out;
@@ -356,6 +360,8 @@ export class SiloDream extends WalkScene {
     if (sound) this.ctx.audio.thud(0.3);
     await ui.fade(1, 450, '#000');
     if (this.disposed) return;
+    // la destinazione si può calcolare solo adesso (un piano dell'Abisso nuovo)
+    if (typeof pos === 'function') pos = pos();
     this.place(pos.x, pos.z, yaw);
     this.setRegion(region);
     this.transit = false;
@@ -364,7 +370,7 @@ export class SiloDream extends WalkScene {
   }
 
   groundAt(x, z) {
-    if (x > INSIDE.x - 200 || x < FARO.x + 200 || z < GROTTE.z + 200) return 0;
+    if (x > INSIDE.x - 200 || x < FARO.x + 200 || z < GROTTE.z + 200 || z > ABISSO.z - 400) return 0;
     if (onPier(x, z)) return pierY(x, z);
     return Math.max(heightAt(x, z), -0.9);
   }
@@ -374,6 +380,7 @@ export class SiloDream extends WalkScene {
     if (r === 'silo') return INSIDE.h - 1;
     if (r === 'faro') return FARO.h - 0.5;
     if (r === 'grotte') return GROTTE.h - 1;
+    if (r === 'abisso') return ABISSO.h - 1;
     return Infinity;
   }
 
@@ -386,6 +393,7 @@ export class SiloDream extends WalkScene {
     }
     if (r === 'faro') return this.faro.blocked(x, z);
     if (r === 'grotte') return this.grotte.blocked(x, z);
+    if (r === 'abisso') return this.abyss.blocked(x, z);
     if (onPier(x, z)) return false;
     return heightAt(x, z) < -0.8 || Math.hypot(x, z) > 300;
   }
@@ -395,6 +403,7 @@ export class SiloDream extends WalkScene {
     const r = this.regionOf(x, z);
     if (r === 'faro') return this.faro.camBlocked(x, z);
     if (r === 'grotte') return this.grotte.camBlocked(x, z);
+    if (r === 'abisso') return this.abyss.camBlocked(x, z);
     if (r === 'silo') return Math.hypot(x - INSIDE.x, z - INSIDE.z) > INSIDE.r - 1.5;
     return false;
   }
@@ -430,12 +439,19 @@ export class SiloDream extends WalkScene {
     } else if (r === 'silo') audio.pad('silo', [55, 82.4, 103.8, 164.8], { vol: 0.035, cutoff: 500, tremolo: 0.1 });
     else if (r === 'faro') audio.pad('faro', [98, 146.8, 196, 233], { vol: 0.03, cutoff: 700, tremolo: 0.12 });
     else if (r === 'grotte') audio.pad('grotte', [61.7, 92.5, 123.5, 185], { vol: 0.035, cutoff: 450, tremolo: 0.2 });
+    else if (r === 'abisso') audio.pad('abisso', [49, 73.4, 92.5, 138.6], { vol: 0.04, type: 'triangle', cutoff: 420, tremolo: 0.35 });
     else audio.pad('tempesta', [73.4, 110, 146.8, 174.6], { vol: this.calm ? 0.02 : 0.03, cutoff: 600 });
   }
 
   updateObjective() {
     const { ui } = this.ctx;
     const q = this.saved.quests;
+    if (this.region === 'abisso') {
+      const f = this.abyss.floor;
+      const b = this.abyssBossM ? ' Un guardiano custodisce il vortice.' : '';
+      ui.objective(`L'Abisso, piano ${f} (il più profondo: ${this.saved.abyss.best}). Trova il vortice e scendi.${b} La colonna di luce riporta al silo.`);
+      return;
+    }
     if (this.region === 'silo' && q.main === 6) {
       const left = this.roamers.length;
       ui.objective(left ? `Le creature che custodiscono la statua: ancora ${left} grupp${left === 1 ? 'o' : 'i'}. Toccale per combattere.` : 'Non c\'è più nessuno a custodirlo. Avvicinati alla statua e sveglia il dio.');
@@ -452,6 +468,15 @@ export class SiloDream extends WalkScene {
     const r = this.region;
     // i forzieri e le lanterne, ovunque
     for (const c of this.chests) if (!c.opened && near(c.pos, 1.8)) return { label: 'apri il forziere', fn: () => this.openChest(c) };
+    if (r === 'abisso') {
+      const A = this.abyss;
+      for (const c of A.chests) if (!c.opened && near(c.pos, 1.8)) return { label: 'apri il forziere', fn: () => this.openChest(c) };
+      if (near(A.spots.exit, 2.2)) return { label: 'entra nella colonna di luce: si risale al silo', fn: () => this.leaveAbyss() };
+      if (A.spring && near(A.spring, 2)) return { label: 'bevi dalla pozza di luce (vita e MP al massimo)', fn: () => this.abyssSpring() };
+      if (this.abyssBossM && near(A.spots.endRoom, 9)) return { label: 'affronta il guardiano del vortice', fn: () => this.abyssBossFight() };
+      if (near(A.spots.vortex, 2.8)) return { label: `tuffati nel vortice: piano ${A.floor + 1}`, fn: () => this.enterAbyss(A.floor + 1) };
+      return null;
+    }
     for (const L of this.lanterns) if (near(L.l.pos, 2)) return { label: 'riposa alla lanterna blu (vita e MP al massimo, si salva)', fn: () => this.useLantern(L.id) };
     if (r === 'isola') {
       for (const n of Object.values(this.npcs)) if (n.show && near(n.c.pos, 2.4)) return { label: `parla con ${n.d.name}`, fn: () => this.talkTo(n) };
@@ -494,7 +519,7 @@ export class SiloDream extends WalkScene {
     if (near(A.entrance, 3.2)) return { label: 'esci nella tempesta', fn: () => this.teleport('isola', this.island.door.clone().add(new THREE.Vector3(0, 0, 4)), 0) };
     const dc = Math.hypot(p.x - A.center.x, p.z - A.center.z);
     if (dc < INSIDE.pool + 7 && p.z > A.center.z) {
-      if (sv.god) return { label: 'la statua', fn: () => this.ctx.ui.subtitle(null, 'La pietra è fredda, e vuota. Quello che ci dormiva dentro se n\'è andato.', 3.6) };
+      if (sv.god) return { label: 'scendi nell\'acqua nera, sotto la statua', fn: () => this.abyssGate() };
       if (this.roamers.length) return { label: 'la statua della balena', fn: () => this.ctx.ui.subtitle(FRIEND, 'Respira. Lo sento. Ma finché le sue creature ci girano intorno non si sveglierà.', 3.8) };
       return { label: 'sveglia il dio sopito', fn: () => this.wakeGod() };
     }
@@ -511,8 +536,8 @@ export class SiloDream extends WalkScene {
   openChest(c) {
     const sv = this.saved;
     c.open();
-    sv.chests[c.id] = true;
-    const C = CHESTS[c.id] || {};
+    if (c.id) sv.chests[c.id] = true;
+    const C = c.content || CHESTS[c.id] || {};
     const got = [];
     if (C.money) {
       sv.money += C.money;
@@ -613,12 +638,123 @@ export class SiloDream extends WalkScene {
     this.later(1.6, () => this.leave(() => this.ctx.goto('aeroporto', 'arrivi')));
   }
 
+  // ---------- l'Abisso, sotto la statua ----------
+  abyssGate() {
+    const A = this.saved.abyss;
+    // si riparte dal primo piano, o subito dopo un guardiano già battuto
+    const starts = [1, ...A.won.filter((f) => f % 5 === 0).map((f) => f + 1)].filter((v, i, a) => a.indexOf(v) === i).slice(-4);
+    const first = !A.best;
+    this.dialog.show([
+      ...(first
+        ? [
+            { who: null, text: 'Ti sporgi sull\'acqua nera. Non riflette niente: né te, né la statua, né la luce dell\'oblò.' },
+            { who: 'Il tuo amico', text: 'Il dio se n\'è andato, ma ha lasciato il suo sogno qui sotto. Lo senti? Respira ancora.' },
+            { who: 'Marta', text: 'Mio nonno diceva che sotto il silo il mare non finisce mai. Vediamo se aveva ragione.' },
+          ]
+        : []),
+      {
+        who: null,
+        text: first ? 'Scendere nell\'Abisso?' : `L'Abisso. Il piano più profondo che avete raggiunto: ${A.best}. Da dove scendere?`,
+        choices: [...starts.map((f) => ({ label: f === 1 ? 'Dal primo piano' : `Dal piano ${f}`, fn: () => this.enterAbyss(f) })), { label: 'Non ancora', fn: () => {} }],
+      },
+    ]);
+  }
+
+  enterAbyss(floor) {
+    const sv = this.saved;
+    const A = sv.abyss;
+    A.runs = (A.runs || 0) + 1;
+    const deeper = floor > A.best;
+    A.best = Math.max(A.best, floor);
+    this.save();
+    this.ctx.audio.whoosh(0.4);
+    this.teleport(
+      'abisso',
+      () => {
+        this.abyss.build(floor, floor * 7919 + A.runs * 104729);
+        // il guardiano del vortice, se c'è
+        this.abyssBossM?.dispose();
+        this.abyssBossM = null;
+        const bid = abyssBoss(floor);
+        if (bid) {
+          const m = monsterModel({ colosso: 'barnaclelord', sognodio: 'dreamwhale' }[bid]);
+          m.group.position.copy(this.abyss.spots.boss);
+          this.scene.add(m.group);
+          this.abyssBossM = m;
+          this.abyssBossId = bid;
+        }
+        return this.abyss.spots.start;
+      },
+      0,
+      false,
+    );
+    this.later(1.2, () => {
+      this.ctx.ui.popup(`L'Abisso — piano ${floor}`);
+      if (abyssBoss(floor)) this.ctx.ui.subtitle(FRIEND, 'Questo piano è diverso. Qualcosa di grosso aspetta vicino al vortice.', 3.4);
+      else if (floor === 1 && deeper) this.ctx.ui.subtitle(FRIEND, 'Colonne nere, costole di balena, bolle che salgono... Siamo dentro il suo sogno. Cerchiamo un modo per scendere.', 4.2);
+      this.updateObjective();
+    });
+  }
+
+  leaveAbyss() {
+    const c = this.inside.center;
+    this.abyssBossM?.dispose();
+    this.abyssBossM = null;
+    this.teleport('silo', c.clone().add(new THREE.Vector3(0, 0, INSIDE.pool + 6)), 0);
+    this.later(1.2, () => this.ctx.ui.subtitle(null, `Riemergete dall'acqua nera, asciutti. Il piano più profondo raggiunto: ${this.saved.abyss.best}.`, 3.4));
+  }
+
+  abyssSpring() {
+    this.healAll();
+    this.save();
+    this.ctx.audio.chime(659, 0.1);
+    setTimeout(() => this.ctx.audio.chime(988, 0.1), 200);
+    this.dialog.show([{ who: null, text: 'L\'acqua è tiepida e sa di pioggia. Vita e MP al massimo.' }]);
+  }
+
+  abyssBossFight() {
+    const id = this.abyssBossId;
+    const intro = {
+      colosso: 'Dal fondo della sala si alza un mucchio di conchiglie nere, grande come una casa. Il Cirripede Colosso.',
+      sognodio: 'Qualcosa nuota nel buio sopra di voi. Una balena nera, piena di stelle. Il sogno del dio non vuole svegliarsi.',
+    }[id];
+    this.ctx.ui.subtitle(null, intro, 3.2);
+    this.ctx.audio.roar(0.45);
+    this.later(1.3, () => this.startBattle([id], { boss: 'abyss', noFlee: true, tier: abyssTier(this.abyss.floor) }));
+  }
+
+  abyssWon() {
+    const sv = this.saved;
+    const f = this.abyss.floor;
+    this.abyssBossM?.dispose();
+    this.abyssBossM = null;
+    const first = !sv.abyss.won.includes(f);
+    if (first) sv.abyss.won.push(f);
+    const lines = [{ who: null, text: 'Il guardiano si scioglie in bolle nere. Il vortice gira più forte: la strada verso il basso è libera.' }];
+    if (first && this.abyssBossId === 'colosso' && !sv.gear.scaglie) {
+      sv.gear.scaglie = (sv.gear.scaglie || 0) + 1;
+      lines.push({ who: null, text: 'Fra le conchiglie rotte trovi un mantello fatto di scaglie di balena: il Manto di scaglie di balena. (equipaggialo dal menu, <b>G</b>)' });
+    }
+    if (first && this.abyssBossId === 'sognodio' && !sv.gear.remosogno) {
+      for (const g of ['remosogno', 'ombrellosogno', 'arpionesogno']) sv.gear[g] = (sv.gear[g] || 0) + 1;
+      lines.push(
+        { who: 'Il tuo amico', text: 'Era il suo sogno più grande. E adesso... ci ha lasciato qualcosa.' },
+        { who: null, text: 'Dove nuotava la balena nera restano tre cose che brillano: il Remo del Sogno, l\'Ombrello stellato, l\'Arpione di stelle.' },
+        { who: 'Marta', text: 'L\'Abisso però continua. Lo sento ancora respirare, più giù.' },
+      );
+    }
+    if (first) lines.push({ who: null, text: `Da adesso potete scendere direttamente dal piano ${f + 1}.` });
+    this.dialog.show(lines, () => this.updateObjective());
+    this.save();
+  }
+
   // ---------- il combattimento ----------
   // dove si combatte: nella stanza o nella caverna, oppure lì dove sei sull'isola
   arenaHere() {
     const p = this.player.pos;
     if (this.region === 'faro') return this.faro.arenaAt(p.x, p.z);
     if (this.region === 'grotte') return this.grotte.arenaAt(p.x, p.z);
+    if (this.region === 'abisso') return this.abyss.arenaAt(p.x, p.z);
     if (this.region === 'silo') return this.inside.arena;
     const c = new THREE.Vector3(p.x, 0, p.z);
     const at = (dx, dz) => this.groundV(c.x + dx, c.z + dz);
@@ -649,6 +785,7 @@ export class SiloDream extends WalkScene {
     if (this.saved.members.includes('marta')) this.marta.group.visible = true;
     if (group) group.m.group.visible = false;
     if (boss && this.bosses[boss]) this.bosses[boss].group.visible = false;
+    if (boss === 'abyss' && this.abyssBossM) this.abyssBossM.group.visible = false;
     // il lampo bianco dell'incontro
     this.ctx.audio.whoosh(0.4);
     ui.fade(1, 80, '#fff').then(() => ui.fade(0, 350, '#fff'));
@@ -709,6 +846,7 @@ export class SiloDream extends WalkScene {
       this.save();
       if (g) g.m.group.visible = true;
       if (B.boss && this.bosses[B.boss]) this.bosses[B.boss].group.visible = true;
+      if (B.boss === 'abyss' && this.abyssBossM) this.abyssBossM.group.visible = true;
       if (whale) this.inside.setAwake(0);
       const L = this.lanterns.find((q) => q.id === sv.lastSave) || this.lanterns[0];
       const reg = SAVES[L.id].region;
@@ -724,6 +862,7 @@ export class SiloDream extends WalkScene {
         g.cool = 4;
       }
       if (B.boss && this.bosses[B.boss]) this.bosses[B.boss].group.visible = true;
+      if (B.boss === 'abyss' && this.abyssBossM) this.abyssBossM.group.visible = true;
       this.place(B.pre.x, B.pre.z, B.facing + Math.PI);
     }
     this.music();
@@ -763,6 +902,8 @@ export class SiloDream extends WalkScene {
           this.placeNpcs();
         },
       );
+    } else if (id === 'abyss') {
+      this.abyssWon();
     } else if (id === 'anguillone') {
       this.setSide('mostro', 'killed');
       ui.popup('L\'Anguillone è stato cacciato: torna da Gino');
@@ -831,6 +972,7 @@ export class SiloDream extends WalkScene {
         this.inside.setAwake(0);
         ui.popup('Il dio sopito è stato cacciato');
         this.later(1, () => ui.subtitle(null, 'Fuori, il rumore della pioggia si è fermato. A Porto Grigio stanno già festeggiando.', 4));
+        this.later(6, () => ui.subtitle(FRIEND, 'Però l\'acqua sotto la statua è ancora nera. E sembra... profonda. Molto più profonda di prima.', 4));
         this.updateObjective();
         this.music();
       },
@@ -848,6 +990,9 @@ export class SiloDream extends WalkScene {
     this.inside.update(t);
     this.faro.update(t);
     this.grotte.update(t);
+    this.abyss.update(t, dt);
+    for (const c of this.abyss.chests) c.update(dt);
+    this.abyssBossM?.update(dt);
     this.sky.update(this.camera, dt);
     this.storm.update(dt, this.camera, !this.calm && this.region === 'isola');
     for (const c of this.chests) c.update(dt);
@@ -909,13 +1054,14 @@ export class SiloDream extends WalkScene {
       if (this.region === 'isola') zone = zoneAt(p.pos.x, p.pos.z);
       else if (this.region === 'faro') zone = this.faro.roomAt(p.pos.x, p.pos.z) < 2 ? 'faro' : null;
       else if (this.region === 'grotte') zone = this.grotte.chamberAt(p.pos.x, p.pos.z).id !== 'A' ? 'grotte' : null;
+      else if (this.region === 'abisso') zone = this.abyss.isStart(p.pos.x, p.pos.z) || (this.abyssBossM && this.abyss.roomAt(p.pos.x, p.pos.z) === this.abyss.roomAt(this.abyss.spots.endRoom.x, this.abyss.spots.endRoom.z)) ? null : 'abisso';
       const sp = Math.hypot(p.vel.x, p.vel.z);
       if (zone && sp > 0.5) {
         this.encounterIn -= sp * dt;
         if (this.encounterIn <= 0) {
           const Z = ZONES[zone];
           const foes = Z.groups[Math.floor(Math.random() * Z.groups.length)];
-          this.startBattle(foes, { tier: Z.tier });
+          this.startBattle(foes, { tier: zone === 'abisso' ? abyssTier(this.abyss.floor) : Z.tier });
           return;
         }
       }
@@ -961,6 +1107,8 @@ export class SiloDream extends WalkScene {
     this.inside.dispose();
     this.faro.dispose();
     this.grotte.dispose();
+    this.abyss.dispose();
+    this.abyssBossM?.dispose();
     this.marta.dispose();
     for (const n of Object.values(this.npcs)) n.c.dispose();
     for (const m of Object.values(this.bosses)) m.dispose();

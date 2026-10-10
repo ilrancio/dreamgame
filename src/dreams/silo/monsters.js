@@ -422,6 +422,90 @@ function big(builder, scale, extra) {
   };
 }
 
+// Le creature dell'Abisso: le stesse, ma fatte del sogno del dio. Più scure,
+// con una luce viola dentro.
+function shade(builder, hue = 0.72, glow = '#6a3aff') {
+  return () => {
+    const m = builder();
+    m.group.traverse((o) => {
+      const mt = o.material;
+      if (!mt?.color) return;
+      const hsl = {};
+      mt.color.getHSL(hsl);
+      mt.color.setHSL(hue + (hsl.h - 0.5) * 0.12, Math.min(1, hsl.s * 0.7 + 0.2), hsl.l * 0.45);
+      if (mt.emissive && mt.emissiveIntensity > 0.3) mt.emissive.set('#c8a0ff');
+      else if (mt.emissive) {
+        mt.emissive.set(glow);
+        mt.emissiveIntensity = 0.35;
+      }
+    });
+    return m;
+  };
+}
+
+// Il Sogno del Dio: la balena com'era prima di diventare pietra. Nera, piena
+// di stelle, nuota nell'aria dell'Abisso.
+function dreamwhale() {
+  const m = base(7);
+  const skin = m.M('#10142a', { roughness: 0.3, metalness: 0.3, emissive: '#1a1a5a', emissiveIntensity: 0.6 });
+  const belly = m.M('#2a2a5a', { roughness: 0.4, emissive: '#3a2a8a', emissiveIntensity: 0.4 });
+  const star = m.M('#ffffff', { emissive: '#b8d8ff', emissiveIntensity: 2 });
+  const holder = new THREE.Group();
+  holder.position.y = 4.2;
+  m.group.add(holder);
+  const body = new THREE.Mesh(m.track(new THREE.SphereGeometry(1, 24, 16)), skin);
+  body.scale.set(2.2, 1.9, 5.2);
+  const under = new THREE.Mesh(m.track(new THREE.SphereGeometry(1, 20, 12)), belly);
+  under.scale.set(1.9, 1.2, 4.6);
+  under.position.set(0, -0.75, 0.3);
+  holder.add(body, under);
+  // le stelle sulla pelle
+  const sg = m.track(new THREE.SphereGeometry(0.045, 5, 4));
+  for (let i = 0; i < 70; i++) {
+    const u = Math.random() * Math.PI * 2;
+    const v = Math.random() * Math.PI * 0.55;
+    const st = new THREE.Mesh(sg, star);
+    st.position.set(Math.cos(u) * Math.sin(v) * 2.2, Math.cos(v) * 1.9, Math.sin(u) * Math.sin(v) * 5.2);
+    st.scale.setScalar(0.6 + Math.random() * 1.4);
+    holder.add(st);
+  }
+  for (const s of [-1, 1]) {
+    const eye = new THREE.Mesh(m.track(new THREE.SphereGeometry(0.18, 8, 6)), m.M('#ffffff', { emissive: '#9af8ff', emissiveIntensity: 2.5 }));
+    eye.position.set(s * 1.75, -0.1, 3.4);
+    holder.add(eye);
+  }
+  const fins = [];
+  for (const s of [-1, 1]) {
+    const fin = new THREE.Mesh(m.track(new THREE.BoxGeometry(2.6, 0.12, 1)), skin);
+    fin.geometry.translate(s * 1.3, 0, 0);
+    fin.position.set(s * 1.8, -0.9, 1.4);
+    holder.add(fin);
+    fins.push(fin);
+  }
+  const tail = new THREE.Group();
+  tail.position.z = -4.8;
+  holder.add(tail);
+  const stock = new THREE.Mesh(m.track(new THREE.CylinderGeometry(0.5, 1.1, 3, 10)), skin);
+  stock.rotation.x = Math.PI / 2;
+  stock.position.z = -1.2;
+  const fluke = new THREE.Mesh(m.track(new THREE.BoxGeometry(4.4, 0.12, 1.3)), skin);
+  fluke.position.z = -2.8;
+  tail.add(stock, fluke);
+  m.update = function (dt) {
+    this.step(dt);
+    const at = this.actK('attack');
+    const ca = this.actK('cast');
+    if (this.dying <= 0) holder.position.set(0, 4.2 + Math.sin(this.t * 0.7) * 0.4 + ca * 1.2, at * 3);
+    holder.rotation.x = Math.sin(this.t * 0.5) * 0.04 - at * 0.15 - ca * 0.2;
+    // di tre quarti: si vede che è una balena
+    holder.rotation.y = 0.85 - at * 0.6;
+    tail.rotation.x = Math.sin(this.t * 1.2) * 0.25 + at * 0.6;
+    fins.forEach((f, i) => (f.rotation.z = (i ? -1 : 1) * (Math.sin(this.t * 1.1) * 0.2 + ca * 0.5)));
+    star.emissiveIntensity = this.flashT > 0 ? star.emissiveIntensity : 1.6 + Math.sin(this.t * 3) * 0.5 + ca * 2;
+  };
+  return m;
+}
+
 const BUILDERS = {
   crab,
   jelly,
@@ -444,6 +528,14 @@ const BUILDERS = {
     m.group.traverse((o) => o.material?.color && o.material.color.offsetHSL(0.6, 0, -0.08));
   }),
   jellymother: big(jelly, 2.6),
+  crabshade: shade(crab),
+  jellyshade: shade(jelly, 0.8, '#ff3ad8'),
+  eelshade: shade(eel, 0.66),
+  devshade: shade(devotee, 0.75),
+  wispshade: shade(wisp, 0.85, '#ff3a8a'),
+  urchinshade: shade(urchin, 0.7),
+  barnaclelord: big(shade(barnacle, 0.7), 2.6),
+  dreamwhale,
 };
 
 export function monsterModel(kind) {
