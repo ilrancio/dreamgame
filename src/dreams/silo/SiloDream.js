@@ -3,16 +3,18 @@ import { WalkScene, FRIEND } from '../../core/walkscene.js';
 import { createSky } from '../../core/sky.js';
 import { unlockPlace } from '../../core/places.js';
 import { Character } from '../hotel/character.js';
-import { buildIsland, heightAt, onPier, pierY, zoneAt, PLANE_SPOT, STONES, BEACH, LIGHT, CAVE } from './island.js';
+import { buildIsland, heightAt, onPier, pierY, zoneAt, PLANE_SPOT, STONES, BEACH, LIGHT, CAVE, HARBOR, PIER, VILLAGE } from './island.js';
 import { buildInterior, INSIDE } from './interior.js';
 import { buildVillage } from './village.js';
 import { buildLighthouse, buildCaves, FARO, GROTTE } from './dungeons.js';
 import { buildChest, buildSaveLantern } from './props.js';
 import { buildAbyss, ABISSO } from './abyss.js';
+import { Fishing } from './fishing.js';
+import { glowTexture } from '../../core/textures.js';
 import { Storm } from './storm.js';
 import { Battle } from './battle.js';
 import { monsterModel } from './monsters.js';
-import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree, abyssTier, abyssBoss, knownOverdrives, OVERDRIVES } from './data.js';
+import { GROUPS, ZONES, CHESTS, ITEMS, GEAR, KEY_ITEMS, MAIN, SIDE, PARTY, initCampaign, memberStats, spFree, abyssTier, abyssBoss, knownOverdrives, OVERDRIVES, FISH, FISH_SPOTS } from './data.js';
 import { Dialog, Shop, PartyMenu } from './rpgui.js';
 import { NPCS, talk } from './campaign.js';
 
@@ -71,6 +73,7 @@ export class SiloDream extends WalkScene {
     this.dialog = new Dialog(ctx);
     this.shop = new Shop(ctx);
     this.menu = new PartyMenu(ctx);
+    this.fishing = new Fishing(ctx);
     // il gruppo in combattimento: Marta, con il suo arpione, compare negli scontri
     this.marta = new Character(S, { ...NPCS.marta.look });
     this.marta.group.visible = false;
@@ -122,6 +125,37 @@ export class SiloDream extends WalkScene {
     bossAt('granchiore', 'crabking', this.faro.spots.boss);
     bossAt('madre', 'jellymother', this.grotte.spots.boss);
     bossAt('anguillone', 'eelking', this.groundV(BEACH.x, BEACH.z), 0);
+    // dove si pesca: l'acqua fa le bolle
+    const glow = glowTexture('rgba(255,255,255,1)');
+    this.glowTex = glow;
+    const H = HARBOR;
+    const hl = Math.hypot(H.x1 - H.x0, H.z1 - H.z0);
+    const hd = { x: (H.x1 - H.x0) / hl, z: (H.z1 - H.z0) / hl };
+    const C = this.grotte.chambers.find((c) => c.lake);
+    this.fishSpots = [
+      { id: 'porto', pos: new THREE.Vector3(H.x0 + hd.x * hl * 0.55 - hd.z * (H.halfW - 0.7), H.y, H.z0 + hd.z * hl * 0.55 + hd.x * (H.halfW - 0.7)), water: new THREE.Vector3(-hd.z * 4, 0, hd.x * 4) },
+      { id: 'molo', pos: new THREE.Vector3(PIER.x + PIER.halfW - 0.8, PIER.y, PIER.z1 - 8), water: new THREE.Vector3(4, 0, 0) },
+      { id: 'spiaggia', pos: this.groundV(BEACH.x + Math.cos(BEACH.a) * 11, BEACH.z + Math.sin(BEACH.a) * 11), water: new THREE.Vector3(Math.cos(BEACH.a) * 5, 0, Math.sin(BEACH.a) * 5) },
+      { id: 'lago', pos: new THREE.Vector3(C.center.x + C.lx - C.lake - 1.3, 0, C.center.z + C.lz), water: new THREE.Vector3(2.5, 0, 0) },
+    ];
+    this.marks = [];
+    const mark = (pos, color, size) => {
+      const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.8, depthWrite: false }));
+      sp.position.copy(pos);
+      sp.scale.set(size, size, 1);
+      S.add(sp);
+      this.marks.push(sp);
+      return sp;
+    };
+    for (const f of this.fishSpots) {
+      const w = f.pos.clone().add(f.water);
+      w.y = f.id === 'lago' ? 0.15 : 0.1;
+      f.mark = mark(w, '#9ae8ff', 1.6);
+    }
+    // le conchiglie di Tobia, sparse per l'isola
+    this.shellSpots = [
+      [60.5, 4.1], [BEACH.x + Math.cos(BEACH.a) * 6, BEACH.z + Math.sin(BEACH.a) * 6], [CAVE.x - Math.cos(CAVE.a) * 16, CAVE.z - Math.sin(CAVE.a) * 16 + 6], [-40, 60], [VILLAGE.x + 34, VILLAGE.z + 22],
+    ].map(([x, z], i) => ({ id: `c${i}`, pos: this.groundV(x, z), mark: mark(this.groundV(x, z).add(new THREE.Vector3(0, 0.35, 0)), '#ffb8e0', 1.1) }));
     // le creature che girano intorno alla statua
     this.roamers = [];
     for (const g of GROUPS) {
@@ -432,7 +466,7 @@ export class SiloDream extends WalkScene {
   }
 
   busy() {
-    return !!this.battle || !!this.transit || this.dialog.open || this.shop.open || this.menu.open;
+    return !!this.battle || !!this.transit || this.dialog.open || this.shop.open || this.menu.open || this.fishing.open;
   }
 
   updateFriend(dt) {
@@ -498,6 +532,8 @@ export class SiloDream extends WalkScene {
       if (near(I.planeSpot, 4)) return { label: 'risali sull\'idrovolante: si torna all\'aeroporto', fn: () => this.flyBack() };
       if (near(I.lightDoor, 3)) return { label: 'entra nel Faro Spento', fn: () => this.teleport('faro', this.faro.spots.exit, Math.PI) };
       if (near(I.caveMouth, 3.5)) return { label: 'scendi nelle grotte', fn: () => this.enterCaves() };
+      for (const sh of this.shellSpots) if (q.side.conchiglie === 'active' && !sv.shells.includes(sh.id) && near(sh.pos, 1.8)) return { label: 'raccogli la conchiglia che canta', fn: () => this.pickShell(sh) };
+      for (const f of this.fishSpots) if (f.id !== 'lago' && near(f.pos, 2.4)) return { label: 'pesca', fn: () => this.fish(f) };
       if (q.side.lanterna === 'active' && !sv.keyItems.lanterna && near(this.adaLantern.position, 2.4)) return { label: 'raccogli la lanterna', fn: () => this.pickLantern() };
       if (q.side.mostro === 'active' && near(this.bosses.anguillone.group.position, 6)) return { label: 'affronta l\'Anguillone', fn: () => this.bossFight('anguillone') };
       return null;
@@ -520,6 +556,7 @@ export class SiloDream extends WalkScene {
       if (near(G.exit, 2.5)) return { label: 'risali in superficie', fn: () => this.teleport('isola', this.island.caveMouth, Math.atan2(-CAVE.x, -CAVE.z)) };
       const m = this.npcs.marta;
       if (m.show && near(m.c.pos, 2.4)) return { label: 'parla con Marta', fn: () => this.talkTo(m) };
+      if (near(this.fishSpots[3].pos, 2.4)) return { label: 'pesca nel lago', fn: () => this.fish(this.fishSpots[3]) };
       if (!sv.keyItems.sigillo2 && near(G.boss, 7)) {
         if (!sv.members.includes('marta')) return { label: 'la Madre delle Meduse', fn: () => this.ctx.ui.subtitle(FRIEND, 'È enorme. Da soli no: torniamo all\'ingresso, Marta ci aspettava lì.', 3.4) };
         return { label: 'affronta la Madre delle Meduse', fn: () => this.bossFight('madre') };
@@ -648,6 +685,57 @@ export class SiloDream extends WalkScene {
     const { ui } = this.ctx;
     ui.subtitle(FRIEND, this.saved.god ? 'Andiamo. Adesso si vola tranquilli.' : 'Torniamo all\'aeroporto. L\'isola resta qui ad aspettarci.', 2.6);
     this.later(1.6, () => this.leave(() => this.ctx.goto('aeroporto', 'arrivi')));
+  }
+
+  // ---------- la pesca e le conchiglie ----------
+  fish(f) {
+    const sv = this.saved;
+    const { ui } = this.ctx;
+    if (!sv.members.includes('marta')) {
+      ui.subtitle(FRIEND, 'Senza una lenza non si pesca. Marta ne avrà di sicuro una.', 3);
+      return;
+    }
+    if (!sv.fishTaught) {
+      sv.fishTaught = true;
+      this.dialog.show(
+        [
+          { who: 'Marta', text: 'Vuoi pescare? Tieni, la mia lenza di riserva. Si pesca dove l\'acqua fa le bolle.' },
+          { who: 'Marta', text: 'Quando il galleggiante va giù, tira subito. Poi tieni il pesce: se scappa in alto, tira di più; se va giù, lascia andare un po\'.' },
+          { who: 'Marta', text: 'Quello che peschi lo compra Gino, alla locanda. E segnati tutto: ogni pesce nuovo va nel taccuino.' },
+        ],
+        () => this.fish(f),
+      );
+      return;
+    }
+    ui.hint(null);
+    const yaw = Math.atan2(f.water.x, f.water.z);
+    this.player.facing = yaw;
+    this.player.animate(0, 0);
+    this.fishing.start(f.id, {
+      good: !!sv.keyItems.lenza,
+      onCatch: (id, size) => {
+        sv.fish[id] = (sv.fish[id] || 0) + 1;
+        const isNew = !sv.fishLog[id];
+        sv.fishLog[id] = Math.max(sv.fishLog[id] || 0, size);
+        if (id === 'cristallo' && sv.quests.side.cristallo === 'active') this.later(0.6, () => ui.popup('Il pesce cristallo! Portalo a Nilo'));
+        this.save();
+        return isNew;
+      },
+      onClose: () => this.save(),
+    });
+  }
+
+  pickShell(sh) {
+    const sv = this.saved;
+    sv.shells.push(sh.id);
+    sv.keyItems.conchiglia = (sv.keyItems.conchiglia || 0) + 1;
+    this.ctx.audio.chime(1568, 0.08);
+    setTimeout(() => this.ctx.audio.chime(1976, 0.06), 140);
+    const n = sv.shells.length;
+    this.ctx.ui.popup(`Conchiglia che canta (${n}/5)`);
+    if (n === 1) this.later(0.8, () => this.ctx.ui.subtitle(FRIEND, 'Avvicinala all\'orecchio. Non è il mare... è una canzone.', 3));
+    if (n === 5) this.later(0.8, () => this.ctx.ui.subtitle(FRIEND, 'Cinque. Le abbiamo tutte: riportiamole a Tobia, in piazza.', 3));
+    this.save();
   }
 
   // ---------- l'Abisso, sotto la statua ----------
@@ -1024,6 +1112,13 @@ export class SiloDream extends WalkScene {
     this.dialog.update(dt);
     this.shop.update(dt);
     this.menu.update(dt);
+    this.fishing.update(dt);
+    // le bolle dove si pesca, e le conchiglie che brillano
+    for (const f of this.fishSpots) f.mark.material.opacity = 0.45 + Math.sin(t * 3 + f.pos.x) * 0.25;
+    for (const sh of this.shellSpots) {
+      sh.mark.visible = this.saved.quests.side.conchiglie === 'active' && !this.saved.shells.includes(sh.id);
+      sh.mark.material.opacity = 0.6 + Math.sin(t * 2.5 + sh.pos.z) * 0.3;
+    }
     if (this.battle) {
       this.battle.update(dt);
       return;
@@ -1111,6 +1206,12 @@ export class SiloDream extends WalkScene {
     super.dispose();
     this.hud.remove();
     this.dialog.dispose();
+    this.fishing.close();
+    for (const m of this.marks) {
+      this.scene.remove(m);
+      m.material.dispose();
+    }
+    this.glowTex.dispose();
     if (this.shop.open) this.shop.close();
     if (this.menu.open) this.menu.close();
     this.storm.dispose();

@@ -68,6 +68,32 @@ export const KEY_ITEMS = {
   lanterna: { name: 'Lanterna di Ada', desc: 'Una lanterna vecchia, ancora tiepida.' },
   sigillo1: { name: 'Sigillo della Luce', desc: 'Un disco di vetro caldo, preso in cima al Faro Spento.' },
   sigillo2: { name: 'Sigillo dell\'Abisso', desc: 'Un disco di madreperla nera, dal fondo delle grotte.' },
+  conchiglia: { name: 'Conchiglia che canta', desc: 'Se l\'appoggi all\'orecchio non si sente il mare: si sente una canzone. Tobia le colleziona.' },
+  lenza: { name: 'Lenza d\'argento', desc: 'Il regalo di Nilo. Con questa i pesci abboccano più a lungo e scappano meno.' },
+};
+
+// ---------- La pesca ----------
+export const FISH_SPOTS = {
+  porto: { name: 'Il pontile di Porto Grigio' },
+  molo: { name: 'La punta del molo del silo' },
+  spiaggia: { name: 'La riva della Spiaggia Nera' },
+  lago: { name: 'Il lago sotterraneo' },
+};
+// w: quanto è comune; diff: quanto si dibatte; price: quanto lo paga Gino
+export const FISH = {
+  sardina: { name: 'Sardina', spot: 'porto', w: 5, diff: 0.6, price: 8, size: [10, 18], desc: 'Piccola e argentata. Gino ne fa una zuppa ogni sera.' },
+  sgombro: { name: 'Sgombro', spot: 'porto', w: 4, diff: 0.8, price: 14, size: [22, 36], desc: 'Strisce blu sul dorso, come il mare in burrasca.' },
+  triglia: { name: 'Triglia', spot: 'porto', w: 2, diff: 1, price: 24, size: [15, 28], desc: 'Rossa come un tramonto che qui non si vede mai.' },
+  polpo: { name: 'Polpo', spot: 'porto', w: 1, diff: 1.3, price: 40, size: [30, 70], desc: 'Si attacca alla lenza con tutti e otto i tentacoli.' },
+  spigola: { name: 'Spigola', spot: 'molo', w: 4, diff: 1, price: 28, size: [30, 60], desc: 'Gira intorno ai pali del molo, nell\'ombra del silo.' },
+  orata: { name: 'Orata', spot: 'molo', w: 3, diff: 1.1, price: 34, size: [25, 45], desc: 'Ha una striscia d\'oro fra gli occhi.' },
+  pesceluna: { name: 'Pesce luna', spot: 'molo', w: 1, diff: 1.4, price: 90, size: [80, 180], rare: true, big: true, desc: 'Enorme e tondo. Galleggia di lato, come se dormisse anche lui.' },
+  razza: { name: 'Razza nera', spot: 'spiaggia', w: 4, diff: 1.2, price: 38, size: [40, 90], desc: 'Scivola sulla sabbia nera, invisibile finché non si muove.' },
+  anguillina: { name: 'Anguilla di sabbia', spot: 'spiaggia', w: 4, diff: 1.3, price: 30, size: [30, 60], desc: 'Una parente piccola dell\'Anguillone. Molto piccola, per fortuna.' },
+  cavalluccio: { name: 'Cavalluccio d\'ombra', spot: 'spiaggia', w: 1, diff: 1.6, price: 120, size: [8, 16], rare: true, desc: 'Nero, con gli occhi che brillano. Nessuno a Porto Grigio ne ha mai visto uno.' },
+  cieco: { name: 'Pesce cieco', spot: 'lago', w: 5, diff: 1, price: 45, size: [12, 24], desc: 'Bianco e senza occhi. Non ha mai visto la luce, e sta benissimo così.' },
+  lanterna: { name: 'Pesce lanterna', spot: 'lago', w: 3, diff: 1.3, price: 70, size: [15, 30], desc: 'Si porta la sua luce appesa davanti alla bocca.' },
+  cristallo: { name: 'Pesce cristallo', spot: 'lago', w: 1, diff: 1.75, price: 200, size: [20, 40], rare: true, big: true, desc: 'Trasparente come vetro. Dentro, si vede battere un cuore azzurro.' },
 };
 
 // ---------- Equipaggiamento ----------
@@ -369,6 +395,8 @@ export const MAIN = [
 export const SIDE = {
   reti: { title: 'Le reti strappate', giver: 'Beppe', text: 'Beppe ha bisogno di 3 fili di medusa per rattoppare le reti. Le meduse si trovano alla Spiaggia Nera e nelle grotte.', reward: '150 conchiglie e 2 Eteri' },
   lanterna: { title: 'La lanterna di Ada', giver: 'Ada', text: 'Ada ha perso la sua lanterna nella brughiera, vicino alle pietre che cantano, al centro dell\'isola.', reward: 'Cerata rinforzata e 2 Code di fenice' },
+  cristallo: { title: 'Il pesce che canta', giver: 'Nilo', text: 'Nilo dice che nel lago sotterraneo delle grotte nuota un pesce trasparente, il pesce cristallo. Vuole vederlo almeno una volta. Marta ti presta la sua lenza: si pesca dove l\'acqua fa le bolle.', reward: 'La Lenza d\'argento e 400 conchiglie' },
+  conchiglie: { title: 'Le conchiglie che cantano', giver: 'Tobia', text: 'Tobia ha perso le sue conchiglie che cantano: cinque, sparse per l\'isola. Brillano un po\', di sera. Cercale sulla costa e nella brughiera.', reward: 'Il tesoro di Tobia' },
   mostro: { title: 'Il mostro della Spiaggia Nera', giver: 'Gino', text: 'Qualcosa di enorme abita la Spiaggia Nera, a sud-est. Gino offre una ricompensa a chi lo caccia.', reward: 'Lama di corallo e 300 conchiglie' },
 };
 
@@ -435,6 +463,9 @@ export function initCampaign(sv) {
   sv.od ??= {};
   sv.lastSave ??= 'villaggio';
   sv.abyss ??= { best: 0, won: [], runs: 0 };
+  sv.fish ??= {};
+  sv.fishLog ??= {};
+  sv.shells ??= [];
   sv.odSeen ??= PARTY_ORDER.flatMap((id) => knownOverdrives(id, sv));
   // i salvataggi di prima dell'albero: le abilità che si avevano per livello
   // diventano nodi sbloccati, finché bastano i punti

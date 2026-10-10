@@ -1,5 +1,5 @@
 import { FRIEND } from '../../core/walkscene.js';
-import { GEAR, PARTY } from './data.js';
+import { GEAR, PARTY, FISH } from './data.js';
 
 // Gli abitanti di Porto Grigio e quello che dicono, a seconda di dove sei
 // arrivato nella storia. s è la scena (SiloDream): ha dialog, saved, e le
@@ -71,6 +71,13 @@ export function talk(s, id) {
       { label: 'Riposa (20 conchiglie)', fn: () => s.rest(20) },
     ];
     if (!sm) choices.push({ label: 'C\'è qualche lavoro?', fn: () => D([L('Un lavoro? Alla Spiaggia Nera, a sud-est, c\'è un\'anguilla grossa come una barca. Mi ha mangiato due reti e un cane.'), L('Chi la caccia avrà la mia vecchia lama di corallo. E 300 conchiglie.')], () => s.setSide('mostro', 'active')) });
+    // il pesce lo compra Gino, per la zuppa (il pesce cristallo no, se serve a Nilo)
+    const keep = q.side.cristallo === 'active' ? 'cristallo' : null;
+    const fishVal = Object.entries(sv.fish || {}).reduce((t, [f, n]) => t + (f === keep ? 0 : n * FISH[f].price), 0);
+    if (fishVal > 0) choices.splice(1, 0, { label: `Vendi il pesce (${fishVal} conchiglie)`, fn: () => D([L('Pesce fresco! Questo va dritto nella zuppa. Ecco a voi.')], () => {
+      for (const f of Object.keys(sv.fish)) if (f !== keep) sv.fish[f] = 0;
+      s.giveMoney(fishVal);
+    }) });
     if (sm === 'killed') choices.unshift({ label: 'L\'Anguillone è stato cacciato', fn: () => D([L('Davvero? L\'ho visto io, il mare là è tornato quieto! Ecco la lama, e i soldi. Brindo alla vostra!')], () => {
       s.giveGear('lama');
       s.giveMoney(300);
@@ -115,6 +122,24 @@ export function talk(s, id) {
     return;
   }
   if (id === 'tobia') {
+    const st = q.side.conchiglie;
+    if (!st && q.main >= 1) {
+      D([L('Avevo cinque conchiglie che cantano. Le ho nascoste per l\'isola perché il vento le facesse suonare... e adesso non le trovo più.'), L('Una era vicino al sentiero del faro, una sulla Spiaggia Nera, una sopra le grotte, una a nord, verso il silo, e una appena fuori dal paese. Brillano un po\', rosa.'), L('Se me le riporti ti do il mio tesoro. È un tesoro vero, eh.')], () => s.setSide('conchiglie', 'active'));
+      return;
+    }
+    if (st === 'active') {
+      const n = (sv.shells || []).length;
+      if (n >= 5) {
+        D([L('Tutte e cinque! Ascolta... cantano insieme. È la stessa canzone del silo, ma allegra.'), L('Ecco il mio tesoro: l\'ho trovato sulla spiaggia dopo la tempesta più grande. Due code di fenice, tre granpozioni e tutte le conchiglie che ho risparmiato.')], () => {
+          sv.keyItems.conchiglia = 0;
+          s.giveItem('fenice', 2);
+          s.giveItem('superpozione', 3);
+          s.giveMoney(350);
+          s.setSide('conchiglie', 'done');
+        });
+      } else D([L(`Ne hai trovate ${n} su 5. Brillano rosa, un po'. Di notte si sentono cantare.`)]);
+      return;
+    }
     s.tobiaI = (s.tobiaI || 0) + 1;
     D([L(TOBIA[s.tobiaI % TOBIA.length])]);
     return;
@@ -134,7 +159,18 @@ export function talk(s, id) {
     return;
   }
   if (id === 'nilo') {
-    D([L('Mi avete tirato fuori da quel bozzolo... Laggiù, nel buio, la Madre cantava la stessa canzone che si sente vicino al silo.'), L('Credo che il dio sogni anche lei. Che sogni tutti noi.')]);
+    const st = q.side.cristallo;
+    if (!st) {
+      D([L('Mi avete tirato fuori da quel bozzolo... Laggiù, nel buio, la Madre cantava la stessa canzone che si sente vicino al silo.'), L('Ma prima di lei, nel lago sotterraneo, ho visto un pesce trasparente. Di vetro. Con un cuore azzurro che batteva.'), L('Il pesce cristallo. Nessuno ci crede. Se riesci a pescarlo, portamelo: voglio vederlo ancora una volta. Marta ti presta la lenza.')], () => s.setSide('cristallo', 'active'));
+    } else if (st === 'active' && sv.fish?.cristallo > 0) {
+      D([L('È lui... È vero. Guarda il cuore, come batte.'), L('Lo ributto nel lago, domani. Ma prima voglio che lo veda Marta. E tu prendi questa: la lenza d\'argento di nostro padre. Con questa non scappa niente.')], () => {
+        sv.fish.cristallo--;
+        sv.keyItems.lenza = 1;
+        s.giveMoney(400);
+        s.setSide('cristallo', 'done');
+      });
+    } else if (st === 'active') D([L('Il pesce cristallo sta nel lago sotterraneo, nelle grotte. Abbocca poco, e quando abbocca tira come un matto.')]);
+    else D([L('Credo che il dio sognasse anche lei, la Madre. Che sognasse tutti noi. Anche il pesce cristallo.')]);
   }
 }
 

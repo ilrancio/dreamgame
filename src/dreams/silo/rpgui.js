@@ -1,4 +1,4 @@
-import { PARTY, GEAR, ITEMS, KEY_ITEMS, SKILLS, MAIN, SIDE, MONEY, memberStats, knownSkills, knownOverdrives, OD_LIST, OVERDRIVES, xpToNext, TREES, PASSIVES, STAT_NAMES, spFree, nodeBlock, nodeLabel, unlockNode, SHOP_GEAR, SHOP_ITEMS } from './data.js';
+import { FISH, FISH_SPOTS, PARTY, GEAR, ITEMS, KEY_ITEMS, SKILLS, MAIN, SIDE, MONEY, memberStats, knownSkills, knownOverdrives, OD_LIST, OVERDRIVES, xpToNext, TREES, PASSIVES, STAT_NAMES, spFree, nodeBlock, nodeLabel, unlockNode, SHOP_GEAR, SHOP_ITEMS } from './data.js';
 
 // Le finestre della campagna, nello stile blu di FFX: i dialoghi, il negozio,
 // il menu del gruppo (stato, equipaggiamento, oggetti, missioni).
@@ -343,6 +343,14 @@ export class PartyMenu {
           : '<div class="sm">Niente nella borsa.</div>';
         const keyItems = Object.entries(st.keyItems).filter(([, n]) => n > 0);
         if (keyItems.length) body += `<div style="margin-top:12px;color:#ffe8a0">Oggetti importanti</div>${keyItems.map(([id, n]) => `<div class="sm">${KEY_ITEMS[id].name}${n > 1 ? ` ×${n}` : ''} — ${KEY_ITEMS[id].desc}</div>`).join('')}`;
+        // il taccuino del pescatore
+        const log = st.fishLog || {};
+        const seen = Object.keys(FISH).filter((f) => log[f]);
+        if (seen.length) {
+          body += `<div style="margin-top:12px;color:#ffe8a0">Taccuino del pescatore · ${seen.length}/${Object.keys(FISH).length}</div><div class="st" style="grid-template-columns:repeat(2,1fr)">${Object.entries(FISH)
+            .map(([f, F]) => (log[f] ? `<span class="sm">${F.rare ? '★ ' : ''}${F.name} · record ${log[f]} cm${st.fish[f] ? ` · ne hai ${st.fish[f]}` : ''}</span>` : `<span class="sm" style="opacity:.4">??? · ${FISH_SPOTS[F.spot].name}</span>`))
+            .join('')}</div>`;
+        }
         keys = '<b>W</b>/<b>S</b> scegli · <b>Invio</b> usa · ' + keys;
       } else {
         body = `<div class="sm" style="margin-bottom:8px">${ITEMS[this.sub.item].name}: su chi?</div><div class="cols">${st.members.map((id, i) => this.memberCard(id, i === this.sel)).join('')}</div>`;
