@@ -38,6 +38,7 @@ export class BeachDream extends WalkScene {
     const day = ctx.progress.hotel?.timeOfDay === 'day';
     const bg = day ? '#b8c0c4' : '#1a2028';
     super(ctx, { background: bg, far: 500, bounds: { minX: -60, maxX: 60, minZ: -40, maxZ: SHORE + 3 } });
+    this.dreamId = 'spiaggia';
     this.saved = ctx.progress.spiaggia || {};
     this.scene.fog = new THREE.Fog(bg, 18, day ? 150 : 110);
     this.scene.add(new THREE.HemisphereLight(day ? '#e4eaee' : '#8a98b8', '#8a7a60', day ? 1.4 : 1.1));
@@ -457,6 +458,15 @@ export class BeachDream extends WalkScene {
         this.leave(() => this.ctx.goto('aeroporto', 'arrivi'));
       },
     });
+  }
+
+  // quello che l'amico dice, camminando, in questo sogno
+  chatter() {
+    return [
+      'Al mare d\'inverno c\'è un silenzio strano. Mi piace.',
+      'Gli ombrelloni chiusi sembrano persone che dormono in piedi.',
+      'Chissà chi viene ad aprire lo stabilimento, a giugno. Forse nessuno.',
+    ];
   }
 
   tick(dt) {

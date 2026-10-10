@@ -131,6 +131,16 @@ Fili che attraversano tutto:
 
 ---
 
+## I sogni si parlano
+
+> *Collegamenti fra i sogni, un compagno che parla di più, una musica che cambia.*
+
+| Cosa | Come |
+|---|---|
+| L'invasione arriva anche nella tempesta | Sulla banchina di **Porto Grigio** c'è un nuovo terminale, il **Molo di Porto Grigio**: si collega la chiavetta di Scintilla anche lì. Lo sfondo è il silo sotto la pioggia, il boss è **DDOS**, una nuvola nera di pacchetti che piove a raffica. Liberarlo dà il modulo **PARAFULMINE**: ogni parata perfetta scarica un fulmine su tutte le entità vicine. |
+| L'amico parla di più | Camminando, ogni minuto e mezzo circa, il tuo amico dice qualcosa: sul posto dove siete (di notte, nella tempesta che si ferma, nell'Abisso, sull'isola, all'aeroporto, al mare...) oppure su **un altro sogno fatto insieme**: il demone nel campo, gli gnomi della hall, il caffè di Sant'Onirio, il Pellicano, la balena di luce... Si ricorda solo di quello che avete fatto davvero, e non ripete due volte la stessa frase. |
+| La musica che si muove | Sopra i pad d'atmosfera ora c'è anche un **groove**: un arpeggio, un basso e, quando serve, una batteria sintetizzata. Nelle battaglie dell'Isola della Tempesta parte la batteria (più veloce e più forte contro i boss, lenta e pesante contro il dio e il suo sogno); quando la tempesta si ferma, o dopo la caccia, arriva una melodia tranquilla; nell'Abisso un arpeggio lentissimo. Sull'Isola si vola con la musica, e contro il Gabbiano di Ferro c'è la batteria; la gara degli anelli ha il suo ritmo. |
+
 ## Il diario dei sogni
 
 Nella suite, accanto all'attaccapanni, c'è un **leggio con un libro rosso**: il **diario dei sogni**. Si riempie da solo. Ogni sogno ha la sua pagina, con le parole del sogno e la lista di quello che ci hai trovato: un segno ✓ per le cose fatte, un cerchio vuoto con un indizio per quelle che mancano (le stanze dell'hotel, i premi della sala giochi, il caffè nel borgo, i terminali liberati, le monete dell'isola, i pesci del taccuino, i piani dell'Abisso...). Nella prima pagina c'è l'indice, con la percentuale di ogni sogno e del totale. I sogni non ancora sognati restano pagine bianche. <kbd>A</kbd>/<kbd>D</kbd> sfogliano, <kbd>Esc</kbd> chiude.

@@ -102,6 +102,7 @@ export class UI {
     s.classList.add('show');
     clearTimeout(this.subTimer);
     this.subTimer = setTimeout(() => s.classList.remove('show'), dur * 1000);
+    this.subUntil = performance.now() + dur * 1000;
   }
 
   clearSubtitle() {

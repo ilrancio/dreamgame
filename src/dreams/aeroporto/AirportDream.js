@@ -37,6 +37,7 @@ export class AirportDream extends WalkScene {
     const day = ctx.progress.hotel?.timeOfDay === 'day';
     const bg = day ? '#c8ccd2' : '#141a26';
     super(ctx, { background: bg, far: 400, bounds: { minX: -30, maxX: 30, minZ: 0, maxZ: END_Z } });
+    this.dreamId = 'aeroporto';
     this.saved = ctx.progress.aeroporto || {};
     this.scene.fog = new THREE.Fog(bg, 45, 170);
     this.scene.add(new THREE.HemisphereLight(day ? '#f4f6fa' : '#c0c8e0', '#8a8278', day ? 1.2 : 0.85), new THREE.AmbientLight('#ffffff', 0.25));
@@ -259,6 +260,15 @@ export class AirportDream extends WalkScene {
         ui.fade(0, 900, '#000');
       },
     });
+  }
+
+  // quello che l'amico dice, camminando, in questo sogno
+  chatter() {
+    return [
+      'Hai notato che nessuno chiama mai il nostro nome all\'altoparlante? Eppure ci aspettano.',
+      'Il tabellone cambia da solo. Le destinazioni sono tutte posti che abbiamo sognato.',
+      'Gli aeroporti di notte mi mettono un po\' di malinconia. Questo poi...',
+    ];
   }
 
   tick(dt) {

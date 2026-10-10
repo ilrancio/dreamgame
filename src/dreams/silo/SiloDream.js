@@ -37,6 +37,7 @@ export class SiloDream extends WalkScene {
   constructor(ctx) {
     const bg = '#3a434c';
     super(ctx, { background: bg, far: 1500, speed: 5.5 });
+    this.dreamId = 'silo';
     this.saved = initCampaign(ctx.progress.silo || {});
     const sv = this.saved;
     const S = this.scene;
@@ -159,6 +160,9 @@ export class SiloDream extends WalkScene {
     this.shellSpots = [
       [60.5, 4.1], [BEACH.x + Math.cos(BEACH.a) * 6, BEACH.z + Math.sin(BEACH.a) * 6], [CAVE.x - Math.cos(CAVE.a) * 16, CAVE.z - Math.sin(CAVE.a) * 16 + 6], [-40, 60], [VILLAGE.x + 34, VILLAGE.z + 22],
     ].map(([x, z], i) => ({ id: `c${i}`, pos: this.groundV(x, z), mark: mark(this.groundV(x, z).add(new THREE.Vector3(0, 0.35, 0)), '#ffb8e0', 1.1) }));
+    // anche qui è arrivata l'invasione digitale: un terminale sulla banchina del porto
+    const hb = this.village.spots.harbor;
+    this.addTerminal('tempesta', hb.x - 3, hb.z - 5, this.harborA() + Math.PI, { spread: 14 });
     // il giorno e la notte, e le pause della tempesta (con la bassa marea)
     this.clock = sv.clock ?? 0.35;
     this.lullIn = 45 + Math.random() * 30;
@@ -318,6 +322,7 @@ export class SiloDream extends WalkScene {
         if (this.lullIn <= 0) {
           this.lullOn = true;
           this.lullT = 80;
+          this.music();
           this.lullWarned = false;
           ui.subtitle(null, 'La pioggia si ferma, di colpo. Il vento cade. Il mare si ritira, e lascia scoperti gli scogli.', 4);
           if (!this.saved.lullSeen) {
@@ -335,6 +340,7 @@ export class SiloDream extends WalkScene {
         if (this.lullT <= 0) {
           this.lullOn = false;
           this.lullIn = 150 + Math.random() * 100;
+          this.music();
         }
       }
     }
@@ -613,14 +619,28 @@ export class SiloDream extends WalkScene {
     audio.stopAllPads(1.2);
     const r = this.region;
     if (this.battle) {
-      if (this.battle.whaleFight) audio.pad('dio', [65.4, 98, 123.5, 155.6], { vol: 0.05, type: 'sawtooth', cutoff: 700, tremolo: 0.4 });
-      else if (this.battle.enemies.some((e) => e.boss)) audio.pad('boss', [82.4, 123.5, 155.6, 196], { vol: 0.045, type: 'sawtooth', cutoff: 900, tremolo: 0.3 });
-      else audio.pad('lotta', [110, 130.8, 164.8, 220], { vol: 0.035, type: 'triangle', cutoff: 1400, tremolo: 0.25 });
+      // in battaglia: il pad e sopra un groove con la batteria, più forte coi boss
+      if (this.battle.whaleFight || this.battle.enemies.some((e) => e.id === 'sognodio')) {
+        audio.pad('dio', [65.4, 98, 123.5, 155.6], { vol: 0.05, type: 'sawtooth', cutoff: 700, tremolo: 0.4 });
+        audio.groove('dio', { notes: [130.8, 155.6, 196, 233.1, 311.1], tempo: 104, drums: 1.6, vol: 0.022, cutoff: 1200, seed: 11 });
+      } else if (this.battle.enemies.some((e) => e.boss)) {
+        audio.pad('boss', [82.4, 123.5, 155.6, 196], { vol: 0.045, type: 'sawtooth', cutoff: 900, tremolo: 0.3 });
+        audio.groove('boss', { notes: [164.8, 196, 246.9, 329.6, 311.1], tempo: 148, drums: 2, vol: 0.02, cutoff: 1500, seed: 9 });
+      } else {
+        audio.pad('lotta', [110, 130.8, 164.8, 220], { vol: 0.035, type: 'triangle', cutoff: 1400, tremolo: 0.25 });
+        audio.groove('lotta', { notes: [220, 261.6, 329.6, 440, 392], tempo: 132, drums: 1, vol: 0.018, seed: 4 });
+      }
     } else if (r === 'silo') audio.pad('silo', [55, 82.4, 103.8, 164.8], { vol: 0.035, cutoff: 500, tremolo: 0.1 });
     else if (r === 'faro') audio.pad('faro', [98, 146.8, 196, 233], { vol: 0.03, cutoff: 700, tremolo: 0.12 });
     else if (r === 'grotte') audio.pad('grotte', [61.7, 92.5, 123.5, 185], { vol: 0.035, cutoff: 450, tremolo: 0.2 });
-    else if (r === 'abisso') audio.pad('abisso', [49, 73.4, 92.5, 138.6], { vol: 0.04, type: 'triangle', cutoff: 420, tremolo: 0.35 });
-    else audio.pad('tempesta', [73.4, 110, 146.8, 174.6], { vol: this.calm ? 0.02 : 0.03, cutoff: 600 });
+    else if (r === 'abisso') {
+      audio.pad('abisso', [49, 73.4, 92.5, 138.6], { vol: 0.04, type: 'triangle', cutoff: 420, tremolo: 0.35 });
+      audio.groove('abisso', { notes: [196, 233.1, 293.7, 349.2, 392], tempo: 66, vol: 0.012, bass: false, cutoff: 1100, seed: 13 });
+    } else {
+      audio.pad('tempesta', [73.4, 110, 146.8, 174.6], { vol: this.calm ? 0.02 : 0.03, cutoff: 600 });
+      // quando il mare è calmo (o la tempesta si ferma) arriva una melodia
+      if (this.calm || this.lullOn) audio.groove('quiete', { notes: [293.7, 370, 440, 587.3, 493.9], tempo: 80, vol: this.calm ? 0.014 : 0.01, cutoff: 1300, seed: 2 });
+    }
   }
 
   updateObjective() {
@@ -1214,6 +1234,24 @@ export class SiloDream extends WalkScene {
   }
 
   // ---------- ogni fotogramma ----------
+  // quello che l'amico dice, camminando, in questo sogno
+  chatter() {
+    const sv = this.saved;
+    const r = this.region;
+    if (r === 'abisso') return ['Qui sotto il tempo non passa. Non so da quanto siamo scesi.', 'Le colonne cambiano colore a ogni piano. Come se il sogno si stancasse di un colore.', 'Senti? Respira ancora. Più giù di così.'];
+    if (r === 'grotte') return ['Il gocciolio non si ferma mai. Tic, tic, tic.', 'Questi cristalli brillano da soli. Chissà se di giorno si spengono.'];
+    if (r === 'faro') return ['Le scale del faro sono infinite. Il guardiano doveva avere delle gambe d\'acciaio.'];
+    if (r === 'silo') return ['È più grande dentro che fuori. Come l\'hotel. Forse è lo stesso architetto.'];
+    const L = [];
+    if (this.night) L.push('Di notte l\'isola fa più paura. Stiamo vicino alle lanterne.', 'Senti cantare? Sono i fuochi fatui, nella brughiera.');
+    else if (!this.lullOn && !this.calm) L.push('Questa pioggia non smette mai. Ho le scarpe che fanno ciak ciak.');
+    if (this.lullOn) L.push('Che silenzio, senza la pioggia. Sbrighiamoci, durerà poco.');
+    if (this.calm) L.push('Il mare è calmo, finalmente. Sembra un altro posto.', 'Ora che la tempesta è finita, Porto Grigio sembra quasi allegra.');
+    if (sv.members.includes('marta') && !sv.fishTaught) L.push('Marta mi ha detto che sa pescare in qualsiasi buca d\'acqua. Chiediamole la lenza, una volta.');
+    if (sv.members.some((id) => spFree(sv, id) > 0)) L.push('Abbiamo dei punti abilità da spendere. Dai un\'occhiata all\'albero, nel menu.');
+    return L;
+  }
+
   tick(dt) {
     const t = this.time;
     const { input } = this.ctx;

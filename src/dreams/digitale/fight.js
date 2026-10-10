@@ -35,6 +35,8 @@ const BOSS = {
   phishing: { name: 'PHISHING', w: 32, h: 26, hp: 950, color: '#3af0a0', moves: ['hook', 'arc', 'dash', 'hook', 'spread'], speed: 70 },
   // l'isola: un cavallo di legno con la pancia piena di entità
   trojan: { name: 'TROJAN', w: 40, h: 44, hp: 1100, color: '#c8884a', moves: ['dash', 'spawn', 'slam', 'dash', 'spawn'], speed: 55 },
+  // l'isola della tempesta: una nuvola nera di pacchetti che piove a raffica
+  ddos: { name: 'DDOS', w: 44, h: 30, hp: 1250, color: '#8a9ab8', moves: ['rain', 'spread', 'dash', 'rain', 'spawn'], speed: 60 },
 };
 
 export class Fight {
@@ -622,6 +624,16 @@ export class Fight {
         }
         src.flash = 0.3;
       }
+      // il PARAFULMINE: dalla parata parte un fulmine su tutte le entità vicine
+      if (this.mods.has('parafulmine')) {
+        for (const e of this.enemies) {
+          if (e.state === 'enter' || (e.alpha ?? 1) < 0.5 || Math.abs(e.x - p.x) > FW * 0.6) continue;
+          const d = Math.sign(e.x - p.x) || 1;
+          this.damageEnemy(e, this.st.shot * 1.6, d * 80, -60, d, false, true);
+          this.burst(e.x, e.y - 12, '#e8f0ff', 8);
+        }
+        this.shake = Math.max(this.shake, 1.2);
+      }
       return 'parry';
     }
     this.gainOc(dmg * 0.45);
@@ -1109,7 +1121,7 @@ export class Fight {
     const th = this.def.theme;
     const sky = g.createLinearGradient(0, 0, 0, GY);
     sky.addColorStop(0, '#05030f');
-    sky.addColorStop(1, { borgo: '#1a1240', galleria: '#0a1a2a', aeroporto: '#0a1430', spiaggia: '#082a30', isola: '#1a1a10' }[th] || '#120a2a');
+    sky.addColorStop(1, { borgo: '#1a1240', galleria: '#0a1a2a', aeroporto: '#0a1430', spiaggia: '#082a30', isola: '#1a1a10', tempesta: '#141a24' }[th] || '#120a2a');
     g.fillStyle = sky;
     g.fillRect(0, 0, FW, FH);
     // pixel che piovono: il mondo è stato digitalizzato
@@ -1200,6 +1212,25 @@ export class Fight {
         g.beginPath();
         for (let x = 0; x <= 420; x += 20) g.lineTo(bx + x, 150 + Math.sin(x * 0.05 + this.t * 2) * 4);
         g.stroke();
+      } else if (th === 'tempesta') {
+        // il silo, il molo, e la pioggia di traverso
+        g.beginPath();
+        g.rect(bx + 220, 30, 110, 202);
+        g.fill();
+        g.stroke();
+        for (let r = 0; r < 6; r++) g.strokeRect(bx + 220, 50 + r * 30, 110, 2);
+        g.strokeRect(bx + 10, 196, 210, 6);
+        for (let k = 0; k < 6; k++) g.strokeRect(bx + 20 + k * 36, 202, 3, 30);
+        g.strokeStyle = 'rgba(160,190,230,0.3)';
+        for (let k = 0; k < 14; k++) {
+          const rx = bx + ((k * 31 + this.t * 160) % 420);
+          const ry = (k * 47 + this.t * 240) % GY;
+          g.beginPath();
+          g.moveTo(rx, ry);
+          g.lineTo(rx - 6, ry + 14);
+          g.stroke();
+        }
+        g.strokeStyle = 'rgba(58,240,255,0.35)';
       } else if (th === 'isola') {
         // le palme e il vulcano
         g.beginPath();
@@ -1558,6 +1589,25 @@ export class Fight {
       g.stroke();
       g.fillStyle = `rgba(255,255,160,${0.6 + Math.sin(t * 6) * 0.4})`;
       g.fillRect(x + f * 16 - 2, y - 32, 4, 4);
+    } else if (b.kind === 'ddos') {
+      // una nuvola nera fatta di pacchetti, con i fulmini dentro
+      g.fillStyle = col;
+      for (const [cx, cy, r] of [[-14, -18, 10], [0, -24, 13], [14, -18, 10], [-6, -12, 9], [8, -12, 9]]) g.fillRect(x + cx - r, y + cy - r * 0.7, r * 2, r * 1.4);
+      g.fillStyle = '#2a3448';
+      for (let k = 0; k < 6; k++) g.fillRect(x - 18 + ((k * 7 + Math.floor(t * 10)) % 36), y - 30 + (k % 3) * 7, 4, 3);
+      g.fillStyle = '#05030f';
+      g.fillRect(x + f * 6 - 4, y - 24, 3, 3);
+      g.fillRect(x + f * 6 + 3, y - 24, 3, 3);
+      if (Math.floor(t * 6) % 3 === 0) {
+        g.strokeStyle = '#f4f8ff';
+        g.lineWidth = 1;
+        g.beginPath();
+        g.moveTo(x - 4, y - 6);
+        g.lineTo(x + 2, y + 2);
+        g.lineTo(x - 2, y + 4);
+        g.lineTo(x + 4, y + 12);
+        g.stroke();
+      }
     } else if (b.kind === 'trojan') {
       // il cavallo di legno, sulle ruote
       g.fillStyle = col;

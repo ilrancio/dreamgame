@@ -1,3 +1,4 @@
+import { memories } from './chatter.js';
 import * as THREE from 'three';
 import { clamp } from './noise.js';
 import { Character } from '../dreams/hotel/character.js';
@@ -109,6 +110,23 @@ export class WalkScene {
     return this.digital;
   }
 
+  // l'amico, ogni tanto, dice qualcosa: sul posto o su un altro sogno
+  chatterTick(dt) {
+    if (!this.dreamId || this.cine || this.leaving || this.busy() || this.digital?.open) return;
+    if (performance.now() < (this.ctx.ui.subUntil || 0) + 4000) return;
+    this.chatT = (this.chatT ?? 70 + Math.random() * 40) - dt;
+    if (this.chatT > 0) return;
+    this.chatT = 85 + Math.random() * 70;
+    this.said ??= new Set();
+    const here = (this.chatter?.() || []).filter((l) => !this.said.has(l));
+    const far = memories(this.ctx.progress, this.dreamId).filter((l) => !this.said.has(l));
+    const pool = here.length && (Math.random() < 0.6 || !far.length) ? here : far;
+    if (!pool.length) return;
+    const line = pool[Math.floor(Math.random() * pool.length)];
+    this.said.add(line);
+    this.ctx.ui.subtitle(FRIEND, line, 3.8);
+  }
+
   // ---------- utilità ----------
   later(dt, fn) {
     this.script.push({ at: this.time + dt, fn });
@@ -148,6 +166,7 @@ export class WalkScene {
     if (!this.cine) this.updateFriend(dt);
     if (this.followers && !this.cine) this.followers.update(dt, this.time, this.player, (x, z) => this.blockedAt(x, z), 'follow', null);
     this.tick(dt);
+    this.chatterTick(dt);
   }
 
   // una piccola scena di camera (cam e look: Vector3; dur: secondi; onEnd)

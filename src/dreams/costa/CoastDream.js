@@ -46,6 +46,7 @@ const VENDOR_CALLS = ['Cocco bello! Cocco fresco!', 'Cocco! Cocco bello!', 'Bomb
 export class CoastDream extends WalkScene {
   constructor(ctx) {
     super(ctx, { background: '#cfe4f0', far: 2600, bounds: PLAY, speed: 5 });
+    this.dreamId = 'costa';
     this.saved = ctx.progress.costa || {};
     const S = this.scene;
     // sempre estate, sempre mezzogiorno passato da poco
@@ -560,6 +561,15 @@ export class CoastDream extends WalkScene {
   }
 
   // ---------- Ogni fotogramma ----------
+  // quello che l'amico dice, camminando, in questo sogno
+  chatter() {
+    return [
+      'Tutta questa gente, e non sento una parola. Solo il mare.',
+      'Ti ricordi quando da piccoli si andava al mare così? Con la macchina piena e i panini.',
+      'Se ti perdi in mezzo agli ombrelloni, ci troviamo al bar. Va bene?',
+    ];
+  }
+
   tick(dt) {
     const { input, ui, audio } = this.ctx;
     const t = this.time;

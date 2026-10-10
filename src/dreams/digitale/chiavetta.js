@@ -33,6 +33,7 @@ export const MODULES = [
   { id: 'perforante', name: 'PERFORANTE', desc: 'I colpi di energia attraversano le entità.', terminal: 'galleria', how: 'libera la Galleria Orizzonte' },
   { id: 'cache', name: 'CACHE', desc: 'Ogni combattimento comincia con l\'overclock già pieno.', terminal: 'aeroporto', how: 'libera l\'Atrio dell\'aeroporto' },
   { id: 'salvagente', name: 'SALVAGENTE', desc: 'Se nessuno ti colpisce per quattro secondi, la vita torna su piano piano.', terminal: 'costa', how: 'libera la Spiaggia Grande' },
+  { id: 'parafulmine', name: 'PARAFULMINE', desc: 'Ogni parata perfetta scarica un fulmine su tutte le entità vicine.', terminal: 'tempesta', how: 'libera il Molo di Porto Grigio' },
   { id: 'eco', name: 'ECO', desc: 'L\'ultimo pugno della combo lancia anche un colpo di energia, gratis.', terminal: 'isola', how: 'libera il Villaggio dell\'Isola' },
   { id: 'turbo', name: 'OVERCLOCK+', desc: 'La barra dell\'overclock si riempie il doppio più in fretta.', wave: 8, how: 'resisti 8 ondate nel Sovraccarico' },
   { id: 'backup', name: 'BACKUP', desc: 'Una volta per combattimento, a vita zero torni con metà vita.', wave: 15, how: 'resisti 15 ondate nel Sovraccarico' },

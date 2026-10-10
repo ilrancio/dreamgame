@@ -5,6 +5,7 @@ export class AudioEngine {
     this.ctx = null;
     this.muted = false;
     this.pads = new Map();
+    this.grooves = new Map();
   }
 
   init() {
@@ -626,5 +627,101 @@ export class AudioEngine {
 
   stopAllPads(fade = 1.5) {
     [...this.pads.keys()].forEach((k) => this.stopPad(k, fade));
+    this.stopAllGrooves?.(fade);
+  }
+
+  // ---------- La musica che si muove ----------
+  // Un groove: un arpeggio sulle note date (a ottavi), un basso, e se serve una
+  // batteria sintetizzata (cassa, rullante, charleston). Più grooves insieme si
+  // sovrappongono ai pad; si spengono con dissolvenza come i pad.
+  groove(name, { notes, tempo = 90, vol = 0.03, type = 'triangle', drums = 0, bass = true, cutoff = 1800, seed = 1 } = {}) {
+    if (!this.ctx || this.grooves.has(name)) return;
+    const c = this.ctx;
+    const out = c.createGain();
+    out.gain.setValueAtTime(0.0001, c.currentTime);
+    out.gain.exponentialRampToValueAtTime(1, c.currentTime + 2);
+    const f = c.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = cutoff;
+    f.connect(out).connect(this.master);
+    const step = 60 / tempo / 2;
+    // l'ordine delle note: un giro di 16 ottavi, sempre lo stesso per questo groove
+    let r = seed * 9301 + 49297;
+    const rnd = () => ((r = (r * 9301 + 49297) % 233280) / 233280);
+    const pattern = Array.from({ length: 16 }, (_, i) => (i % 4 === 3 && rnd() < 0.5 ? -1 : Math.floor(rnd() * notes.length)));
+    const G = { out, f, next: c.currentTime + 0.1, i: 0, alive: true };
+    const note = (fr, t, dur, v, ty = type) => {
+      const o = c.createOscillator();
+      o.type = ty;
+      o.frequency.value = fr;
+      const g = c.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(v, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g).connect(f);
+      o.start(t);
+      o.stop(t + dur + 0.05);
+    };
+    const hit = (t, kind, v) => {
+      if (kind === 'kick') {
+        const o = c.createOscillator();
+        o.frequency.setValueAtTime(130, t);
+        o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+        const g = c.createGain();
+        g.gain.setValueAtTime(v * 3, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+        o.connect(g).connect(out);
+        o.start(t);
+        o.stop(t + 0.25);
+        return;
+      }
+      const n = this.noise();
+      const bf = c.createBiquadFilter();
+      bf.type = kind === 'hat' ? 'highpass' : 'bandpass';
+      bf.frequency.value = kind === 'hat' ? 7000 : 1800;
+      const g = c.createGain();
+      const d = kind === 'hat' ? 0.04 : 0.14;
+      g.gain.setValueAtTime(v * (kind === 'hat' ? 0.6 : 1.6), t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      n.connect(bf).connect(g).connect(out);
+      n.start(t, Math.random());
+      n.stop(t + d + 0.02);
+    };
+    G.timer = setInterval(() => {
+      if (!G.alive) return;
+      while (G.next < c.currentTime + 0.2) {
+        const k = G.i % 16;
+        const p = pattern[k];
+        if (p >= 0) note(notes[p], G.next, step * 1.6, vol);
+        if (bass && k % 8 === 0) note(notes[0] / 2, G.next, step * 6, vol * 1.2, 'sine');
+        if (drums) {
+          if (k % 4 === 0) hit(G.next, 'kick', vol * drums);
+          if (k % 8 === 4) hit(G.next, 'snare', vol * drums);
+          if (drums > 1 || k % 2 === 0) hit(G.next, 'hat', vol * drums * 0.5);
+        }
+        G.next += step;
+        G.i++;
+      }
+    }, 50);
+    this.grooves.set(name, G);
+  }
+
+  stopGroove(name, fade = 2) {
+    const G = this.grooves.get(name);
+    if (!G) return;
+    this.grooves.delete(name);
+    const t = this.ctx.currentTime;
+    G.out.gain.cancelScheduledValues(t);
+    G.out.gain.setValueAtTime(Math.max(0.0001, G.out.gain.value), t);
+    G.out.gain.exponentialRampToValueAtTime(0.0001, t + fade);
+    setTimeout(() => {
+      G.alive = false;
+      clearInterval(G.timer);
+      G.out.disconnect();
+    }, fade * 1000 + 100);
+  }
+
+  stopAllGrooves(fade = 1.5) {
+    [...this.grooves.keys()].forEach((k) => this.stopGroove(k, fade));
   }
 }

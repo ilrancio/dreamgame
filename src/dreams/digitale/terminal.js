@@ -11,6 +11,7 @@ export const TERMINALS = {
   aeroporto: { id: 'aeroporto', name: 'Atrio dell\'aeroporto', diff: 5, boss: 'lag', theme: 'aeroporto', group: 'aeroporto' },
   costa: { id: 'costa', name: 'Spiaggia Grande', diff: 6, boss: 'phishing', theme: 'spiaggia', group: 'costa' },
   isola: { id: 'isola', name: 'Villaggio dell\'Isola', diff: 7, boss: 'trojan', theme: 'isola', group: 'isola' },
+  tempesta: { id: 'tempesta', name: 'Molo di Porto Grigio', diff: 8, boss: 'ddos', theme: 'tempesta', group: 'tempesta' },
 };
 
 // i terminali che si liberano insieme: l'invasione di un posto si ritira quando sono puliti i suoi

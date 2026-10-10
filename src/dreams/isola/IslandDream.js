@@ -29,6 +29,7 @@ const ALL_PAGES = Object.keys(PAGE_NAMES);
 export class IslandDream extends WalkScene {
   constructor(ctx) {
     super(ctx, { background: '#bfe6f8', far: 3200, bounds: { minX: -EXT + 5, maxX: EXT - 5, minZ: -EXT + 5, maxZ: EXT - 5 }, speed: 5.5 });
+    this.dreamId = 'isola';
     const S = this.scene;
     this.saved = Object.assign({ coins: [], pages: [], glasses: false, glassesGiven: false, plane: false, boss: false }, ctx.progress.isola || {});
     this.sky = createSky();
@@ -413,6 +414,7 @@ export class IslandDream extends WalkScene {
   // ---------- La gara degli anelli ----------
   startRace() {
     this.race = { i: 0, t: RACE.time };
+    this.ctx.audio.groove('gara', { notes: [392, 493.9, 587.3, 784, 659.3], tempo: 150, drums: 1.5, vol: 0.02, seed: 7 });
     this.ctx.audio.chime(880, 0.1);
     this.ctx.ui.subtitle(null, `Dieci anelli in ${RACE.time} secondi. <kbd>Shift</kbd> per correre, <kbd>Spazio</kbd> per quelli alti.`, 3.4);
     for (const r of this.world.rings) r.mesh.material.color.set('#ffd23a');
@@ -434,6 +436,8 @@ export class IslandDream extends WalkScene {
       audio.chime(660 + R.i * 60, 0.09);
       if (R.i >= rings.length) {
         this.race = null;
+      this.ctx.audio.stopGroove('gara', 1);
+        this.ctx.audio.stopGroove('gara', 1);
         for (const r of rings) r.mesh.visible = true;
         ui.popup('Gara vinta!');
         if (!this.saved.pages.includes('gara')) {
@@ -446,6 +450,7 @@ export class IslandDream extends WalkScene {
     ui.objective(`Gara degli anelli · anello ${R.i + 1}/${rings.length} · ${Math.ceil(R.t)} s`);
     if (R.t <= 0) {
       this.race = null;
+      this.ctx.audio.stopGroove('gara', 1);
       for (const r of rings) r.mesh.visible = true;
       audio.thud(0.3);
       ui.popup('Tempo scaduto', true);
@@ -479,6 +484,8 @@ export class IslandDream extends WalkScene {
     audio.whoosh(0.4);
     this.fight = !this.saved.boss;
     this.boss.passive = !this.fight;
+    // in volo la musica si mette a correre; contro il gabbiano, con la batteria
+    audio.groove('volo', this.fight ? { notes: [261.6, 329.6, 392, 523.3, 440], tempo: 138, drums: 1.2, vol: 0.022, seed: 3 } : { notes: [261.6, 329.6, 392, 493.9], tempo: 96, vol: 0.016, seed: 5 });
     if (this.fight) {
       this.later(2.5, () => ui.subtitle(FRIEND, 'Si vola! Il gabbiano è lassù, gira intorno all\'isola. La bussola lo indica.', 3.4));
       this.later(7, () => ui.subtitle(PILOT, '(alla radio) Le turbine arancioni sotto le ali. Mira lì.', 3.2));
@@ -488,6 +495,7 @@ export class IslandDream extends WalkScene {
   land() {
     const { ui, audio } = this.ctx;
     audio.engineStop();
+    audio.stopGroove('volo');
     ui.crosshair(false);
     ui.calm(true);
     ui.fade(1, 500, '#ffffff').then(() => {
@@ -691,6 +699,17 @@ export class IslandDream extends WalkScene {
   }
 
   // ---------- Ogni fotogramma ----------
+  // quello che l'amico dice, camminando, in questo sogno
+  chatter() {
+    const s = this.saved;
+    return [
+      'Quest\'isola sembra fatta apposta per noi. Monete dappertutto, come in un videogioco.',
+      'Senti il profumo del mare? Qui è tutto più colorato che a casa.',
+      ...(s.plane ? ['Il Pellicano ci aspetta all\'hangar. Facciamo un altro giro?'] : ['Con un aereo vedremmo l\'isola da sopra. Pensa che bello.']),
+      ...(s.pages.length < 5 ? ['Le pagine della patente... una era in cima alla montagna, ne sono sicuro.'] : []),
+    ];
+  }
+
   tick(dt) {
     const { ui, audio } = this.ctx;
     const t = this.time;

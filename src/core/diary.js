@@ -133,7 +133,7 @@ function chapters(P) {
       quote: 'Il mondo era invaso da entità digitali. Portavo una chiavetta con dentro un personaggio, la collegavo ai terminali e combattevo.',
       items: [
         count('Livello di Scintilla', n(d.hero?.level), 10, 'Ogni entità cancellata dà esperienza'),
-        count('Terminali liberati', terms, Object.keys(TERMINALS).length, 'Ce ne sono all\'hotel, nel borgo, al centro, all\'aeroporto, sulla costa e sull\'isola'),
+        count('Terminali liberati', terms, Object.keys(TERMINALS).length, 'Ce ne sono all\'hotel, nel borgo, al centro, all\'aeroporto, sulla costa, sull\'isola e nel porto della tempesta'),
         count('Moduli trovati', (d.modules?.owned || []).length, MODULES.length, 'Si trovano liberando i terminali e resistendo nel Sovraccarico'),
       ],
     },
