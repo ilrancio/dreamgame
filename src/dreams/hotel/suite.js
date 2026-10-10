@@ -185,6 +185,17 @@ export function buildSuite(a, bathApi, rb) {
   const fan = put('ceilingFan', 8, 15, { y: 5.5 - 0.13 * 3.2, scale: 3.2, colors: { wood: '#5a3420', metalLight: '#c9a040' } });
   if (fan) a.anim((t) => (fan.rotation.y = t * 1.6));
   put('coatRackStanding', 1.2, 22.8, { colors: { wood: '#3a2416' }, col: [0.6, 0.6] });
+  // il leggio con il diario dei sogni
+  const lx = 3.6;
+  const lz = 23.1;
+  box(0.12, 1.05, 0.12, darkWood, lx, 0.52, lz);
+  box(0.5, 0.06, 0.4, darkWood, lx, 0.03, lz, { collide: false });
+  const lectern = box(0.7, 0.05, 0.5, darkWood, lx, 1.08, lz - 0.05, { collide: false });
+  void lectern;
+  box(0.62, 0.06, 0.42, a.mat('#7a2a1a'), lx, 1.13, lz - 0.05, { collide: false });
+  box(0.56, 0.02, 0.38, a.mat('#f0e6cc'), lx, 1.17, lz - 0.05, { collide: false });
+  a.collider(...P(lx, lz), 0.6, 0.5);
+  a.glowSprite('#ffe8b0', ...spread(P(lx, lz - 0.05), 1.35), 0.9, 0.35);
   box(0.8, 0.6, 0.35, a.mat('#2a4a3a'), 6.4, 0.3, 23.3);
   box(0.6, 0.5, 0.35, a.mat('#6a2a1a'), 7.3, 0.25, 23.3);
   a.glowSprite('#ffe2b0', ...spread(P(9, 16), 5.1), 6, 0.3);
@@ -293,6 +304,7 @@ export function buildSuite(a, bathApi, rb) {
     windowSpot: W(6.6, 1.4),
     windowLook: W(6, 0, 2.3),
     lampSpot: W(14.9, 15.5),
+    diarySpot: W(3.6, 22.2),
     fireplace: W(1.4, fireZ),
     mokaSpot: W(1.45, mz - 0.2),
     mokaFacing: -Math.PI / 2,

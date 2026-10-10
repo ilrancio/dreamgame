@@ -131,6 +131,10 @@ Fili che attraversano tutto:
 
 ---
 
+## Il diario dei sogni
+
+Nella suite, accanto all'attaccapanni, c'è un **leggio con un libro rosso**: il **diario dei sogni**. Si riempie da solo. Ogni sogno ha la sua pagina, con le parole del sogno e la lista di quello che ci hai trovato: un segno ✓ per le cose fatte, un cerchio vuoto con un indizio per quelle che mancano (le stanze dell'hotel, i premi della sala giochi, il caffè nel borgo, i terminali liberati, le monete dell'isola, i pesci del taccuino, i piani dell'Abisso...). Nella prima pagina c'è l'indice, con la percentuale di ogni sogno e del totale. I sogni non ancora sognati restano pagine bianche. <kbd>A</kbd>/<kbd>D</kbd> sfogliano, <kbd>Esc</kbd> chiude.
+
 ## I macroluoghi e le porte 1313
 
 > *In generale vorrei che gli eventi accadessero in "macroluoghi" in questo open world, e che ogni macroluogo sbloccasse una porta di shortcut verso la suite quando lo visiti. Per esempio il villaggio sulla cima della montagna è un macroluogo.*

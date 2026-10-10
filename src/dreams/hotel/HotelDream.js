@@ -21,6 +21,7 @@ import { ChoicePanel } from '../../core/choice.js';
 import { GATES, gateOpen } from '../digitale/corruption.js';
 import { GestureScreen, recordGesture, gestureSfx } from '../../core/gestures.js';
 import { hero, setHeroFemale } from '../../core/hero.js';
+import { DreamDiary } from '../../core/diary.js';
 
 const FRIEND = 'Il tuo amico:';
 const CONCIERGE = 'Il concierge:';
@@ -156,6 +157,7 @@ export class HotelDream {
     this.elevatorPanel = new ElevatorPanel();
     this.arcadeScreen = new ArcadeScreen();
     this.choice = new ChoicePanel();
+    this.diary = new DreamDiary(ctx);
     this.gesture = new GestureScreen();
     this.events = new EventDirector(this);
     // il concierge: divisa bordeaux, berretto, sempre dietro la reception
@@ -1453,7 +1455,7 @@ export class HotelDream {
   // ---------- Ciclo ----------
   update(dt) {
     const { input, ui, audio } = this.ctx;
-    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen || this.choice.open || this.gesture.open;
+    const menus = this.elevatorPanel.open || this.arcadeScreen.open || this.prizeOpen || this.bestiaryOpen || this.choice.open || this.gesture.open || this.diary.open;
     if (!menus && input.wasPressed('KeyP', 'Escape') && this.phase !== 'sleeping' && this.phase !== 'riding') {
       this.paused = !this.paused;
       ui.center(this.paused ? '<div class="panel pause"><h2>Pausa</h2><p><kbd>P</kbd> riprendi</p><p><kbd>N</kbd> audio on/off · <kbd>M</kbd> mappa</p><p>Il sogno si salva da solo.</p></div>' : null);
@@ -1474,6 +1476,7 @@ export class HotelDream {
     if (this.arcadeScreen.open) this.arcadeScreen.update(dt, input);
     if (this.prizeOpen) this.prizeKeys(input);
     if (this.bestiaryOpen) this.bestiaryKeys(input);
+    if (this.diary.open) this.diary.update(input);
     if (this.choice.open) this.choice.handleKeys(input);
 
     const room = roomAt(this.layout, this.player.pos.x, this.player.pos.z);
@@ -1898,6 +1901,13 @@ export class HotelDream {
       }
       if (E) this.openShortcuts(places);
       return '<kbd>E</kbd> apri la porta dei luoghi del sogno';
+    }
+    if (k.diarySpot && near(k.diarySpot, 1.3)) {
+      if (E) {
+        ui.hint(null);
+        this.diary.show();
+      }
+      return '<kbd>E</kbd> leggi il diario dei sogni';
     }
     if (near(k.vitrineSpot, 1.5)) {
       if (E) this.openBestiary();
@@ -2346,6 +2356,7 @@ export class HotelDream {
     this.closePrizes();
     this.closeBestiary();
     this.choice.dispose();
+    this.diary.dispose();
     this.gesture.dispose();
     this.followers?.dispose();
     this.rb.dispose();
